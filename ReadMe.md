@@ -31,13 +31,15 @@ the big screen (`/host`).
    phone shows its stats.
 4. Press **Add bot** if you want computer cars too. Bots also answer questions.
 5. Press **Start race**. Cars drive forward by themselves; players steer with the two buttons.
-   Cones, tyres, crates and barrels stand on the road. Hitting them slows a car a little and
-   sends them flying; crates smash.
-6. When a question appears, everyone picks an answer on their phone. A right answer gives a
+   Cones, tyres, crates, barrels and crash-test dummies stand on the road. Hitting them sends
+   them flying and tumbling; crates smash and dummies lose parts. The car keeps its speed.
+6. Before each question there is a 3-second "get ready" countdown. Then everyone picks an
+   answer on their phone. A right answer gives a
    speed boost, and every right answer makes the shared map greener.
 7. After the race, press **Race again** or **New track**.
 
-A lap takes about one minute. Two laps is the default; the host can change it before the start.
+A lap takes 45 to 60 seconds. Two laps is the default; the host can change it before the start.
+A short race asks questions more often, so the map can always become fully clean.
 
 If a phone cannot open the page, check that it is on the same Wi-Fi, and allow Node.js in the
 laptop's firewall when it asks. Some event Wi-Fi blocks phones from reaching laptops; a phone
@@ -70,7 +72,7 @@ code uses the site's own address.
 | `public/index.html`, `public/landing.css`, `public/landing.js` | The landing page at `/`: Host a race, or join with a code |
 | `public/cars/` | The four cars that drive across the landing page |
 | `shared/cars.json` | Car stats from `docs/car-stats.pdf`: top speed, acceleration, handling and weight for each car type |
-| `shared/props.js` | The cones, tyres, crates and barrels on the road: what they are and where they start |
+| `shared/props.js` | The cones, tyres, crates, barrels and dummies on the road: what they are and where they start |
 | `shared/cars.js` | Turns those stats into what the race uses, and says which row of `cars.png` is which car type |
 | `public/host.html`, `public/host.js` | The big screen at `/host`: drawing, lobby, race view, questions, results |
 | `public/play.html`, `public/play.js` | The phone: join, close-up view, steering buttons, answers |

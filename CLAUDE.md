@@ -35,16 +35,18 @@ questions right.
 - `shared/cars.json` holds the team's car stats (1 to 5 each). `shared/cars.js` turns them into
   physics numbers and maps the rows of `public/cars.png` to car types. The effects are kept
   small so every car can win; re-check the balance after changing them.
-- `shared/props.js` lists the things standing on the road (cones, tyres, crates, barrels) and
-  where they start. The server moves them with real physics in `stepProps` and sends only the
-  ones that are moving. When a crate is smashed the server sends a `break` message and each
-  screen throws its own planks.
+- `shared/props.js` lists the things standing on the road (cones, tyres, crates, barrels,
+  crash-test dummies) and where they start. The server moves them with real physics in
+  `stepProps`, including height, and sends only the ones that are moving. When something breaks
+  the server sends a `break` message and each screen throws its own pieces. A dummy is a rag
+  doll: the server moves the body, and each screen makes the limbs flop (`flopDoll` in
+  `public/render.js`).
 - `public/host.js` is the big screen. `public/play.js` is the phone.
 - `questions.db` holds the questions. `data/questions.json` is a copy for Node versions
   without built-in SQLite; run `npm run export-questions` after changing the database.
 
-Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question` and `reveal` every
-20 seconds of driving, and finally `results`.
+Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question-countdown`,
+`question` and `reveal` every 10 to 20 seconds of driving, and finally `results`.
 
 ## Rules for changes
 
