@@ -54,13 +54,6 @@ const effects = createEffects();
 $('codeInput').value = roomInUrl;
 $('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
 
-function element(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
 // ---------- Screens ----------
 
 function showScreen() {
