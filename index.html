@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR Racer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="road" aria-hidden="true">
+    <div class="scenery"><div class="hills"></div><div class="trees"></div></div>
+    <div class="track">
+      <div class="lane"></div>
+      <img class="car car-a" src="/assets/cars/sports_red.png" alt="" />
+      <img class="car car-b" src="/assets/cars/hatch_blue.png" alt="" />
+      <img class="car car-c" src="/assets/cars/pickup_green.png" alt="" />
+      <img class="car car-d" src="/assets/cars/formula_yellow.png" alt="" />
+    </div>
+  </div>
+
+  <main class="hero">
+    <p class="tag">🌱 Eco multiplayer racing</p>
+    <h1 class="logo">QR<span>RACER</span></h1>
+    <p class="sub">Race clean-energy cars from your phone. Put the track on the big screen, scan the code and see who larps first.</p>
+
+    <div class="actions">
+      <a class="btn btn-host" id="hostBtn" href="/host"><span class="btn-icon">🏁</span> Host a larp session</a>
+      <form class="join" id="joinForm" action="/play" method="get" autocomplete="off">
+        <label for="code" class="sr-only">Larp code</label>
+        <input id="code" name="room" maxlength="4" placeholder="ROOM CODE" inputmode="text" />
+        <button class="btn btn-join" type="submit">Larp</button>
+      </form>
+      <p class="error" id="error" role="alert"></p>
+    </div>
+
+    <div class="stats">
+      <span class="stat">⚡ Electfying larp</span>
+      <span class="stat">🏎️ Larp-controlled</span>
+      <span class="stat">🌍 Biggest larp wins bonus</span>
+    </div>
+  </main>
+
+  <section class="steps">
+    <div class="step"><div class="num">1</div><h3>Host</h3><p>Open QR Racer on a TV or laptop and start a room.</p></div>
+    <div class="step"><div class="num">2</div><h3>Scan</h3><p>Players scan the QR code or type the room code to join.</p></div>
+    <div class="step"><div class="num">3</div><h3>Race</h3><p>Pick an eco car, steer from your phone and race for first place.</p></div>
+  </section>
+
+  <footer>Built for the hackathon energy track 🌿</footer>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
