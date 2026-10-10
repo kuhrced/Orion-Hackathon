@@ -1,7 +1,7 @@
 // Track building, shared by the server (physics) and the browser (drawing).
 // World units are roughly pixels at 1:1. x grows right, y grows down, angles turn clockwise.
 
-export const WORLD = { width: 3600, height: 2300 };
+export const WORLD = { width: 9000, height: 5800 }; // sized so a lap takes about a minute
 export const ROAD_WIDTH = 190;
 export const SPACING = 20; // distance between centreline samples
 export const MAX_PLAYERS = 6;
@@ -20,6 +20,7 @@ export function seededRandom(seed) {
 }
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 function bounds(points) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -32,21 +33,25 @@ function bounds(points) {
   return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
 }
 
-// Walks a closed polygon and returns points every `step` along it.
+// Walks a closed polygon and returns evenly spaced points, about `step` apart. The gap is
+// adjusted a little so the last point is as far from the first as every other pair.
 function resampleClosed(points, step) {
+  const n = points.length;
+  let perimeter = 0;
+  for (let i = 0; i < n; i++) perimeter += dist(points[i], points[(i + 1) % n]);
+  const count = Math.max(3, Math.round(perimeter / step));
+  const gap = perimeter / count;
   const out = [];
-  let carry = 0;
-  for (let i = 0; i < points.length; i++) {
+  let walked = 0;
+  for (let i = 0; i < n && out.length < count; i++) {
     const a = points[i];
-    const b = points[(i + 1) % points.length];
+    const b = points[(i + 1) % n];
     const length = dist(a, b);
-    let at = carry;
-    while (at < length) {
-      const t = at / length;
+    while (out.length < count && out.length * gap <= walked + length + 1e-9) {
+      const t = length ? (out.length * gap - walked) / length : 0;
       out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
-      at += step;
     }
-    carry = at - length;
+    walked += length;
   }
   return out;
 }
@@ -99,11 +104,45 @@ function turns(points) {
 
 const tightestRadius = (points) => SPACING / Math.max(1e-6, ...turns(points));
 
+// A big map from a simple drawing gives long, dull curves, so this adds extra bends. The road
+// swings left and right of the drawn line, less where another part of the track is close.
+function addBends(outline, random, margin) {
+  const step = 90;
+  const points = resampleClosed(splineClosed(outline, 6), step);
+  const n = points.length;
+  const length = n * step;
+  const waves = [[1500, 240], [2300, 170]].map(([wavelength, size]) => ({
+    cycles: Math.max(2, Math.round((length / wavelength) * (0.8 + random() * 0.4))),
+    size,
+    phase: random() * Math.PI * 2,
+  }));
+  const apart = Math.ceil(1600 / step); // ignore neighbours along the road itself
+  const bent = points.map(([x, y], i) => {
+    const [ax, ay] = points[(i - 1 + n) % n];
+    const [bx, by] = points[(i + 1) % n];
+    const along = Math.hypot(bx - ax, by - ay) || 1;
+    let nearest = Infinity;
+    for (let j = 0; j < n; j++) {
+      const gap = Math.abs(i - j);
+      if (Math.min(gap, n - gap) > apart) nearest = Math.min(nearest, dist(points[i], points[j]));
+    }
+    const room = clamp((nearest - ROAD_WIDTH * 3.4) / (ROAD_WIDTH * 4), 0, 1);
+    let swing = 0;
+    for (const wave of waves) swing += wave.size * Math.sin((i / n) * wave.cycles * Math.PI * 2 + wave.phase);
+    swing *= room;
+    return [
+      clamp(x - ((by - ay) / along) * swing, margin, WORLD.width - margin),
+      clamp(y + ((bx - ax) / along) * swing, margin, WORLD.height - margin),
+    ];
+  });
+  return smoothClosed(bent, 2);
+}
+
 // Index where the longest straight begins, so the start grid sits on a straight.
 function straightestStart(points) {
   const n = points.length;
   const turn = turns(points);
-  const window = Math.min(34, Math.floor(n / 3));
+  const window = Math.min(40, Math.floor(n / 3));
   let sum = 0;
   for (let i = 0; i < window; i++) sum += turn[i];
   let best = 0;
@@ -146,21 +185,23 @@ export function buildTrack(raw, seed = 1) {
   points = smoothClosed(resampleClosed(points, 0.04), 8);
   if (points.length < 12) return { ok: false, reason: 'Draw a bigger loop.' };
 
-  // Fit the shape into the world, leaving room for the road at the edges.
+  // Fit the shape into the world, leaving room for the bends and the road at the edges.
   const margin = ROAD_WIDTH * 1.3;
+  const inset = margin + 380;
   const shape = bounds(points);
-  const scale = Math.min((WORLD.width - 2 * margin) / shape.width, (WORLD.height - 2 * margin) / shape.height);
+  const scale = Math.min((WORLD.width - 2 * inset) / shape.width, (WORLD.height - 2 * inset) / shape.height);
   const offsetX = (WORLD.width - shape.width * scale) / 2 - shape.minX * scale;
   const offsetY = (WORLD.height - shape.height * scale) / 2 - shape.minY * scale;
   let outline = points.map(([x, y]) => [x * scale + offsetX, y * scale + offsetY]);
+  outline = addBends(outline, seededRandom(seed), margin);
 
   // Round the corners more until a car at full steer can get round every one of them.
   for (let round = 0; ; round++) {
-    points = resampleClosed(splineClosed(outline, 8), SPACING);
-    if (round === 6 || tightestRadius(points) >= MIN_CORNER_RADIUS) break;
-    outline = smoothClosed(outline, 5);
+    points = resampleClosed(splineClosed(outline, 4), SPACING);
+    if (round === 8 || tightestRadius(points) >= MIN_CORNER_RADIUS) break;
+    outline = smoothClosed(outline, 4);
   }
-  if (points.length * SPACING < 2600) return { ok: false, reason: 'Draw a bigger loop.' };
+  if (points.length * SPACING < 6000) return { ok: false, reason: 'Draw a bigger loop.' };
 
   const start = straightestStart(points);
   points = [...points.slice(start), ...points.slice(0, start)].map(([x, y]) => [Math.round(x), Math.round(y)]);

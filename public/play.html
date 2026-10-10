@@ -24,6 +24,11 @@
 <section class="screen card" id="lobby">
   <h1 id="hello"></h1>
   <div id="myCar"></div>
+  <div id="carCard" hidden>
+    <div id="carName"></div>
+    <dl id="carStats"></dl>
+    <p id="carNote"></p>
+  </div>
   <button id="changeCar" type="button">Change car</button>
   <p id="status"></p>
 </section>
@@ -32,18 +37,29 @@
   <canvas id="view"></canvas>
   <div id="hud">
     <div id="place"></div>
-    <div id="lap"></div>
+    <div id="hudRight">
+      <div id="lap"></div>
+      <div id="score"></div>
+    </div>
   </div>
   <div id="banner"></div>
   <div id="pedals">
     <button id="left" type="button" aria-label="Steer left">◀</button>
     <button id="right" type="button" aria-label="Steer right">▶</button>
   </div>
+  <div id="quiz" class="quiz" hidden>
+    <div class="quiz-top"><span id="quizNumber"></span><span id="quizNote"></span></div>
+    <div class="timer"><div id="quizTimer"></div></div>
+    <h2 id="quizText"></h2>
+    <div id="quizChoices" class="choices"></div>
+  </div>
 </section>
 
 <section class="screen" id="done">
   <div class="label">You finished</div>
   <div class="big" id="myPlace"></div>
+  <p id="myScore"></p>
+  <p id="doneWinner"></p>
   <ol id="doneList"></ol>
   <p id="doneNote">Look at the big screen for the next race.</p>
 </section>

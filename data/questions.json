@@ -1,0 +1,1102 @@
+[
+ {
+  "id": 1,
+  "question": "What if you leave the tap running while brushing your teeth? What is the main environmental impact?",
+  "choices": [
+   "Wildlife gets extra food",
+   "More water is wasted",
+   "Air pollution decreases",
+   "More soil is created"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 2,
+  "question": "Which item is usually easiest to recycle through curbside programs?",
+  "choices": [
+   "A greasy pizza box",
+   "A broken ceramic mug",
+   "A used tissue",
+   "A clean aluminum can"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 3,
+  "question": "What if a plastic bag blows into a river? What could happen?",
+  "choices": [
+   "It will feed every fish",
+   "It may harm animals that mistake it for food",
+   "It will make the river colder",
+   "It will quickly turn into drinking water"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 4,
+  "question": "Which action can reduce household electricity use?",
+  "choices": [
+   "Keeping the refrigerator door open",
+   "Leaving lights on in empty rooms",
+   "Running half-empty laundry loads",
+   "Switching off lights when they aren’t needed"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 5,
+  "question": "What is composting?",
+  "choices": [
+   "Turning suitable organic waste into soil-like material",
+   "Burning all household rubbish",
+   "Burying batteries in a garden",
+   "Washing plastic in a river"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 6,
+  "question": "What if a family composts fruit and vegetable scraps? What may be reduced?",
+  "choices": [
+   "The amount of sunlight",
+   "Rainfall",
+   "The number of plants",
+   "Food waste sent to landfill"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 7,
+  "question": "Which is a renewable energy source?",
+  "choices": [
+   "Natural gas",
+   "Oil",
+   "Coal",
+   "Wind"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 8,
+  "question": "What if a town replaces some car trips with bus trips? What may happen?",
+  "choices": [
+   "There may be fewer vehicle emissions per passenger",
+   "The air becomes completely pollution-free",
+   "The town uses more gasoline per person",
+   "Every road disappears"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 9,
+  "question": "Which gas is a major contributor to human-caused climate change?",
+  "choices": [
+   "Carbon dioxide",
+   "Helium",
+   "Neon",
+   "Argon"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 10,
+  "question": "What if forests are cleared faster than they regrow? What is one likely result?",
+  "choices": [
+   "More trees immediately",
+   "Less soil erosion everywhere",
+   "More nesting places for all forest animals",
+   "Habitat loss"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 11,
+  "question": "Which choice helps conserve water outdoors?",
+  "choices": [
+   "Watering a garden during the cooler morning hours",
+   "Watering pavement at midday",
+   "Leaving a hose running",
+   "Washing a car every day with a running hose"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 12,
+  "question": "What if rain washes fertilizer from a lawn into a lake? What might happen?",
+  "choices": [
+   "Excess nutrients may contribute to harmful algal growth",
+   "Fish gain more oxygen automatically",
+   "The lake turns into a forest",
+   "The water becomes salt-free"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 13,
+  "question": "Which item should generally be kept out of ordinary recycling bins unless local rules say otherwise?",
+  "choices": [
+   "A clean glass jar",
+   "A household battery",
+   "A clean cardboard box",
+   "An empty metal food can"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 14,
+  "question": "What if a community plants native flowers? Which visitors may benefit?",
+  "choices": [
+   "Only deep-sea animals",
+   "Only house pets",
+   "No insects",
+   "Local pollinators"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 15,
+  "question": "What is biodiversity?",
+  "choices": [
+   "The temperature of a building",
+   "A type of fuel",
+   "The variety of living things in an area",
+   "The amount of plastic in a shop"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 16,
+  "question": "What if a wetland is drained and built over? What may be lost?",
+  "choices": [
+   "Wildlife habitat and natural flood storage",
+   "Every type of soil",
+   "All wind",
+   "The water cycle"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 17,
+  "question": "Which action can help protect pollinators?",
+  "choices": [
+   "Planting a variety of pesticide-free flowers",
+   "Spraying flowers with insecticide",
+   "Removing every flowering plant",
+   "Covering gardens with plastic"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 18,
+  "question": "What if someone pours used motor oil into a storm drain? Where could it go?",
+  "choices": [
+   "Into the clouds as clean rain",
+   "Into a compost bin",
+   "Into waterways",
+   "Into a solar panel"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 19,
+  "question": "Which option usually produces less packaging waste?",
+  "choices": [
+   "Buying many individually wrapped servings",
+   "Throwing away reusable containers",
+   "Using a new plastic bag for every item",
+   "Buying a refill for a reusable container"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 20,
+  "question": "What if you walk or cycle for a short trip instead of driving alone?",
+  "choices": [
+   "You use more gasoline",
+   "You may reduce fuel use and emissions",
+   "You increase road traffic automatically",
+   "You increase tailpipe emissions"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 21,
+  "question": "Which material can be made into new paper products?",
+  "choices": [
+   "Clean, dry paper",
+   "Food-covered napkins",
+   "Broken glass",
+   "A used light bulb"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 22,
+  "question": "What if a beach is littered with fishing line? What is a possible danger?",
+  "choices": [
+   "It cleans the beach",
+   "It dissolves instantly in seawater",
+   "Wildlife may become tangled in it",
+   "It helps birds build every nest safely"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 23,
+  "question": "What does “reduce” mean in the phrase “reduce, reuse, recycle”?",
+  "choices": [
+   "Buy more disposable items",
+   "Use more packaging",
+   "Use fewer resources and create less waste",
+   "Throw everything away"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 24,
+  "question": "What if a household repairs a broken chair instead of replacing it?",
+  "choices": [
+   "It increases mining automatically",
+   "It may prevent usable materials from becoming waste",
+   "It makes the chair disposable",
+   "It uses more new furniture"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 25,
+  "question": "Which is one role of trees in an ecosystem?",
+  "choices": [
+   "Producing plastic",
+   "Preventing all storms",
+   "Providing habitat and taking in carbon dioxide as they grow",
+   "Removing every pollutant from the air"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 26,
+  "question": "What if an invasive plant spreads through a local habitat? What might it do?",
+  "choices": [
+   "Stop all plant growth",
+   "Compete with native species for resources",
+   "Turn into a native plant immediately",
+   "Make every species thrive equally"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 27,
+  "question": "Which choice can help reduce food waste?",
+  "choices": [
+   "Planning meals and using leftovers",
+   "Buying more food than can be eaten",
+   "Throwing away food without checking it",
+   "Leaving groceries unrefrigerated when they need chilling"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 28,
+  "question": "What if food scraps decompose in a landfill without much oxygen? Which gas may be produced?",
+  "choices": [
+   "Oxygen",
+   "Hydrogen",
+   "Helium",
+   "Methane"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 29,
+  "question": "Which practice can protect soil on a farm?",
+  "choices": [
+   "Overgrazing fields",
+   "Removing all vegetation beside streams",
+   "Leaving bare soil exposed on steep slopes",
+   "Planting cover crops"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 30,
+  "question": "What if too much soil washes into a stream after a storm? What may happen?",
+  "choices": [
+   "The stream becomes a desert instantly",
+   "Water can become murky and aquatic habitats can be affected",
+   "The water becomes clean automatically",
+   "Fish no longer need oxygen"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 31,
+  "question": "Which is a source of air pollution?",
+  "choices": [
+   "A closed book",
+   "A glass of clean water",
+   "A shaded garden",
+   "Exhaust from burning fuel"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 32,
+  "question": "What if a city adds more trees and shaded parks? What benefit may residents experience?",
+  "choices": [
+   "More exhaust from every tree",
+   "No need for clean water",
+   "Less oxygen everywhere",
+   "Cooler local spaces and more habitat"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 33,
+  "question": "Which household item often contains materials that need special disposal?",
+  "choices": [
+   "A banana peel",
+   "A fluorescent light bulb",
+   "A plain cardboard box",
+   "A clean paper bag"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 34,
+  "question": "What if old electronics are dumped in a river? What is a concern?",
+  "choices": [
+   "They will become fish food",
+   "Harmful substances may pollute the environment",
+   "They will grow into trees",
+   "They will clean the water"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 35,
+  "question": "Which action can reduce the need for single-use bottles?",
+  "choices": [
+   "Leaving taps running",
+   "Buying a new bottle for every drink",
+   "Carrying a refillable water bottle",
+   "Throwing reusable bottles away"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 36,
+  "question": "What if a community protects a forest corridor between two habitats?",
+  "choices": [
+   "All wildlife becomes confined to one tree",
+   "Rivers stop flowing",
+   "Animals may be able to move between habitats more safely",
+   "The forest stops growing"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 37,
+  "question": "Which is an example of sustainable fishing?",
+  "choices": [
+   "Catching every fish in a breeding area",
+   "Fishing without regard to seasons or population levels",
+   "Using banned nets",
+   "Following catch limits designed to maintain fish populations"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 38,
+  "question": "What if a coral reef becomes warmer than usual for a long time? What could happen?",
+  "choices": [
+   "All reef species move to land",
+   "Corals may become stressed and bleach",
+   "Corals turn into rocks overnight",
+   "The ocean stops having waves"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 39,
+  "question": "What is a carbon footprint?",
+  "choices": [
+   "The greenhouse gas emissions associated with a person, activity, or product",
+   "A kind of tree root",
+   "The amount of carbon in a pencil",
+   "A mark made by shoes in soil"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 40,
+  "question": "What if you choose an energy-efficient appliance?",
+  "choices": [
+   "It must use more electricity",
+   "It may use less electricity to do the same job",
+   "It cannot be repaired",
+   "It creates no environmental impact at all"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 41,
+  "question": "Which source produces electricity without burning fuel during operation?",
+  "choices": [
+   "A gasoline generator",
+   "Solar panels",
+   "A coal-fired generator",
+   "A diesel engine"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 42,
+  "question": "What if a neighborhood installs rain barrels? What can the collected water be used for?",
+  "choices": [
+   "Making gasoline",
+   "Replacing all drinking water without treatment",
+   "Cleaning batteries",
+   "Watering plants"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 43,
+  "question": "Which kind of waste is most suitable for composting at home?",
+  "choices": [
+   "A metal can",
+   "A glass bottle",
+   "A plastic fork",
+   "Vegetable peels"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 44,
+  "question": "What if a person puts a plastic container in recycling while it still holds food?",
+  "choices": [
+   "It automatically becomes compost",
+   "Food residue may contaminate recyclable materials",
+   "It is guaranteed to be recycled",
+   "It turns into clean water"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 45,
+  "question": "Which action helps protect streams from pollution?",
+  "choices": [
+   "Keeping chemicals and litter out of storm drains",
+   "Dumping used oil outdoors",
+   "Pouring paint into a roadside drain",
+   "Washing rubbish into a gutter"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 46,
+  "question": "What if a household uses a low-flow showerhead?",
+  "choices": [
+   "It turns water into electricity",
+   "It removes the need to fix leaks",
+   "It increases water use by design",
+   "It may reduce water use during showers"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 47,
+  "question": "What is an ecosystem?",
+  "choices": [
+   "A type of weather forecast",
+   "A collection of plastic products",
+   "Living things interacting with one another and their environment",
+   "A single animal in a cage"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 48,
+  "question": "What if one species disappears from a food web?",
+  "choices": [
+   "The food web instantly disappears everywhere",
+   "Nothing in the ecosystem can change",
+   "Other populations may be affected",
+   "Every species becomes stronger"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 49,
+  "question": "Which animal group is especially important for pollinating many crops and wild plants?",
+  "choices": [
+   "Penguins",
+   "Earthworms only",
+   "Sharks",
+   "Bees"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 50,
+  "question": "What if people feed wild animals human snacks?",
+  "choices": [
+   "Animals may become dependent on people or get sick",
+   "Wildlife stops needing natural food",
+   "All animals become healthier",
+   "The ecosystem becomes balanced automatically"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 51,
+  "question": "Which choice can help lower heating energy use in a home?",
+  "choices": [
+   "Blocking every heating vent",
+   "Sealing drafts around doors and windows",
+   "Heating an empty home with the doors open",
+   "Leaving windows open all winter"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 52,
+  "question": "What if a school holds a reusable-lunch-container day?",
+  "choices": [
+   "It makes food unsafe by itself",
+   "It increases the use of single-use packaging",
+   "It may reduce disposable packaging waste",
+   "It prevents students from eating"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 53,
+  "question": "Which is a responsible way to dispose of leftover household paint?",
+  "choices": [
+   "Follow local disposal guidance",
+   "Dump it into a stream",
+   "Bury it in a garden",
+   "Pour it into a storm drain"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 54,
+  "question": "What if a town replaces lawns with native, drought-tolerant plants?",
+  "choices": [
+   "It may reduce outdoor water needs",
+   "It makes rainfall stop",
+   "It causes every plant to need more watering",
+   "It must eliminate all insects"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 55,
+  "question": "Which activity can damage wildlife habitat?",
+  "choices": [
+   "Restoring a native meadow",
+   "Protecting a forest",
+   "Planting native shrubs",
+   "Building over a natural wetland"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 56,
+  "question": "What if hikers stay on marked trails?",
+  "choices": [
+   "They make trails disappear",
+   "They prevent animals from living outdoors",
+   "They increase damage to every habitat",
+   "They can reduce trampling of nearby plants and soil"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 57,
+  "question": "Which statement about biodegradable products is best?",
+  "choices": [
+   "They can always go in any recycling bin",
+   "They never affect the environment",
+   "They disappear instantly anywhere",
+   "They break down under suitable conditions, which can vary"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 58,
+  "question": "What if a “biodegradable” item is littered in the ocean?",
+  "choices": [
+   "It will feed all marine animals safely",
+   "It will become harmless drinking water",
+   "It may not break down quickly or safely there",
+   "It will vanish immediately"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 59,
+  "question": "Which is one way to save energy when washing clothes?",
+  "choices": [
+   "Run the washer repeatedly with no clothes",
+   "Use the hottest setting for every load",
+   "Wash full loads when practical",
+   "Wash one item at a time"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 60,
+  "question": "What if a home has a leaking toilet that goes unrepaired?",
+  "choices": [
+   "It helps local rivers stay clean",
+   "It can waste a large amount of water over time",
+   "It creates new drinking water",
+   "It reduces water use"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 61,
+  "question": "What does “renewable resource” mean?",
+  "choices": [
+   "A resource that can never run out under any conditions",
+   "A resource made only from plastic",
+   "A resource replenished naturally on a human time scale when managed appropriately",
+   "A resource that cannot be reused"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 62,
+  "question": "What if a city builds safe bike lanes?",
+  "choices": [
+   "The city no longer needs sidewalks",
+   "Every bus route disappears",
+   "More people may have the option to cycle for some trips",
+   "Cycling becomes impossible"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 63,
+  "question": "Which is an example of a greenhouse gas?",
+  "choices": [
+   "Methane",
+   "Argon",
+   "Neon",
+   "Helium"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 64,
+  "question": "What if a large area of dark pavement replaces trees?",
+  "choices": [
+   "It guarantees cleaner air",
+   "It creates a new forest",
+   "The area may become hotter and lose habitat",
+   "It increases shade"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 65,
+  "question": "Which activity can reduce paper use at school?",
+  "choices": [
+   "Sharing digital materials when practical",
+   "Throwing away unused notebooks",
+   "Printing every draft several times",
+   "Using a new sheet for every short note"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 66,
+  "question": "What if a company designs a product to be easy to repair?",
+  "choices": [
+   "It increases packaging automatically",
+   "It becomes impossible to maintain",
+   "It must be thrown away sooner",
+   "The product may stay useful longer"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 67,
+  "question": "What is a microplastic?",
+  "choices": [
+   "A type of natural stone",
+   "A microscopic animal",
+   "A tiny drop of oil",
+   "A very small piece of plastic"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 68,
+  "question": "What if synthetic clothing sheds tiny fibers during washing?",
+  "choices": [
+   "The clothes become biodegradable immediately",
+   "Some fibers may enter wastewater",
+   "The fibers turn into clean air",
+   "The washing machine stops using water"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 69,
+  "question": "Which behavior helps prevent litter?",
+  "choices": [
+   "Leaving wrappers on a trail",
+   "Dropping cans beside a river",
+   "Throwing waste from a car",
+   "Taking rubbish to a bin or carrying it home"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 70,
+  "question": "What if a community organizes a litter cleanup near a river?",
+  "choices": [
+   "It increases plastic production",
+   "It replaces the need to prevent pollution",
+   "It makes litter harmless",
+   "It can remove waste before more of it reaches the water"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 71,
+  "question": "Which is a potential benefit of wetlands?",
+  "choices": [
+   "They prevent every flood",
+   "They can help absorb floodwater and support wildlife",
+   "They make all water unsafe",
+   "They produce no habitat"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 72,
+  "question": "What if a wetland filters some pollutants from water?",
+  "choices": [
+   "It removes every pollutant completely",
+   "It stops rain from falling",
+   "It turns salt water into oil",
+   "It can improve water quality, though it has limits"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 73,
+  "question": "Which choice can help protect animals during hot weather?",
+  "choices": [
+   "Blocking access to every shaded area",
+   "Leaving pets in a hot parked car",
+   "Providing safe, clean water for pets and following wildlife guidance",
+   "Disturbing wild animals at water sources"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 74,
+  "question": "What if a pet is allowed to roam in a sensitive natural area?",
+  "choices": [
+   "It cannot affect other animals",
+   "It removes invasive species safely",
+   "It automatically improves biodiversity",
+   "It may disturb or harm local wildlife"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 75,
+  "question": "Which is a common source of noise pollution?",
+  "choices": [
+   "Heavy traffic",
+   "A quiet library",
+   "A shaded tree",
+   "A closed notebook"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 76,
+  "question": "What if traffic noise keeps disrupting nearby wildlife?",
+  "choices": [
+   "Some animals may change their behavior or habitat use",
+   "Plants stop needing sunlight",
+   "Every animal becomes silent forever",
+   "Wildlife becomes immune to all disturbance"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 77,
+  "question": "Which action can help reduce the spread of invasive species?",
+  "choices": [
+   "Planting unknown seeds in a wild area",
+   "Cleaning mud and seeds from boots and equipment",
+   "Releasing aquarium plants into a lake",
+   "Moving firewood long distances without checking rules"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 78,
+  "question": "What if someone releases a pet fish into a pond?",
+  "choices": [
+   "It will immediately disappear",
+   "It can only eat algae",
+   "It could become invasive or spread disease",
+   "It will always improve the pond"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 79,
+  "question": "Which can be a consequence of overfishing?",
+  "choices": [
+   "Fish populations may decline",
+   "Oceans lose all salt",
+   "Coral reefs become forests",
+   "Fish populations always grow"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 80,
+  "question": "What if a fishing community follows science-based catch limits?",
+  "choices": [
+   "It can help keep fish populations sustainable",
+   "It prevents fish from reproducing",
+   "It guarantees no fish will ever be caught",
+   "It increases illegal fishing by definition"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 81,
+  "question": "Which action may reduce the environmental impact of shopping?",
+  "choices": [
+   "Choosing durable products and using them for longer",
+   "Choosing extra packaging whenever possible",
+   "Replacing working items every week",
+   "Buying disposable versions of reusable products"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 82,
+  "question": "What if a restaurant offers smaller portions on request?",
+  "choices": [
+   "Customers may waste less food",
+   "The restaurant uses more food in every case",
+   "Food becomes unsafe",
+   "All food waste disappears"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 83,
+  "question": "Which land-use choice can help reduce urban flooding?",
+  "choices": [
+   "Blocking storm drains with rubbish",
+   "Adding permeable surfaces and green spaces",
+   "Paving every open area",
+   "Removing all vegetation"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 84,
+  "question": "What if heavy rain falls on a city with many paved surfaces?",
+  "choices": [
+   "Rivers stop rising",
+   "All rain immediately soaks into the ground",
+   "More water may run off quickly into drains",
+   "The city becomes a wetland instantly"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 85,
+  "question": "Which is a way to make a garden more wildlife-friendly?",
+  "choices": [
+   "Spraying insecticides routinely",
+   "Providing native plants and avoiding unnecessary pesticides",
+   "Using bright lights all night",
+   "Removing every flower"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 86,
+  "question": "What if outdoor lights stay on all night near a wildlife habitat?",
+  "choices": [
+   "It creates natural darkness",
+   "It helps every species sleep",
+   "It removes all insects",
+   "Artificial light may disrupt some animals"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 87,
+  "question": "Which action helps conserve forests?",
+  "choices": [
+   "Cutting trees without replanting or management",
+   "Choosing certified forest products where available",
+   "Setting fires for fun",
+   "Wasting paper"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 88,
+  "question": "What if a forest is carefully managed and trees are replanted?",
+  "choices": [
+   "It immediately replaces an old-growth forest",
+   "It guarantees no wildlife will be disturbed",
+   "It may help maintain forest resources, depending on how it is managed",
+   "It eliminates all climate impacts"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 89,
+  "question": "Which is an example of reusing an item?",
+  "choices": [
+   "Putting a jar in the trash without checking local recycling",
+   "Throwing away a jar after one use",
+   "Burning a jar",
+   "Using a clean glass jar to store food"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 90,
+  "question": "What if a school installs water fountains that can refill bottles?",
+  "choices": [
+   "Water pollution ends completely",
+   "Students may use fewer single-use drink bottles",
+   "Bottles become unnecessary everywhere",
+   "The school uses no water"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 91,
+  "question": "Which action can protect groundwater?",
+  "choices": [
+   "Pouring chemicals onto the soil",
+   "Leaving containers to leak underground",
+   "Dumping oil near a well",
+   "Using and disposing of chemicals responsibly"
+  ],
+  "correct": 3
+ },
+ {
+  "id": 92,
+  "question": "What if pesticides are used carelessly near a stream?",
+  "choices": [
+   "They may harm aquatic life or pollute the water",
+   "They make every fish healthier",
+   "They disappear instantly",
+   "They turn into harmless fertilizer automatically"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 93,
+  "question": "Which statement about recycling is most accurate?",
+  "choices": [
+   "Local recycling rules vary, so accepted materials should be checked",
+   "Every item labeled plastic is accepted everywhere",
+   "Recycling can accept food and rubbish mixed together",
+   "Recycling never requires sorting"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 94,
+  "question": "What if a recyclable item is too dirty or made of mixed materials?",
+  "choices": [
+   "It becomes compost automatically",
+   "It cleans other items in the bin",
+   "It may not be accepted or successfully recycled",
+   "It is guaranteed to become a new product"
+  ],
+  "correct": 2
+ },
+ {
+  "id": 95,
+  "question": "Which can help communities prepare for climate-related heat?",
+  "choices": [
+   "Covering parks with dark pavement",
+   "Creating shade and cooling centers",
+   "Ignoring heat warnings",
+   "Removing all trees"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 96,
+  "question": "What if a neighborhood has little shade during a heatwave?",
+  "choices": [
+   "People may face greater exposure to dangerous heat",
+   "The heatwave ends sooner",
+   "Temperatures must be lower than nearby parks",
+   "Trees become unnecessary"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 97,
+  "question": "Which is a good first step when planning to reduce waste at an event?",
+  "choices": [
+   "Avoid unnecessary disposables and provide clear sorting bins",
+   "Mix all rubbish together",
+   "Hand out single-use items without need",
+   "Use extra packaging for every item"
+  ],
+  "correct": 0
+ },
+ {
+  "id": 98,
+  "question": "What if event organizers provide clearly labeled recycling and compost bins?",
+  "choices": [
+   "All waste becomes recyclable",
+   "Guests may sort waste more correctly",
+   "Littering becomes impossible",
+   "Bins no longer need collection"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 99,
+  "question": "Which statement best describes individual environmental actions?",
+  "choices": [
+   "They never make any difference",
+   "They can help, especially alongside community and policy changes",
+   "They solve every environmental problem alone",
+   "They only matter if someone else acts first"
+  ],
+  "correct": 1
+ },
+ {
+  "id": 100,
+  "question": "What if your community wants to protect a nearby river? Which plan is most helpful?",
+  "choices": [
+   "Reduce pollution, restore streamside plants, and monitor water quality",
+   "Remove all plants beside the river",
+   "Ignore leaks and litter",
+   "Dump waste upstream"
+  ],
+  "correct": 0
+ }
+]

@@ -1,4 +1,4 @@
-// Game server: serves the pages, keeps the rooms, and runs the race.
+// Game server: serves the pages, keeps the rooms, runs the race and asks the questions.
 // The server is the only place where cars move; screens just draw what it sends.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
+import { carTuning, CAR_TYPES } from './shared/cars.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD } from './shared/track.js';
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -21,15 +22,50 @@ const BRAKE = 700;
 const TURN = 2.7; // radians per second at full steer
 const CAR_RADIUS = 17;
 const COUNTDOWN_MS = 3500;
-const FINISH_GRACE_MS = 20000; // time the others get after the winner finishes
+const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
+const MAX_RACE_MS = 10 * 60 * 1000;
+
+const QUESTION_EVERY_MS = 20000; // of driving time; the clock stops during a question
+const ANSWER_MS = 12000;
+const REVEAL_MS = 4500;
+const BOOST_MS = 4000;
+const BOOST_SPEED = 1.3;
+const GREEN_TARGET = 0.7; // share of right answers that turns the whole map green by the end
+const BOT_RIGHT_CHANCE = 0.5;
+
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
+const RACING = new Set(['countdown', 'race', 'question', 'reveal']);
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const mod = (value, n) => ((value % n) + n) % n;
 
+// What each car type is good at, from shared/cars.json. TUNING[player.type] is that car's set.
+const CARS = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared/cars.json'), 'utf8'));
+const TUNING = CAR_TYPES.map((type) => carTuning(CARS.types[type].stats));
+
+// ---------- Questions ----------
+
+// Reads questions.db when this Node version has SQLite built in, and the JSON copy of it
+// otherwise. The file is only read, never changed.
+async function loadQuestions() {
+  let rows;
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    const db = new DatabaseSync(path.join(ROOT, 'questions.db'), { readOnly: true });
+    rows = db.prepare('SELECT id, question, choice_a, choice_b, choice_c, choice_d, correct_index FROM questions').all()
+      .map((row) => ({ id: row.id, question: row.question, choices: [row.choice_a, row.choice_b, row.choice_c, row.choice_d], correct: row.correct_index }));
+    db.close();
+  } catch {
+    rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'));
+  }
+  return rows.filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct));
+}
+
+const QUESTIONS = await loadQuestions();
+
 // ---------- HTTP ----------
 
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg' };
 const PAGES = { '/': '/public/index.html', '/host': '/public/host.html', '/play': '/public/play.html' };
 
 function lanUrls() {
@@ -82,9 +118,11 @@ function createRoom() {
   } while (rooms.has(code));
   const room = {
     code, hostKey: token(), host: null, players: [], nextId: 1,
-    phase: 'draw', // draw > lobby > countdown > race > results
-    track: null, laps: 3, startAt: 0, raceStart: 0, raceTime: 0,
-    firstFinish: null, results: null, tick: 0, lastActive: Date.now(),
+    phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
+    track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
+    green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
+    question: null, reveal: null, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6, asked: new Set(),
+    tick: 0, lastActive: Date.now(),
   };
   rooms.set(code, room);
   return room;
@@ -102,14 +140,28 @@ function broadcast(room, message) {
 }
 
 function stateMessage(room) {
+  const now = performance.now();
+  const { question, reveal } = room;
   return {
     t: 'state',
     code: room.code,
     phase: room.phase,
     laps: room.laps,
-    countdown: room.phase === 'countdown' ? Math.max(0, room.startAt - performance.now()) : 0,
-    players: room.players.map(({ id, name, color, type, bot, connected }) => ({ id, name, color, type, bot, connected })),
+    green: room.green,
+    countdown: room.phase === 'countdown' ? Math.max(0, room.startAt - now) : 0,
+    players: room.players.map((player) => ({
+      id: player.id, name: player.name, color: player.color, type: player.type, bot: player.bot,
+      connected: player.connected, correct: player.correct,
+      answered: player.answer !== null,
+      answer: reveal ? player.answer : null, // what each player picked is only shown afterwards
+    })),
+    question: question && {
+      number: question.number, text: question.text, choices: question.choices,
+      endsIn: Math.max(0, question.endsAt - now), seconds: ANSWER_MS / 1000,
+    },
+    reveal: reveal && { correct: reveal.correct, counts: reveal.counts, endsIn: Math.max(0, reveal.until - now) },
     results: room.results,
+    summary: room.summary,
   };
 }
 
@@ -117,10 +169,14 @@ function snapshotMessage(room) {
   return {
     t: 's',
     time: Math.round(room.raceTime),
-    cars: room.players.filter((player) => player.car).map(({ id, car }) => [
-      id, Math.round(car.x * 10) / 10, Math.round(car.y * 10) / 10, Math.round(car.a * 1000) / 1000,
-      car.lap, car.place, car.done ? 1 : 0, Math.round(car.v),
-    ]),
+    cars: room.players.filter((player) => player.car).map((player) => {
+      const { car } = player;
+      return [
+        player.id, Math.round(car.x * 10) / 10, Math.round(car.y * 10) / 10, Math.round(car.a * 1000) / 1000,
+        car.lap, car.place, car.done ? 1 : 0, Math.round(car.v), room.raceTime < player.boostUntil ? 1 : 0,
+        car.offRoad ? 1 : 0,
+      ];
+    }),
   };
 }
 
@@ -136,14 +192,14 @@ function placeOnGrid(room) {
   if (!room.track) return;
   room.players.forEach((player, slot) => {
     const spot = gridSlot(room.track, slot);
-    player.steer = 0;
+    Object.assign(player, { steer: 0, correct: 0, answer: null, botAnswer: null, boostUntil: 0 });
     player.car = {
       x: spot.x, y: spot.y, a: spot.angle, v: 0, steer: 0,
       index: spot.index, progress: -spot.back, lap: 1, place: slot + 1,
       lost: 0, wrong: 0, done: false, finishTime: null,
     };
   });
-  room.raceTime = 0;
+  Object.assign(room, { raceTime: 0, green: 0, question: null, reveal: null, questionCount: 0, firstFinish: null });
   broadcast(room, snapshotMessage(room));
 }
 
@@ -153,6 +209,7 @@ function addPlayer(room, { name, bot = false, socket = null }) {
   const player = {
     id: room.nextId++, key: token(), name, color, type: crypto.randomInt(4), bot, socket,
     connected: !bot && !!socket, leftAt: null, steer: 0, car: null,
+    correct: 0, answer: null, botAnswer: null, boostUntil: 0,
     pace: bot ? 0.84 + Math.random() * 0.1 : 1, lane: (Math.random() - 0.5) * 90,
   };
   room.players.push(player);
@@ -161,6 +218,72 @@ function addPlayer(room, { name, bot = false, socket = null }) {
 
 function playersChanged(room) {
   if (room.phase === 'lobby') placeOnGrid(room);
+  sendState(room);
+}
+
+// ---------- Questions during the race ----------
+
+function askQuestion(room, now) {
+  let pool = QUESTIONS.filter((q) => !room.asked.has(q.id));
+  if (!pool.length) {
+    room.asked.clear();
+    pool = QUESTIONS;
+  }
+  const picked = pool[crypto.randomInt(pool.length)];
+  room.asked.add(picked.id);
+  room.questionCount++;
+  room.phase = 'question';
+  room.question = { number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct, endsAt: now + ANSWER_MS, closeAt: null };
+  for (const player of room.players) {
+    player.answer = null;
+    const right = Math.random() < BOT_RIGHT_CHANCE;
+    player.botAnswer = player.bot
+      ? { at: now + 1500 + Math.random() * 6000, choice: right ? picked.correct : (picked.correct + 1 + crypto.randomInt(3)) % 4 }
+      : null;
+  }
+  sendState(room);
+}
+
+function stepQuestion(room, now) {
+  const { question } = room;
+  const humans = room.players.filter((player) => !player.bot && player.connected);
+  const humansIn = humans.length > 0 && humans.every((player) => player.answer !== null);
+  let changed = false;
+  for (const player of room.players) {
+    if (player.bot && player.answer === null && (humansIn || now >= player.botAnswer.at)) {
+      player.answer = player.botAnswer.choice;
+      changed = true;
+    }
+  }
+  if (changed) sendState(room);
+  // Once everybody has answered there is no reason to wait for the clock.
+  const waiting = room.players.filter((player) => (player.bot || player.connected) && player.answer === null);
+  if (!waiting.length) question.closeAt ??= now + 700;
+  if (now < question.endsAt && !(question.closeAt && now >= question.closeAt)) return;
+
+  const counts = [0, 0, 0, 0];
+  let right = 0;
+  for (const player of room.players) {
+    if (player.answer !== null) counts[player.answer]++;
+    if (player.answer !== question.correct) continue;
+    right++;
+    player.correct++;
+    player.boostUntil = room.raceTime + BOOST_MS;
+  }
+  // No answer counts as wrong, so everyone has to take part for the map to turn green.
+  const share = right / Math.max(1, room.players.length);
+  room.green = Math.min(1, room.green + share / (room.expectedQuestions * GREEN_TARGET));
+  room.reveal = { correct: question.correct, counts, until: now + REVEAL_MS };
+  room.phase = 'reveal';
+  sendState(room);
+}
+
+function resumeRace(room) {
+  room.phase = 'race';
+  room.question = null;
+  room.reveal = null;
+  room.nextQuestionAt = room.raceTime + QUESTION_EVERY_MS;
+  for (const player of room.players) player.answer = null;
   sendState(room);
 }
 
@@ -216,10 +339,14 @@ function stepCar(room, player, dt) {
   const input = player.bot || car.done ? autoSteer(track, player) : player.steer;
   car.steer += (input - car.steer) * Math.min(1, 12 * dt);
   const onRoad = off < track.width / 2 + 4;
-  let top = (onRoad ? MAX_SPEED : OFFROAD_SPEED) * player.pace * (1 - 0.2 * Math.abs(car.steer));
+  car.offRoad = !onRoad; // sent to the screens so they can kick up dust
+  const boosted = !car.done && room.raceTime < player.boostUntil;
+  const tune = TUNING[player.type];
+  let top = (onRoad ? MAX_SPEED * tune.topSpeed : OFFROAD_SPEED * tune.offRoad) * player.pace * (1 - tune.cornerLoss * Math.abs(car.steer));
+  if (boosted) top *= BOOST_SPEED;
   if (car.done) top *= 0.45;
-  car.v = car.v < top ? Math.min(top, car.v + ACCEL * dt) : Math.max(top, car.v - BRAKE * dt);
-  car.a += car.steer * TURN * dt * Math.min(1, car.v / 160);
+  car.v = car.v < top ? Math.min(top, car.v + ACCEL * tune.accel * (boosted ? 2.5 : 1) * dt) : Math.max(top, car.v - BRAKE * dt);
+  car.a += car.steer * TURN * tune.turn * dt * Math.min(1, car.v / 160);
   car.x = clamp(car.x + Math.cos(car.a) * car.v * dt, 20, WORLD.width - 20);
   car.y = clamp(car.y + Math.sin(car.a) * car.v * dt, 20, WORLD.height - 20);
 
@@ -241,11 +368,15 @@ function pushApart(players) {
       const d = Math.hypot(dx, dy) || 0.01;
       const overlap = CAR_RADIUS * 2 - d;
       if (overlap <= 0) continue;
-      const push = overlap / 2 / d;
-      a.x -= dx * push;
-      a.y -= dy * push;
-      b.x += dx * push;
-      b.y += dy * push;
+      // The heavier car moves less, so a pickup shoves a hatchback aside.
+      const massA = TUNING[players[i].type].mass;
+      const massB = TUNING[players[j].type].mass;
+      const pushA = (overlap / d) * (massB / (massA + massB));
+      const pushB = (overlap / d) * (massA / (massA + massB));
+      a.x -= dx * pushA;
+      a.y -= dy * pushA;
+      b.x += dx * pushB;
+      b.y += dy * pushB;
     }
   }
 }
@@ -258,16 +389,41 @@ function ranked(room) {
   });
 }
 
+function finishRace(room) {
+  const order = ranked(room);
+  room.phase = 'results';
+  room.question = null;
+  room.reveal = null;
+  room.results = order.map(({ id, name, color, type, bot, car, correct }, index) => ({
+    id, name, color, type, bot, correct, place: index + 1, time: car.done ? Math.round(car.finishTime) : null,
+  }));
+  // The real winner knows the most answers. People come before bots; a tie goes to the faster
+  // car. Nobody wins it with zero right answers.
+  const people = room.results.filter((result) => !result.bot);
+  const quiz = [...(people.length ? people : room.results)].sort((a, b) => b.correct - a.correct || a.place - b.place);
+  room.summary = { green: room.green, questions: room.questionCount, realWinner: quiz[0]?.correct > 0 ? quiz[0].id : null };
+  broadcast(room, snapshotMessage(room));
+  sendState(room);
+}
+
 function stepRoom(room, now) {
-  if (room.phase === 'countdown' && now >= room.startAt) {
-    room.phase = 'race';
-    room.raceStart = now;
-    sendState(room);
+  if (room.phase === 'countdown') {
+    if (now >= room.startAt) {
+      room.phase = 'race';
+      sendState(room);
+    } else if (room.tick++ % 12 === 0) {
+      broadcast(room, snapshotMessage(room));
+    }
+    return;
   }
-  if (room.phase === 'countdown' && room.tick++ % 12 === 0) broadcast(room, snapshotMessage(room));
+  if (room.phase === 'question') return stepQuestion(room, now);
+  if (room.phase === 'reveal') {
+    if (now >= room.reveal.until) resumeRace(room);
+    return;
+  }
   if (room.phase !== 'race') return;
 
-  room.raceTime = now - room.raceStart;
+  room.raceTime += TICK * 1000; // driving time only: it stands still during questions
   for (const player of room.players) stepCar(room, player, TICK);
   pushApart(room.players);
   ranked(room).forEach((player, index) => {
@@ -277,15 +433,9 @@ function stepRoom(room, now) {
 
   const over = room.players.every((player) => player.car.done)
     || (room.firstFinish !== null && room.raceTime - room.firstFinish > FINISH_GRACE_MS)
-    || room.raceTime > 6 * 60 * 1000;
-  if (!over) return;
-
-  room.phase = 'results';
-  room.results = ranked(room).map(({ id, name, color, type, bot, car }, index) => ({
-    id, name, color, type, bot, place: index + 1, time: car.done ? Math.round(car.finishTime) : null,
-  }));
-  broadcast(room, snapshotMessage(room));
-  sendState(room);
+    || room.raceTime > MAX_RACE_MS;
+  if (over) finishRace(room);
+  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt && QUESTIONS.length) askQuestion(room, now);
 }
 
 let last = performance.now();
@@ -304,9 +454,8 @@ setInterval(() => {
 setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
-    const racing = room.phase === 'countdown' || room.phase === 'race';
     const before = room.players.length;
-    if (!racing) room.players = room.players.filter((player) => player.bot || player.connected || now - player.leftAt < 20000);
+    if (!RACING.has(room.phase)) room.players = room.players.filter((player) => player.bot || player.connected || now - player.leftAt < 20000);
     if (room.players.length !== before) playersChanged(room);
     if (room.host || room.players.some((player) => player.connected)) room.lastActive = now;
     if (now - room.lastActive > 10 * 60 * 1000) rooms.delete(room.code);
@@ -333,14 +482,12 @@ const hostActions = {
   },
   redraw(room) {
     if (room.phase !== 'lobby' && room.phase !== 'results') return;
-    room.phase = 'draw';
-    room.track = null;
-    room.results = null;
+    Object.assign(room, { phase: 'draw', track: null, results: null, summary: null, green: 0 });
     sendState(room);
   },
   laps(room, message) {
     const laps = Number(message.laps);
-    room.laps = clamp(Number.isFinite(laps) ? Math.round(laps) : 3, 1, 5);
+    room.laps = clamp(Number.isFinite(laps) ? Math.round(laps) : 2, 1, 5);
     sendState(room);
   },
   bot(room, message) {
@@ -357,13 +504,19 @@ const hostActions = {
   start(room) {
     if (room.phase !== 'lobby' || !room.players.length) return;
     placeOnGrid(room);
-    Object.assign(room, { phase: 'countdown', startAt: performance.now() + COUNTDOWN_MS, firstFinish: null, results: null, tick: 0 });
+    // About one question every 20 seconds of driving; used to pace how fast the map turns green.
+    const raceSeconds = (room.laps * room.track.length) / (MAX_SPEED * 0.88);
+    Object.assign(room, {
+      phase: 'countdown', startAt: performance.now() + COUNTDOWN_MS, results: null, summary: null, tick: 0,
+      nextQuestionAt: QUESTION_EVERY_MS, expectedQuestions: clamp(Math.floor(raceSeconds / (QUESTION_EVERY_MS / 1000)), 2, 12),
+    });
     sendState(room);
   },
   again(room) {
     if (room.phase !== 'results') return;
     room.phase = 'lobby';
     room.results = null;
+    room.summary = null;
     placeOnGrid(room);
     sendState(room);
   },
@@ -390,7 +543,7 @@ function onJoin(socket, message) {
   }
   let player = room.players.find((candidate) => !candidate.bot && candidate.key === message.key);
   if (!player) {
-    if (room.phase === 'countdown' || room.phase === 'race') {
+    if (RACING.has(room.phase)) {
       send(socket, { t: 'error', reason: 'A race is running. You can join when it ends.', retry: true });
       return;
     }
@@ -409,6 +562,20 @@ function onJoin(socket, message) {
   if (room.track) sendTrack(room, socket);
   playersChanged(room);
   if (room.track) send(socket, snapshotMessage(room));
+}
+
+function onPlayer(room, player, message) {
+  if (message.t === 'input') {
+    player.steer = clamp(Number(message.steer) || 0, -1, 1);
+  } else if (message.t === 'car' && !RACING.has(room.phase)) {
+    player.type = mod(Math.round(Number(message.type)) || 0, 4);
+    sendState(room);
+  } else if (message.t === 'answer' && room.phase === 'question' && player.answer === null) {
+    const choice = Number(message.choice);
+    if (![0, 1, 2, 3].includes(choice)) return;
+    player.answer = choice;
+    sendState(room);
+  }
 }
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
@@ -433,11 +600,7 @@ wss.on('connection', (socket) => {
     if (socket.isHost) {
       if (Object.hasOwn(hostActions, message.t)) hostActions[message.t](room, message);
     } else if (player) {
-      if (message.t === 'input') player.steer = clamp(Number(message.steer) || 0, -1, 1);
-      if (message.t === 'car' && room.phase !== 'race' && room.phase !== 'countdown') {
-        player.type = mod(Math.round(Number(message.type)) || 0, 4);
-        sendState(room);
-      }
+      onPlayer(room, player, message);
     }
   });
   socket.on('close', () => {
@@ -467,6 +630,6 @@ setInterval(() => {
 }, 15000);
 
 server.listen(PORT, () => {
-  console.log(`Race game running. Open the host screen at http://localhost:${PORT}`);
+  console.log(`Race game running with ${QUESTIONS.length} questions. Open the big screen at http://localhost:${PORT}/host`);
   for (const url of lanUrls()) console.log(`Phones on the same Wi-Fi can reach it at ${url}`);
 });
