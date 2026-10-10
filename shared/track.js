@@ -5,6 +5,8 @@ export const WORLD = { width: 9000, height: 5800 }; // sized so a lap takes abou
 export const ROAD_WIDTH = 190;
 export const SPACING = 20; // distance between centreline samples
 export const MAX_PLAYERS = 6;
+// The looks a map can have. What each one looks like is in public/worlds.js.
+export const WORLD_IDS = ['forest', 'ocean', 'swamp', 'desert', 'ice'];
 const MIN_CORNER_RADIUS = 120;
 
 // Small seeded random generator, so every screen draws the same scenery.
@@ -159,7 +161,7 @@ function straightestStart(points) {
 
 // Turns a hand-drawn line (points in any units) into a closed race track.
 // Returns { ok: true, track } or { ok: false, reason }.
-export function buildTrack(raw, seed = 1) {
+export function buildTrack(raw, seed = 1, world = WORLD_IDS[0]) {
   let points = (Array.isArray(raw) ? raw : [])
     .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
     .slice(0, 5000)
@@ -211,6 +213,7 @@ export function buildTrack(raw, seed = 1) {
     ok: true,
     track: {
       seed,
+      world,
       width: ROAD_WIDTH,
       points,
       checkpoints: [1, 2, 3].map((quarter) => Math.round((n * quarter) / 4)),

@@ -1,6 +1,6 @@
 // Big screen: the host draws the track here, and everyone watches the race here.
 import { prepareTrack, MAX_PLAYERS, WORLD } from '/shared/track.js';
-import { carIcon, connect, createEffects, createLife, createScene, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH } from '/render.js';
+import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH, WORLDS } from '/render.js';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -44,6 +44,7 @@ let trackError = '';
 let listStamp = 0;
 const snapshots = createSnapshots();
 const effects = createEffects();
+const props = createProps(); // crates, cones and so on, standing on the road
 const WHOLE_MAP = { x0: 0, y0: 0, x1: WORLD.width, y1: WORLD.height };
 
 function loadSaved() {
@@ -236,7 +237,8 @@ function updateUI() {
   mainButton.textContent = mainLabel ?? '';
   secondButton.textContent = secondLabel ?? '';
   mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && !state.players.length);
-  $('lapsRow').hidden = phase !== 'lobby';
+  $('lapsRow').hidden = $('worldRow').hidden = phase !== 'lobby';
+  $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
   $('botRow').hidden = phase !== 'draw' && phase !== 'lobby';
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
@@ -312,7 +314,8 @@ function frame(now) {
   // The map is far bigger than the screen, so cars are drawn as large icons, not to scale.
   const length = Math.max(CAR_LENGTH * 1.45, 40 / view.scale);
   life.ground(ctx, shownGreen, now / 1000, WHOLE_MAP, pixel);
-  effects.update(cars, { dt, now, green: shownGreen, racing: phase === 'race', length });
+  effects.update(cars, { dt, now, green: shownGreen, racing: phase === 'race', length, spray: scene.theme.spray });
+  props.draw(ctx, WHOLE_MAP, Math.max(1, pixel / 3)); // drawn larger than life, like the cars
   effects.draw(ctx, now);
   for (const player of shown) {
     const car = cars.get(player.id);
@@ -375,11 +378,18 @@ const send = connect({
       track = prepareTrack(message.track);
       scene = createScene(track);
       life = createLife(scene);
+      props.load(track);
       effects.clear();
       map = oldMap = null;
       trackError = '';
+      updateUI();
     } else if (message.t === 's') {
       snapshots.push(message);
+      props.move(message.props);
+    } else if (message.t === 'props') {
+      props.reset(message.props);
+    } else if (message.t === 'break') {
+      if (props.smash(message.id)) effects.shatter(message.x, message.y, message.vx, message.vy, Math.max(1, 1 / view.scale / 3));
     } else if (message.t === 'trackError') {
       trackError = message.reason;
       updateUI();
@@ -404,6 +414,7 @@ secondButton.addEventListener('click', () => {
 });
 $('lapsDown').addEventListener('click', () => send({ t: 'laps', laps: Math.max(1, state.laps - 1) }));
 $('lapsUp').addEventListener('click', () => send({ t: 'laps', laps: Math.min(5, state.laps + 1) }));
+$('worldNext').addEventListener('click', () => send({ t: 'world' }));
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
 

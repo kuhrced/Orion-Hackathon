@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { carTuning, CAR_TYPES } from './shared/cars.js';
-import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD } from './shared/track.js';
+import { buildProps, PROP_KINDS } from './shared/props.js';
+import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -21,12 +22,15 @@ const ACCEL = 320;
 const BRAKE = 700;
 const TURN = 2.7; // radians per second at full steer
 const CAR_RADIUS = 17;
+const CAR_BUMPER = 21; // a car's size when it hits things standing on the road
+const SMASH_SPEED = 260; // crates hit harder than this break apart
 const COUNTDOWN_MS = 3500;
 const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
 const MAX_RACE_MS = 10 * 60 * 1000;
 
 const QUESTION_EVERY_MS = 20000; // of driving time; the clock stops during a question
 const ANSWER_MS = 12000;
+const ANSWER_LOCK_MS = 900; // a steering tap just as the question appears must not count as an answer
 const REVEAL_MS = 4500;
 const BOOST_MS = 4000;
 const BOOST_SPEED = 1.3;
@@ -122,7 +126,7 @@ function createRoom() {
     track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
     question: null, reveal: null, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6, asked: new Set(),
-    tick: 0, lastActive: Date.now(),
+    lastWorld: null, props: [], tick: 0, lastActive: Date.now(),
   };
   rooms.set(code, room);
   return room;
@@ -158,6 +162,7 @@ function stateMessage(room) {
     question: question && {
       number: question.number, text: question.text, choices: question.choices,
       endsIn: Math.max(0, question.endsAt - now), seconds: ANSWER_MS / 1000,
+      lockedFor: Math.max(0, question.askedAt + ANSWER_LOCK_MS - now),
     },
     reveal: reveal && { correct: reveal.correct, counts: reveal.counts, endsIn: Math.max(0, reveal.until - now) },
     results: room.results,
@@ -165,10 +170,11 @@ function stateMessage(room) {
   };
 }
 
-function snapshotMessage(room) {
+function snapshotMessage(room, moved = []) {
   return {
     t: 's',
     time: Math.round(room.raceTime),
+    props: moved.map((prop) => [prop.id, Math.round(prop.x), Math.round(prop.y), Math.round(prop.a * 100) / 100]),
     cars: room.players.filter((player) => player.car).map((player) => {
       const { car } = player;
       return [
@@ -182,8 +188,8 @@ function snapshotMessage(room) {
 
 const sendState = (room) => broadcast(room, stateMessage(room));
 const sendTrack = (room, socket) => {
-  const { seed, width, points, checkpoints } = room.track;
-  const message = { t: 'track', track: { seed, width, points, checkpoints } };
+  const { seed, world, width, points, checkpoints } = room.track;
+  const message = { t: 'track', track: { seed, world, width, points, checkpoints } };
   if (socket) send(socket, message);
   else broadcast(room, message);
 };
@@ -200,7 +206,16 @@ function placeOnGrid(room) {
     };
   });
   Object.assign(room, { raceTime: 0, green: 0, question: null, reveal: null, questionCount: 0, firstFinish: null });
+  // Everything on the road is stood back up for the new race.
+  room.props = buildProps(room.track).map((prop) => ({ ...prop, vx: 0, vy: 0, spin: 0, gone: false, moving: false, settled: false }));
+  broadcast(room, propsMessage(room));
   broadcast(room, snapshotMessage(room));
+}
+
+// Where every road object is right now, for a screen that has just joined or a race that has
+// just been reset. During a race only the ones that move are sent, inside the snapshots.
+function propsMessage(room) {
+  return { t: 'props', props: room.props.map((prop) => [prop.id, Math.round(prop.x), Math.round(prop.y), Math.round(prop.a * 100) / 100, prop.gone ? 1 : 0]) };
 }
 
 function addPlayer(room, { name, bot = false, socket = null }) {
@@ -233,7 +248,7 @@ function askQuestion(room, now) {
   room.asked.add(picked.id);
   room.questionCount++;
   room.phase = 'question';
-  room.question = { number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct, endsAt: now + ANSWER_MS, closeAt: null };
+  room.question = { number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct, askedAt: now, endsAt: now + ANSWER_MS, closeAt: null };
   for (const player of room.players) {
     player.answer = null;
     const right = Math.random() < BOT_RIGHT_CHANCE;
@@ -381,6 +396,86 @@ function pushApart(players) {
   }
 }
 
+// Road objects: cars knock them flying, they slide and spin, and they knock into each other.
+// Nothing here is scripted, so every crash comes out differently.
+function stepProps(room, dt) {
+  const { props } = room;
+  for (const player of room.players) {
+    const { car } = player;
+    if (car.v < 30) continue;
+    const carMass = 2 + TUNING[player.type].mass;
+    const headingX = Math.cos(car.a);
+    const headingY = Math.sin(car.a);
+    for (const prop of props) {
+      if (prop.gone) continue;
+      const kind = PROP_KINDS[prop.kind];
+      const reach = CAR_BUMPER + kind.radius;
+      const dx = prop.x - car.x;
+      const dy = prop.y - car.y;
+      if (Math.abs(dx) > reach || Math.abs(dy) > reach) continue;
+      const d = Math.hypot(dx, dy);
+      if (d >= reach) continue;
+      const nx = d ? dx / d : headingX;
+      const ny = d ? dy / d : headingY;
+      prop.x = car.x + nx * (reach + 0.5);
+      prop.y = car.y + ny * (reach + 0.5);
+      const closing = (headingX * car.v - prop.vx) * nx + (headingY * car.v - prop.vy) * ny;
+      if (closing <= 0) continue;
+      // The lighter of the two takes most of the hit: a pickup barely notices a cone.
+      const share = carMass / (carMass + kind.mass);
+      prop.vx += nx * closing * 1.5 * share;
+      prop.vy += ny * closing * 1.5 * share;
+      prop.spin = (Math.random() - 0.5) * 16;
+      prop.moving = true;
+      car.v *= 1 - 0.5 * (1 - share) * Math.min(1, closing / 300);
+      if (kind.breaks && closing > SMASH_SPEED) {
+        prop.gone = true;
+        broadcast(room, { t: 'break', id: prop.id, x: Math.round(prop.x), y: Math.round(prop.y), vx: Math.round(prop.vx), vy: Math.round(prop.vy) });
+      }
+    }
+  }
+  for (const prop of props) {
+    if (prop.gone || !prop.moving) continue;
+    const kind = PROP_KINDS[prop.kind];
+    prop.x = clamp(prop.x + prop.vx * dt, 20, WORLD.width - 20);
+    prop.y = clamp(prop.y + prop.vy * dt, 20, WORLD.height - 20);
+    prop.a += prop.spin * dt;
+    const drag = Math.exp(-kind.friction * dt);
+    prop.vx *= drag;
+    prop.vy *= drag;
+    prop.spin *= drag;
+    for (const other of props) {
+      if (other === prop || other.gone) continue;
+      const otherKind = PROP_KINDS[other.kind];
+      const reach = kind.radius + otherKind.radius;
+      const dx = other.x - prop.x;
+      const dy = other.y - prop.y;
+      if (Math.abs(dx) > reach || Math.abs(dy) > reach) continue;
+      const d = Math.hypot(dx, dy) || 0.01;
+      if (d >= reach) continue;
+      const nx = dx / d;
+      const ny = dy / d;
+      const total = kind.mass + otherKind.mass;
+      prop.x -= nx * (reach - d) * (otherKind.mass / total);
+      prop.y -= ny * (reach - d) * (otherKind.mass / total);
+      other.x += nx * (reach - d) * (kind.mass / total);
+      other.y += ny * (reach - d) * (kind.mass / total);
+      const closing = (prop.vx - other.vx) * nx + (prop.vy - other.vy) * ny;
+      if (closing <= 0) continue;
+      const impulse = (1.6 * closing) / (1 / kind.mass + 1 / otherKind.mass); // a slightly bouncy hit
+      prop.vx -= (impulse / kind.mass) * nx;
+      prop.vy -= (impulse / kind.mass) * ny;
+      other.vx += (impulse / otherKind.mass) * nx;
+      other.vy += (impulse / otherKind.mass) * ny;
+      other.spin += (Math.random() - 0.5) * 8;
+      other.moving = true;
+    }
+    if (Math.hypot(prop.vx, prop.vy) < 6) {
+      Object.assign(prop, { vx: 0, vy: 0, spin: 0, moving: false, settled: true });
+    }
+  }
+}
+
 function ranked(room) {
   return [...room.players].sort((p, q) => {
     if (p.car.done !== q.car.done) return p.car.done ? -1 : 1;
@@ -426,10 +521,16 @@ function stepRoom(room, now) {
   room.raceTime += TICK * 1000; // driving time only: it stands still during questions
   for (const player of room.players) stepCar(room, player, TICK);
   pushApart(room.players);
+  stepProps(room, TICK);
   ranked(room).forEach((player, index) => {
     player.car.place = index + 1;
   });
-  if (room.tick++ % 2 === 0) broadcast(room, snapshotMessage(room));
+  if (room.tick++ % 2 === 0) {
+    // Only the road objects that are moving, or have just stopped, need to be sent.
+    const moved = room.props.filter((prop) => !prop.gone && (prop.moving || prop.settled));
+    broadcast(room, snapshotMessage(room, moved));
+    for (const prop of moved) prop.settled = false;
+  }
 
   const over = room.players.every((player) => player.car.done)
     || (room.firstFinish !== null && room.raceTime - room.firstFinish > FINISH_GRACE_MS)
@@ -469,7 +570,10 @@ const cleanName = (name) => String(name ?? '').replace(/[^\p{L}\p{N} _.!?-]/gu, 
 const hostActions = {
   track(room, message) {
     if (room.phase !== 'draw' && room.phase !== 'lobby') return;
-    const built = buildTrack(message.points, crypto.randomInt(1, 1e9));
+    // A different world from last time, so two tracks in a row never look the same.
+    const worlds = WORLD_IDS.filter((id) => id !== room.lastWorld);
+    room.lastWorld = worlds[crypto.randomInt(worlds.length)];
+    const built = buildTrack(message.points, crypto.randomInt(1, 1e9), room.lastWorld);
     if (!built.ok) {
       send(room.host, { t: 'trackError', reason: built.reason });
       return;
@@ -484,6 +588,14 @@ const hostActions = {
     if (room.phase !== 'lobby' && room.phase !== 'results') return;
     Object.assign(room, { phase: 'draw', track: null, results: null, summary: null, green: 0 });
     sendState(room);
+  },
+  // The host did not like the look: move on to the next world, same track.
+  world(room) {
+    if (room.phase !== 'lobby') return;
+    room.lastWorld = WORLD_IDS[(WORLD_IDS.indexOf(room.track.world) + 1) % WORLD_IDS.length];
+    room.track.world = room.lastWorld;
+    sendTrack(room);
+    broadcast(room, propsMessage(room));
   },
   laps(room, message) {
     const laps = Number(message.laps);
@@ -531,6 +643,7 @@ function onHost(socket, message) {
   socket.isHost = true;
   send(socket, { t: 'hosted', code: room.code, key: room.hostKey });
   if (room.track) sendTrack(room, socket);
+  if (room.track) send(socket, propsMessage(room));
   send(socket, stateMessage(room));
   if (room.track) send(socket, snapshotMessage(room));
 }
@@ -560,6 +673,7 @@ function onJoin(socket, message) {
   socket.player = player;
   send(socket, { t: 'joined', id: player.id, key: player.key, code: room.code });
   if (room.track) sendTrack(room, socket);
+  if (room.track) send(socket, propsMessage(room));
   playersChanged(room);
   if (room.track) send(socket, snapshotMessage(room));
 }
@@ -570,7 +684,7 @@ function onPlayer(room, player, message) {
   } else if (message.t === 'car' && !RACING.has(room.phase)) {
     player.type = mod(Math.round(Number(message.type)) || 0, 4);
     sendState(room);
-  } else if (message.t === 'answer' && room.phase === 'question' && player.answer === null) {
+  } else if (message.t === 'answer' && room.phase === 'question' && player.answer === null && performance.now() >= room.question.askedAt + ANSWER_LOCK_MS) {
     const choice = Number(message.choice);
     if (![0, 1, 2, 3].includes(choice)) return;
     player.answer = choice;

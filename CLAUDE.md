@@ -21,14 +21,24 @@ questions right.
   snapshots 30 times a second. Browsers never move cars; they only draw what the server sends.
 - `shared/track.js` turns the drawn line into a track. The server and the browser both import it,
   so it must stay free of Node-only and browser-only code.
-- `public/render.js` draws the map. `createScene(track)` decides where everything goes, using the
-  track's seed so every screen gets the same map. `paintScene(ctx, scene, green, region)` draws
-  it, where `green` runs from 0 (polluted) to 1 (clean). That picture is still and is cached.
-  `createLife(scene)` draws what moves on top of it every frame (smoke, river, birds, smog), and
-  `createEffects()` draws what the cars leave behind (exhaust, dust, skid marks, confetti).
+- `public/worlds.js` is the map. There are five worlds (forest, ocean, swamp, desert, ice); the
+  server picks one per track and the host can change it in the lobby. Each world is a recipe in
+  `WORLDS` at the bottom of the file: colours as `[polluted, clean]` pairs, plus lists of plants,
+  polluting machines, rubbish and strange landmarks. To add a world, add a recipe there and its
+  id to `WORLD_IDS` in `shared/track.js`.
+- In that file, `createScene(track)` decides where everything goes, using the track's seed so
+  every screen gets the same map. `paintScene(ctx, scene, green, region)` draws the still
+  picture, where `green` runs from 0 (polluted) to 1 (clean). `createLife(scene)` draws what
+  moves on top of it every frame (smoke, flames, waves, birds, whales, northern lights).
+- `public/render.js` has the cars, the cached map (one picture on the big screen, tiles on
+  phones) and `createEffects()`: what the cars leave behind (exhaust, dust, skid marks).
 - `shared/cars.json` holds the team's car stats (1 to 5 each). `shared/cars.js` turns them into
   physics numbers and maps the rows of `public/cars.png` to car types. The effects are kept
   small so every car can win; re-check the balance after changing them.
+- `shared/props.js` lists the things standing on the road (cones, tyres, crates, barrels) and
+  where they start. The server moves them with real physics in `stepProps` and sends only the
+  ones that are moving. When a crate is smashed the server sends a `break` message and each
+  screen throws its own planks.
 - `public/host.js` is the big screen. `public/play.js` is the phone.
 - `questions.db` holds the questions. `data/questions.json` is a copy for Node versions
   without built-in SQLite; run `npm run export-questions` after changing the database.
@@ -42,6 +52,8 @@ Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question` and
 - Scenery must come from the seeded random generator in a fixed order. `Math.random()` in
   `createScene` would give each screen a different map.
 - Phones are the weak devices. They draw the map as tiles; do not draw the whole world on a phone.
+  Anything new in `createLife` must skip things outside `region`, and small decorations must
+  respect `lite`, which a slow phone turns on by itself.
 - No frameworks and no build step. Plain JavaScript modules, plus `ws` and `qrcode` on the server.
 - API keys (Gemini, ElevenLabs) go in a local `.env` file, which Git ignores. The repository is
   public, so never commit a key.

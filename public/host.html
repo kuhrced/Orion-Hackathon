@@ -36,7 +36,7 @@
     <div id="code">····</div>
   </section>
   <section id="greenBox" hidden>
-    <div class="label">How green is the map <span id="greenValue">0%</span></div>
+    <div class="label">How healthy is the map <span id="greenValue">0%</span></div>
     <div class="meter"><div id="greenBar"></div></div>
   </section>
   <section>
@@ -45,7 +45,11 @@
   </section>
   <section id="actions">
     <div id="clock" hidden></div>
-    <div id="lapsRow" hidden>
+    <div id="worldRow" class="option" hidden>
+      <span class="label">World</span>
+      <div><span id="worldName"></span><button id="worldNext" type="button">Change</button></div>
+    </div>
+    <div id="lapsRow" class="option" hidden>
       <span class="label">Laps</span>
       <div><button id="lapsDown" type="button" aria-label="Fewer laps">−</button><span id="laps">2</span><button id="lapsUp" type="button" aria-label="More laps">+</button></div>
     </div>
