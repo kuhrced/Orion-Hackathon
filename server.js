@@ -10,7 +10,7 @@ import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD } from './shared/track.js';
 
-const PORT = Number(process.env.PORT) || 8000;
+const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
 const TICK = 1 / 60;

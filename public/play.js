@@ -43,11 +43,6 @@ const snapshots = createSnapshots();
 
 $('codeInput').value = roomInUrl;
 $('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
-if (roomInUrl) {
-  $('codeField').hidden = true;
-  $('codeInput').required = false;
-  $('joinTitle').textContent = 'Enter your username';
-}
 
 // ---------- Screens ----------
 
