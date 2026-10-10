@@ -30,7 +30,7 @@ const mod = (value, n) => ((value % n) + n) % n;
 // ---------- HTTP ----------
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg' };
-const PAGES = { '/': '/index.html', '/host': '/public/host.html', '/play': '/public/play.html' };
+const PAGES = { '/': '/public/index.html', '/host': '/public/host.html', '/play': '/public/play.html' };
 
 function lanUrls() {
   return Object.values(os.networkInterfaces())
