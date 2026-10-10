@@ -15,7 +15,8 @@ npm install
 npm start
 ```
 
-Open `http://localhost:3000` on the laptop. This is the big screen.
+Open `http://localhost:3000` on the laptop for the landing page, then press **Host a race** to open
+the big screen (`/host`).
 
 ## Play
 
@@ -42,7 +43,10 @@ WebSockets. Online, the QR code uses the site's own address.
 | --- | --- |
 | `server.js` | Serves the pages, keeps the rooms, and moves the cars 60 times a second |
 | `shared/track.js` | Turns the drawn line into a track (used by the server and the browser) |
-| `public/host.html`, `public/host.js` | The big screen: drawing, lobby, race view, results |
+| `public/index.html`, `public/landing.css`, `public/landing.js` | The landing page at `/`: Host a race, or join with a code |
+| `public/cars/` | The four cars that drive across the landing page |
+| `shared/cars.json` | Car stats from `docs/car-stats.pdf` (not used by the race yet) |
+| `public/host.html`, `public/host.js` | The big screen at `/host`: drawing, lobby, race view, results |
 | `public/play.html`, `public/play.js` | The phone: join, close-up view, steering buttons |
 | `public/render.js` | Draws the map and the cars |
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
