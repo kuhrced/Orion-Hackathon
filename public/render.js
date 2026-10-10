@@ -90,13 +90,8 @@ export function createTiles(scene, { units = 512, pixels = 640, keep = 30, perFr
   };
 }
 
-// One road object, seen from above.
-function drawProp(ctx, kind, x, y, angle, scale) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-  circle(ctx, 4, 5, PROP_KINDS[kind].radius);
+// One road object, seen from above. (Dummies are drawn by drawDummy.)
+function drawProp(ctx, kind, angle) {
   ctx.rotate(angle);
   if (kind === 'crate') {
     ctx.fillStyle = '#b98a4e';
@@ -145,24 +140,125 @@ function drawProp(ctx, kind, x, y, angle, scale) {
     ctx.fillStyle = '#5a5550';
     circle(ctx, 0, 0, 7.5);
   }
-  ctx.restore();
+}
+
+// A crash-test dummy is a rag doll: a body the server moves, with arms, legs and a head that
+// this screen lets flop around behind it. Each limb is a short chain hanging off the body.
+// [where it joins the body, the length of each piece]
+const LIMBS = [
+  { joint: [-10, -9], pieces: [11, 11] }, // left arm
+  { joint: [10, -9], pieces: [11, 11] }, // right arm
+  { joint: [-6, 14], pieces: [13, 13] }, // left leg
+  { joint: [6, 14], pieces: [13, 13] }, // right leg
+  { joint: [0, -15], pieces: [8] }, // neck and head
+];
+const HEAD = 4;
+const DUMMY_YELLOW = '#f2c230';
+
+function restDoll() { // every limb sticking straight out from the body
+  return LIMBS.map(({ joint, pieces }) => {
+    const reach = Math.hypot(...joint);
+    let far = reach;
+    return pieces.map((piece) => {
+      far += piece;
+      return { x: (joint[0] / reach) * far, y: (joint[1] / reach) * far, px: (joint[0] / reach) * far, py: (joint[1] / reach) * far };
+    });
+  });
+}
+
+// Moves the limbs one step. `shiftX/shiftY/turn` say how the body moved since last frame; the
+// limbs do not get told, so they lag behind and whip around. That is what makes it floppy.
+function flopDoll(doll, shiftX, shiftY, turn, loose) {
+  const cos = Math.cos(-turn);
+  const sin = Math.sin(-turn);
+  LIMBS.forEach(({ joint, pieces }, limb) => {
+    let [fromX, fromY] = joint;
+    doll[limb].forEach((point, piece) => {
+      // Seen from the body, the world just moved the other way.
+      const x = (point.x - shiftX) * cos - (point.y - shiftY) * sin;
+      const y = (point.x - shiftX) * sin + (point.y - shiftY) * cos;
+      const vx = (point.x - point.px) * 0.86 + (Math.random() - 0.5) * loose;
+      const vy = (point.y - point.py) * 0.86 + (Math.random() - 0.5) * loose;
+      point.px = x;
+      point.py = y;
+      point.x = x + vx;
+      point.y = y + vy;
+      // Keep the piece the right length: it can swing, but it cannot stretch.
+      const dx = point.x - fromX;
+      const dy = point.y - fromY;
+      const d = Math.hypot(dx, dy) || 0.01;
+      point.x = fromX + (dx / d) * pieces[piece];
+      point.y = fromY + (dy / d) * pieces[piece];
+      fromX = point.x;
+      fromY = point.y;
+    });
+  });
+}
+
+// Drawn in the dummy's own space: body at the middle, limbs wherever they have flopped to.
+function drawDummy(ctx, prop) {
+  if (!prop.fallen) { // still standing: all you see from above is head and shoulders
+    ctx.fillStyle = DUMMY_YELLOW;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 17, 9, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#d9a91f';
+    circle(ctx, 0, 0, 8.5);
+  } else {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    LIMBS.forEach(({ joint }, limb) => {
+      if (limb === HEAD || prop.lost.has(limb)) return;
+      ctx.strokeStyle = DUMMY_YELLOW;
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(...joint);
+      for (const point of prop.doll[limb]) ctx.lineTo(point.x, point.y);
+      ctx.stroke();
+      ctx.fillStyle = '#26262a'; // joints
+      circle(ctx, ...joint, 3.4);
+      circle(ctx, prop.doll[limb][0].x, prop.doll[limb][0].y, 3);
+    });
+    ctx.fillStyle = DUMMY_YELLOW;
+    ctx.beginPath();
+    ctx.roundRect(-11, -15, 22, 30, 7);
+    ctx.fill();
+    ctx.fillStyle = '#26262a';
+    ctx.fillRect(-11, -4, 22, 6);
+    if (prop.lost.has(HEAD)) return;
+  }
+  // The head, with the black and yellow target every crash-test dummy wears.
+  const head = prop.fallen ? prop.doll[HEAD][0] : { x: 0, y: 0 };
+  ctx.fillStyle = prop.fallen ? DUMMY_YELLOW : '#d9a91f';
+  circle(ctx, head.x, head.y, 8.5);
+  ctx.fillStyle = '#26262a';
+  for (const quarter of [0, Math.PI]) {
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
+    ctx.arc(head.x, head.y, 5.5, quarter, quarter + Math.PI / 2);
+    ctx.fill();
+  }
 }
 
 // The road objects as this screen knows them. The server decides where they are; this only
 // remembers the latest positions and slides each object smoothly toward them.
 export function createProps() {
   let props = new Map();
+  const fresh = (prop) => Object.assign(prop, { tx: prop.x, ty: prop.y, ta: prop.a, z: 0, tz: 0, gone: false, fallen: false, lost: new Set(), doll: restDoll() });
   return {
     load(track) {
-      props = new Map(buildProps(track).map((prop) => [prop.id, { ...prop, tx: prop.x, ty: prop.y, ta: prop.a, gone: false }]));
+      props = new Map(buildProps(track).map((prop) => [prop.id, fresh({ ...prop })]));
     },
     // The whole layout: [id, x, y, angle, gone]. Sent on joining and when a race is reset.
     reset(list) {
-      for (const [id, x, y, a, gone] of list) Object.assign(props.get(id) ?? {}, { x, y, a, tx: x, ty: y, ta: a, gone: !!gone });
+      for (const [id, x, y, a, gone] of list) {
+        const prop = props.get(id);
+        if (prop) Object.assign(fresh(Object.assign(prop, { x, y, a })), { gone: !!gone });
+      }
     },
-    // The objects that moved since the last update: [id, x, y, angle].
+    // The objects that moved since the last update: [id, x, y, angle, height].
     move(list = []) {
-      for (const [id, x, y, a] of list) Object.assign(props.get(id) ?? {}, { tx: x, ty: y, ta: a });
+      for (const [id, x, y, a, z] of list) Object.assign(props.get(id) ?? {}, { tx: x, ty: y, ta: a, tz: z, fallen: true });
     },
     // A crate was smashed. Returns it so the caller can throw the pieces.
     smash(id) {
@@ -170,14 +266,47 @@ export function createProps() {
       if (prop) prop.gone = true;
       return prop;
     },
+    // A dummy was hit hard enough to lose a part. Returns which one, or null if none are left.
+    loseLimb(id) {
+      const prop = props.get(id);
+      const left = prop ? LIMBS.map((_, limb) => limb).filter((limb) => !prop.lost.has(limb)) : [];
+      if (!left.length) return null;
+      const limb = left[Math.floor(Math.random() * left.length)];
+      prop.lost.add(limb);
+      return limb === HEAD ? 'head' : 'limb';
+    },
     draw(ctx, region, scale = 1) {
       for (const prop of props.values()) {
         if (prop.gone) continue;
+        const before = [prop.x, prop.y, prop.a];
         prop.x += (prop.tx - prop.x) * 0.4;
         prop.y += (prop.ty - prop.y) * 0.4;
         prop.a += (prop.ta - prop.a) * 0.4;
-        if (prop.x < region.x0 - 40 || prop.x > region.x1 + 40 || prop.y < region.y0 - 40 || prop.y > region.y1 + 40) continue;
-        drawProp(ctx, prop.kind, prop.x, prop.y, prop.a, scale);
+        prop.z += (prop.tz - prop.z) * 0.4;
+        if (prop.kind === 'dummy' && prop.fallen) {
+          // Tell the limbs how the body just moved, in the body's own space.
+          const cos = Math.cos(-before[2]);
+          const sin = Math.sin(-before[2]);
+          const dx = prop.x - before[0];
+          const dy = prop.y - before[1];
+          flopDoll(prop.doll, dx * cos - dy * sin, dx * sin + dy * cos, prop.a - before[2], prop.z > 0 ? 2.2 : 0);
+        }
+        if (prop.x < region.x0 - 60 || prop.x > region.x1 + 60 || prop.y < region.y0 - 60 || prop.y > region.y1 + 60) continue;
+        // Height: the shadow stays on the ground while the object rises away from it and
+        // looks bigger, the way something thrown toward a camera overhead would.
+        const radius = PROP_KINDS[prop.kind].radius;
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.26 * Math.max(0.3, 1 - prop.z / 500)})`;
+        circle(ctx, prop.x + (4 + prop.z * 0.22) * scale, prop.y + (5 + prop.z * 0.3) * scale, radius * scale * (1 + prop.z / 450));
+        ctx.save();
+        ctx.translate(prop.x, prop.y - prop.z * 0.35 * scale);
+        ctx.scale(scale * (1 + prop.z / 170), scale * (1 + prop.z / 170));
+        if (prop.kind === 'dummy') {
+          ctx.rotate(prop.a);
+          drawDummy(ctx, prop);
+        } else {
+          drawProp(ctx, prop.kind, prop.a);
+        }
+        ctx.restore();
       }
     },
   };
@@ -202,19 +331,21 @@ export function createEffects() {
       puffs.length = marks.length = shards.length = 0;
       seen.clear();
     },
-    // A crate broke at (x, y) while moving at (vx, vy). The planks carry on from there with
-    // their own speed and spin, so no two crashes look the same.
-    shatter(x, y, vx, vy, scale = 1) {
-      for (let i = 0; i < 10; i++) {
+    // Something broke at (x, y) while moving at (vx, vy). The pieces carry on from there with
+    // their own speed, spin and height, so no two crashes look the same.
+    //   what: 'crate' throws planks; 'limb' and 'head' throw a part of a dummy.
+    shatter(what, x, y, vx, vy, scale = 1) {
+      const count = what === 'crate' ? 16 : 1;
+      for (let i = 0; i < count; i++) {
         const turn = Math.random() * TAU;
-        const kick = 50 + Math.random() * 190;
+        const kick = 60 + Math.random() * 260;
         const carry = 0.35 + Math.random() * 0.8;
-        if (shards.length > 160) shards.shift();
+        if (shards.length > 220) shards.shift();
         shards.push({
-          x, y, vx: vx * carry + Math.cos(turn) * kick, vy: vy * carry + Math.sin(turn) * kick,
-          a: turn, spin: (Math.random() - 0.5) * 22, age: 0, life: 6 + Math.random() * 3,
-          w: (11 + Math.random() * 13) * scale, h: (4 + Math.random() * 2) * scale,
-          color: ['#b98a4e', '#a37843', '#caa064', '#7a5a30'][i % 4],
+          what, x, y, z: 8, vx: vx * carry + Math.cos(turn) * kick, vy: vy * carry + Math.sin(turn) * kick,
+          vz: 160 + Math.random() * 420, a: turn, spin: (Math.random() - 0.5) * 30, age: 0, life: 7 + Math.random() * 3,
+          w: (what === 'crate' ? 11 + Math.random() * 13 : what === 'head' ? 17 : 24) * scale, h: (what === 'crate' ? 4 + Math.random() * 2 : what === 'head' ? 17 : 7) * scale,
+          color: what === 'crate' ? ['#b98a4e', '#a37843', '#caa064', '#7a5a30'][i % 4] : '#f2c230',
         });
       }
       for (let i = 0; i < 6; i++) puff(x, y, 18 * scale, 0.8, '170, 150, 120', 0.4, 60);
@@ -261,12 +392,22 @@ export function createEffects() {
           continue;
         }
         for (const car of cars.values()) {
-          if (car.v < 60 || Math.abs(car.x - shard.x) > length * 0.4 || Math.abs(car.y - shard.y) > length * 0.4) continue;
-          shard.vx = Math.cos(car.a) * car.v * 0.7 + (Math.random() - 0.5) * 160;
-          shard.vy = Math.sin(car.a) * car.v * 0.7 + (Math.random() - 0.5) * 160;
-          shard.spin = (Math.random() - 0.5) * 20;
+          if (shard.z > 20 || car.v < 60 || Math.abs(car.x - shard.x) > length * 0.4 || Math.abs(car.y - shard.y) > length * 0.4) continue;
+          shard.vx = Math.cos(car.a) * car.v * 0.8 + (Math.random() - 0.5) * 220;
+          shard.vy = Math.sin(car.a) * car.v * 0.8 + (Math.random() - 0.5) * 220;
+          shard.vz = 120 + Math.random() * 260;
+          shard.spin = (Math.random() - 0.5) * 30;
         }
-        const drag = Math.exp(-2.6 * dt);
+        // Up, over and down again, with a bounce; then it scrapes along the ground to a stop.
+        if (shard.z > 0 || shard.vz > 0) {
+          shard.vz -= 1100 * dt;
+          shard.z += shard.vz * dt;
+          if (shard.z <= 0) {
+            shard.z = 0;
+            shard.vz = shard.vz < -140 ? -shard.vz * 0.4 : 0;
+          }
+        }
+        const drag = Math.exp(-(shard.z > 0 ? 0.3 : 2.6) * dt);
         shard.x += shard.vx * dt;
         shard.y += shard.vy * dt;
         shard.a += shard.spin * dt;
@@ -293,12 +434,21 @@ export function createEffects() {
         ctx.restore();
       }
       for (const shard of shards) {
+        const fade = Math.min(1, shard.life - shard.age); // fade out over the last second
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.2 * fade})`;
+        circle(ctx, shard.x + shard.z * 0.22, shard.y + shard.z * 0.3, shard.w * 0.4);
         ctx.save();
-        ctx.translate(shard.x, shard.y);
+        ctx.translate(shard.x, shard.y - shard.z * 0.35);
         ctx.rotate(shard.a);
-        ctx.globalAlpha = Math.min(1, shard.life - shard.age); // fade out over the last second
+        ctx.scale(1 + shard.z / 170, 1 + shard.z / 170);
+        ctx.globalAlpha = fade;
         ctx.fillStyle = shard.color;
-        ctx.fillRect(-shard.w / 2, -shard.h / 2, shard.w, shard.h);
+        if (shard.what === 'head') circle(ctx, 0, 0, shard.w / 2);
+        else {
+          ctx.beginPath();
+          ctx.roundRect(-shard.w / 2, -shard.h / 2, shard.w, shard.h, shard.what === 'crate' ? 1 : shard.h / 2);
+          ctx.fill();
+        }
         ctx.restore();
       }
       for (const p of puffs) {

@@ -23,18 +23,23 @@ const BRAKE = 700;
 const TURN = 2.7; // radians per second at full steer
 const CAR_RADIUS = 17;
 const CAR_BUMPER = 21; // a car's size when it hits things standing on the road
-const SMASH_SPEED = 260; // crates hit harder than this break apart
+const SMASH_SPEED = 260; // hits harder than this can break things
+const SMASH_LANDING = 380; // a crate that comes down faster than this breaks on the ground
+const GRAVITY = 1100;
+const FLY_OVER = 26; // above this height a flying object passes over cars and other objects
 const COUNTDOWN_MS = 3500;
 const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
 const MAX_RACE_MS = 10 * 60 * 1000;
 
 const QUESTION_EVERY_MS = 20000; // of driving time; the clock stops during a question
+const QUESTION_FASTEST_MS = 10000; // short races ask more often, down to this
+const MIN_QUESTIONS = 5; // every race should have at least this many
 const ANSWER_MS = 12000;
 const ANSWER_LOCK_MS = 900; // a steering tap just as the question appears must not count as an answer
 const REVEAL_MS = 4500;
 const BOOST_MS = 4000;
 const BOOST_SPEED = 1.3;
-const GREEN_TARGET = 0.7; // share of right answers that turns the whole map green by the end
+const GREEN_TARGET = 0.6; // share of right answers that makes the map fully clean by the end
 const BOT_RIGHT_CHANCE = 0.5;
 
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
@@ -125,7 +130,7 @@ function createRoom() {
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
     track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
-    question: null, reveal: null, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6, asked: new Set(),
+    question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6, asked: new Set(),
     lastWorld: null, props: [], tick: 0, lastActive: Date.now(),
   };
   rooms.set(code, room);
@@ -174,7 +179,7 @@ function snapshotMessage(room, moved = []) {
   return {
     t: 's',
     time: Math.round(room.raceTime),
-    props: moved.map((prop) => [prop.id, Math.round(prop.x), Math.round(prop.y), Math.round(prop.a * 100) / 100]),
+    props: moved.map((prop) => [prop.id, Math.round(prop.x), Math.round(prop.y), Math.round(prop.a * 100) / 100, Math.round(prop.z)]),
     cars: room.players.filter((player) => player.car).map((player) => {
       const { car } = player;
       return [
@@ -207,7 +212,7 @@ function placeOnGrid(room) {
   });
   Object.assign(room, { raceTime: 0, green: 0, question: null, reveal: null, questionCount: 0, firstFinish: null });
   // Everything on the road is stood back up for the new race.
-  room.props = buildProps(room.track).map((prop) => ({ ...prop, vx: 0, vy: 0, spin: 0, gone: false, moving: false, settled: false }));
+  room.props = buildProps(room.track).map((prop) => ({ ...prop, z: 0, vx: 0, vy: 0, vz: 0, spin: 0, gone: false, moving: false, settled: false }));
   broadcast(room, propsMessage(room));
   broadcast(room, snapshotMessage(room));
 }
@@ -285,8 +290,11 @@ function stepQuestion(room, now) {
     player.correct++;
     player.boostUntil = room.raceTime + BOOST_MS;
   }
-  // No answer counts as wrong, so everyone has to take part for the map to turn green.
-  const share = right / Math.max(1, room.players.length);
+  // Only people count for the map: bots guess, and their guesses should not hold it back.
+  // No answer counts as wrong, so everyone has to take part.
+  const people = room.players.filter((player) => !player.bot && player.connected);
+  const voters = people.length ? people : room.players;
+  const share = voters.filter((player) => player.answer === question.correct).length / Math.max(1, voters.length);
   room.green = Math.min(1, room.green + share / (room.expectedQuestions * GREEN_TARGET));
   room.reveal = { correct: question.correct, counts, until: now + REVEAL_MS };
   room.phase = 'reveal';
@@ -297,7 +305,7 @@ function resumeRace(room) {
   room.phase = 'race';
   room.question = null;
   room.reveal = null;
-  room.nextQuestionAt = room.raceTime + QUESTION_EVERY_MS;
+  room.nextQuestionAt = room.raceTime + room.questionEvery;
   for (const player of room.players) player.answer = null;
   sendState(room);
 }
@@ -396,8 +404,21 @@ function pushApart(players) {
   }
 }
 
-// Road objects: cars knock them flying, they slide and spin, and they knock into each other.
-// Nothing here is scripted, so every crash comes out differently.
+// Road objects: a car throws them into the air. They tumble, come down, bounce, slide, and knock
+// into each other. Nothing here is scripted, so every crash comes out differently.
+function launch(prop, nx, ny, closing, share) {
+  const kind = PROP_KINDS[prop.kind];
+  const power = closing * (1.5 + Math.random() * 0.9) * share;
+  const swerve = (Math.random() - 0.5) * 1.1; // thrown off to one side or the other
+  prop.vx += (nx * Math.cos(swerve) - ny * Math.sin(swerve)) * power;
+  prop.vy += (nx * Math.sin(swerve) + ny * Math.cos(swerve)) * power;
+  prop.vz = Math.max(prop.vz, closing * (0.7 + Math.random() * 0.7) * kind.lift);
+  prop.spin = (Math.random() - 0.5) * 30;
+  prop.moving = true;
+}
+
+const smash = (room, prop, extra) => broadcast(room, { t: 'break', id: prop.id, x: Math.round(prop.x), y: Math.round(prop.y), vx: Math.round(prop.vx), vy: Math.round(prop.vy), ...extra });
+
 function stepProps(room, dt) {
   const { props } = room;
   for (const player of room.players) {
@@ -407,7 +428,7 @@ function stepProps(room, dt) {
     const headingX = Math.cos(car.a);
     const headingY = Math.sin(car.a);
     for (const prop of props) {
-      if (prop.gone) continue;
+      if (prop.gone || prop.z > FLY_OVER) continue; // cars drive under whatever is in the air
       const kind = PROP_KINDS[prop.kind];
       const reach = CAR_BUMPER + kind.radius;
       const dx = prop.x - car.x;
@@ -421,16 +442,13 @@ function stepProps(room, dt) {
       prop.y = car.y + ny * (reach + 0.5);
       const closing = (headingX * car.v - prop.vx) * nx + (headingY * car.v - prop.vy) * ny;
       if (closing <= 0) continue;
-      // The lighter of the two takes most of the hit: a pickup barely notices a cone.
-      const share = carMass / (carMass + kind.mass);
-      prop.vx += nx * closing * 1.5 * share;
-      prop.vy += ny * closing * 1.5 * share;
-      prop.spin = (Math.random() - 0.5) * 16;
-      prop.moving = true;
-      car.v *= 1 - 0.5 * (1 - share) * Math.min(1, closing / 300);
-      if (kind.breaks && closing > SMASH_SPEED) {
+      // The car keeps all its speed. Its weight only decides how far things fly.
+      launch(prop, nx, ny, closing, carMass / (carMass + kind.mass));
+      if (kind.breaks && closing > SMASH_SPEED && Math.random() < 0.35) {
         prop.gone = true;
-        broadcast(room, { t: 'break', id: prop.id, x: Math.round(prop.x), y: Math.round(prop.y), vx: Math.round(prop.vx), vy: Math.round(prop.vy) });
+        smash(room, prop);
+      } else if (prop.kind === 'dummy' && closing > SMASH_SPEED) {
+        smash(room, prop, { limb: true }); // a dummy hit this hard loses an arm, a leg or its head
       }
     }
   }
@@ -440,12 +458,29 @@ function stepProps(room, dt) {
     prop.x = clamp(prop.x + prop.vx * dt, 20, WORLD.width - 20);
     prop.y = clamp(prop.y + prop.vy * dt, 20, WORLD.height - 20);
     prop.a += prop.spin * dt;
-    const drag = Math.exp(-kind.friction * dt);
+    if (prop.z > 0 || prop.vz > 0) {
+      prop.vz -= GRAVITY * dt;
+      prop.z += prop.vz * dt;
+      if (prop.z <= 0) { // it has come down
+        prop.z = 0;
+        if (kind.breaks && prop.vz < -SMASH_LANDING) {
+          prop.gone = true;
+          smash(room, prop);
+          continue;
+        }
+        prop.vz = prop.vz < -150 ? -prop.vz * kind.bounce : 0;
+        prop.vx *= 0.8;
+        prop.vy *= 0.8;
+      }
+    }
+    // In the air almost nothing slows it down; on the ground it scrapes to a stop.
+    const drag = Math.exp(-(prop.z > 0 ? 0.25 : kind.friction) * dt);
     prop.vx *= drag;
     prop.vy *= drag;
-    prop.spin *= drag;
+    prop.spin *= Math.exp(-(prop.z > 0 ? 0.3 : kind.friction) * dt);
+    if (prop.z > FLY_OVER) continue; // too high to hit anything
     for (const other of props) {
-      if (other === prop || other.gone) continue;
+      if (other === prop || other.gone || other.z > FLY_OVER) continue;
       const otherKind = PROP_KINDS[other.kind];
       const reach = kind.radius + otherKind.radius;
       const dx = other.x - prop.x;
@@ -462,15 +497,16 @@ function stepProps(room, dt) {
       other.y += ny * (reach - d) * (kind.mass / total);
       const closing = (prop.vx - other.vx) * nx + (prop.vy - other.vy) * ny;
       if (closing <= 0) continue;
-      const impulse = (1.6 * closing) / (1 / kind.mass + 1 / otherKind.mass); // a slightly bouncy hit
+      const impulse = (1.8 * closing) / (1 / kind.mass + 1 / otherKind.mass); // a bouncy hit
       prop.vx -= (impulse / kind.mass) * nx;
       prop.vy -= (impulse / kind.mass) * ny;
       other.vx += (impulse / otherKind.mass) * nx;
       other.vy += (impulse / otherKind.mass) * ny;
-      other.spin += (Math.random() - 0.5) * 8;
+      other.spin += (Math.random() - 0.5) * 16;
+      if (closing > 110) other.vz = Math.max(other.vz, closing * 0.4 * otherKind.lift); // it hops into the air too
       other.moving = true;
     }
-    if (Math.hypot(prop.vx, prop.vy) < 6) {
+    if (prop.z === 0 && prop.vz === 0 && Math.hypot(prop.vx, prop.vy) < 8) {
       Object.assign(prop, { vx: 0, vy: 0, spin: 0, moving: false, settled: true });
     }
   }
@@ -616,11 +652,13 @@ const hostActions = {
   start(room) {
     if (room.phase !== 'lobby' || !room.players.length) return;
     placeOnGrid(room);
-    // About one question every 20 seconds of driving; used to pace how fast the map turns green.
-    const raceSeconds = (room.laps * room.track.length) / (MAX_SPEED * 0.88);
+    // A question every 20 seconds of driving, or more often in a short race, so that every race
+    // has enough questions for the map to become fully clean.
+    const raceMs = ((room.laps * room.track.length) / (MAX_SPEED * 0.88)) * 1000;
+    const questionEvery = clamp(raceMs / (MIN_QUESTIONS + 0.5), QUESTION_FASTEST_MS, QUESTION_EVERY_MS);
     Object.assign(room, {
       phase: 'countdown', startAt: performance.now() + COUNTDOWN_MS, results: null, summary: null, tick: 0,
-      nextQuestionAt: QUESTION_EVERY_MS, expectedQuestions: clamp(Math.floor(raceSeconds / (QUESTION_EVERY_MS / 1000)), 2, 12),
+      questionEvery, nextQuestionAt: questionEvery, expectedQuestions: Math.max(3, Math.floor(raceMs / questionEvery)),
     });
     sendState(room);
   },

@@ -389,7 +389,8 @@ const send = connect({
     } else if (message.t === 'props') {
       props.reset(message.props);
     } else if (message.t === 'break') {
-      if (props.smash(message.id)) effects.shatter(message.x, message.y, message.vx, message.vy, Math.max(1, 1 / view.scale / 3));
+      const what = message.limb ? props.loseLimb(message.id) : props.smash(message.id) && 'crate';
+      if (what) effects.shatter(what, message.x, message.y, message.vx, message.vy, Math.max(1, 1 / view.scale / 3));
     } else if (message.t === 'trackError') {
       trackError = message.reason;
       updateUI();
