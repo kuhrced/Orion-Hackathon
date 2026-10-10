@@ -1,0 +1,257 @@
+:root {
+  --bg: #0b1f17;
+  --bg2: #143326;
+  --text: #f1f8ef;
+  --muted: #a9c4b2;
+  --accent: #b6e34a;
+  --accent-dark: #7fa62a;
+  --hot: #2f9e5b;
+  --cool: #4cc9f0;
+  --cool-dark: #2a8fb3;
+  --sun: #ffd166;
+  --road: #2b3a33;
+  --grass: #3f8f4a;
+  --line: #2a5a43;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 85% 8%, rgba(255, 209, 102, 0.22), transparent 28%),
+    radial-gradient(ellipse at top, var(--bg2), var(--bg) 70%);
+  color: var(--text);
+  font-family: "Inter", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Hero */
+.hero {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 72px 16px 40px;
+  text-align: center;
+}
+
+.tag {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(182, 227, 74, 0.14);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.logo {
+  font-family: "Russo One", sans-serif;
+  font-size: clamp(56px, 14vw, 120px);
+  line-height: 1;
+  margin: 20px 0 16px;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-shadow: 6px 6px 0 #1f6b3e;
+}
+.logo span { color: var(--accent); margin-left: 8px; }
+
+.sub {
+  color: var(--muted);
+  font-size: clamp(16px, 2.6vw, 20px);
+  line-height: 1.5;
+  max-width: 520px;
+  margin: 0 auto 36px;
+}
+
+/* Buttons */
+.actions { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+.btn {
+  font-family: "Russo One", sans-serif;
+  font-size: 20px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn:active { transform: translateY(4px); }
+
+.btn-host {
+  width: 100%;
+  max-width: 360px;
+  padding: 20px 28px;
+  background: var(--accent);
+  color: #10240a;
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+.btn-host:active { box-shadow: 0 2px 0 var(--accent-dark); }
+.btn-icon { margin-right: 6px; }
+
+.join {
+  display: flex;
+  width: 100%;
+  max-width: 360px;
+  gap: 8px;
+}
+.join input {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Russo One", sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.join input:focus { outline: none; border-color: var(--cool); }
+.btn-join {
+  padding: 0 24px;
+  background: var(--cool);
+  color: #062433;
+  box-shadow: 0 6px 0 var(--cool-dark);
+}
+.btn-join:active { box-shadow: 0 2px 0 var(--cool-dark); }
+
+.error { color: #ff8a80; font-weight: 600; min-height: 1.2em; }
+
+/* Road with animated cars */
+.road {
+  position: relative;
+  height: 112px;
+  margin-top: 56px;
+  background: var(--road);
+  border-top: 10px solid var(--grass);
+  border-bottom: 10px solid var(--grass);
+}
+/* Rolling hills and trees above the road */
+.scenery {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 66px;
+  overflow: hidden;
+  z-index: -1;
+}
+.hills {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 40px;
+  background:
+    radial-gradient(ellipse 120px 40px at 10% 100%, #1f5a35 98%, transparent),
+    radial-gradient(ellipse 160px 46px at 35% 100%, #24683c 98%, transparent),
+    radial-gradient(ellipse 140px 38px at 62% 100%, #1f5a35 98%, transparent),
+    radial-gradient(ellipse 180px 48px at 90% 100%, #24683c 98%, transparent);
+}
+.trees {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 56px;
+  background:
+    radial-gradient(circle 16px at 30px 22px, #3fae5a 98%, transparent),
+    radial-gradient(circle 12px at 120px 32px, #58c46c 98%, transparent),
+    linear-gradient(90deg, transparent 27px, #6b4a2b 27px 33px, transparent 33px 118px, #6b4a2b 118px 123px, transparent 123px) 0 36px / 180px 20px repeat-x;
+  background-size: 180px 56px, 180px 56px, 180px 20px;
+  background-repeat: repeat-x;
+  animation: trees 6s linear infinite;
+}
+@keyframes trees { to { transform: translateX(-180px); } }
+.track { position: absolute; inset: 0; overflow: hidden; }
+.lane {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 200%;
+  height: 4px;
+  margin-top: -2px;
+  background: repeating-linear-gradient(90deg, #e8f5e0 0 40px, transparent 40px 80px);
+  animation: lane 0.6s linear infinite;
+}
+@keyframes lane { to { transform: translateX(-80px); } }
+
+.car {
+  position: absolute;
+  height: 38px;
+  width: auto;
+  animation: drive linear infinite;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.35));
+}
+
+/* Top lane: race car + truck, bottom lane: sedan + formula */
+.car-a { top: 4px; animation-duration: 3.6s; }
+.car-c { top: 4px; animation-duration: 3.6s; animation-delay: -1.8s; }
+.car-b { top: 50px; animation-duration: 4.4s; animation-delay: -0.6s; }
+.car-d { top: 50px; animation-duration: 4.4s; animation-delay: -2.8s; }
+
+@keyframes drive {
+  from { left: -90px; }
+  to { left: 100%; }
+}
+
+/* How it works */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 900px;
+  margin: 24px auto 0;
+  padding: 0 16px;
+}
+.step {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+}
+.num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--hot);
+  font-family: "Russo One", sans-serif;
+  margin-bottom: 12px;
+}
+.step h3 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 22px; margin-bottom: 6px; }
+.step p { color: var(--muted); line-height: 1.5; }
+
+footer { text-align: center; color: var(--muted); padding: 48px 16px 32px; font-size: 14px; }
+
+@media (max-width: 640px) {
+  .hero { padding-top: 48px; }
+  .stats { gap: 8px; }
+  .steps { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lane, .car, .trees { animation: none; }
+}
+
+/* Eco stats strip */
+.stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.stat {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
