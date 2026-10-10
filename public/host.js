@@ -19,7 +19,7 @@ const LABELS = {
   lobby: ['Start race', 'Draw again'],
   results: ['Race again', 'New track'],
 };
-const RACING = ['countdown', 'race', 'question', 'reveal'];
+const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal'];
 const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
 const MAP_FADE = 1500;
 
@@ -262,6 +262,9 @@ function frame(now) {
   if (phase === 'countdown') {
     count.hidden = false;
     count.textContent = Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000)));
+  } else if (phase === 'question-countdown') {
+    count.hidden = false;
+    count.textContent = `GET READY ${Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))}`;
   } else if (now < goUntil) {
     count.hidden = false;
     count.textContent = 'GO!';
@@ -369,6 +372,7 @@ const send = connect({
       const now = performance.now();
       if (message.phase === 'race' && (state.phase === 'countdown' || state.phase === 'reveal')) goUntil = now + 900;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+      if (message.phase === 'question-countdown') questionEnd = now + message.question.readyIn;
       if (message.phase === 'question') questionEnd = now + message.question.endsIn;
       if (message.phase === 'reveal' && state.phase !== 'reveal') revealStart = now;
       if (message.phase === 'draw') track = scene = life = map = oldMap = null;

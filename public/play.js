@@ -12,7 +12,7 @@ const banner = $('banner');
 const FIRST = ['Speedy', 'Sleepy', 'Turbo', 'Wobbly', 'Lucky', 'Zippy', 'Grumpy', 'Sunny', 'Rusty', 'Funky'];
 const SECOND = ['Otter', 'Panda', 'Llama', 'Gecko', 'Moose', 'Koala', 'Robin', 'Tiger', 'Whale', 'Bison'];
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
-const RACING = ['countdown', 'race', 'question', 'reveal'];
+const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal'];
 
 const store = {
   get(area, key) {
@@ -86,6 +86,7 @@ function showScreen() {
   showCarCard(mine.type);
   $('status').textContent = {
     draw: 'Look at the big screen. The host is drawing the track.',
+    'question-countdown': 'Get ready — the question is coming up!',
     results: 'A race just ended. You are in the next one!',
   }[phase] ?? 'The track is ready. The race starts soon!';
   $('score').textContent = `✓ ${mine.correct}`;
@@ -296,6 +297,7 @@ function frame(now) {
 
   let text = '';
   if (state.phase === 'countdown') text = String(Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000))));
+  else if (state.phase === 'question-countdown') text = `<small>Get ready</small>${Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))}`;
   else if (now < goUntil) text = 'GO!';
   else if (mine.done && racing) text = `Finished!<small>${ordinal(mine.place)} place</small>`;
   else if (mine.boost && racing) text = '<small>Speed boost!</small>';
@@ -336,6 +338,7 @@ const send = connect({
       const now = performance.now();
       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+      if (message.phase === 'question-countdown') questionEnd = now + message.question.readyIn;
       if (message.phase === 'question') {
         questionEnd = now + message.question.endsIn;
         answersOpenAt = now + message.question.lockedFor;

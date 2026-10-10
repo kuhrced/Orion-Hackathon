@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-aq="hazardous">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,8 +9,33 @@
   <link rel="stylesheet" href="/landing.css" />
 </head>
 <body>
+  <!-- Drifting smog behind everything -->
+  <div class="smog" aria-hidden="true">
+    <span></span><span></span><span></span><span></span>
+  </div>
+
+  <!-- Air quality picker: changes how polluted the whole page looks -->
+  <div class="aq">
+    <button class="aq-btn" id="aqBtn" type="button" aria-expanded="false" aria-controls="aqMenu">
+      <i></i> Air quality: <b id="aqLabel">Hazardous</b> <span class="caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="aq-menu" id="aqMenu" role="radiogroup" aria-label="Air quality" hidden>
+      <button type="button" role="radio" data-aq="good"><i></i> Good</button>
+      <button type="button" role="radio" data-aq="moderate"><i></i> Moderate</button>
+      <button type="button" role="radio" data-aq="unhealthy"><i></i> Unhealthy</button>
+      <button type="button" role="radio" data-aq="hazardous"><i></i> Hazardous</button>
+    </div>
+  </div>
+
   <div class="road" aria-hidden="true">
-    <div class="scenery"><div class="hills"></div><div class="trees"></div></div>
+    <div class="scenery">
+      <div class="hills"></div>
+      <div class="factory">
+        <div class="stack s1"><em></em><em></em><em></em></div>
+        <div class="stack s2"><em></em><em></em><em></em></div>
+      </div>
+      <div class="trees"></div>
+    </div>
     <div class="track">
       <div class="lane"></div>
       <img class="car car-a" src="/cars/sports_red.png" alt="" />
@@ -20,30 +45,52 @@
     </div>
   </div>
 
-  <main class="hero">
-    <p class="tag">🌱 Eco multiplayer racing</p>
-    <h1 class="logo">QR<span>RACER</span></h1>
-    <p class="sub">Race clean-energy cars from your phone. Put the track on the big screen, scan the code and see who finishes first while using the least energy.</p>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#home">Home</a>
+    <a href="#cars">Cars</a>
+    <a href="#about">About</a>
+    <a href="#team">Larpers</a>
+  </nav>
 
-    <div class="actions">
-      <button class="btn btn-host" id="hostBtn">
-        <span class="btn-icon">🏁</span> Host a race
-      </button>
+  <div class="page" data-page="home">
+  <div class="hero-wrap">
+    <p class="note note-1">🌍 There is no Planet B</p>
+    <p class="note note-2">🏭 The larp is choking our world</p>
+    <p class="note note-3">💨 Larp to clear the air</p>
+    <p class="note note-4">🌱 Every larp counts for a larpy planet</p>
 
-      <form class="join" id="joinForm" autocomplete="off">
-        <label for="code" class="sr-only">Room code</label>
-        <input id="code" name="code" maxlength="4" placeholder="ROOM CODE" inputmode="text" />
-        <button class="btn btn-join" type="submit">Join</button>
-      </form>
-      <p class="error" id="error" role="alert"></p>
+    <main class="hero">
+      <p class="tag">🌱 Larp multiplayer racing</p>
+      <h1 class="logo">LARP<span>RACER</span></h1>
+      <p class="sub">Race clean-energy cars from your phone. Put the track on the big screen, scan the code and see who finishes first while using the least energy.</p>
+
+      <div class="actions">
+        <button class="btn btn-host" id="hostBtn">
+          <span class="btn-icon">🏁</span> Host a larp session
+        </button>
+
+        <form class="join" id="joinForm" autocomplete="off">
+          <label for="code" class="sr-only">Larp code</label>
+          <input id="code" name="code" maxlength="4" placeholder="LARP CODE" inputmode="text" />
+          <button class="btn btn-join" type="submit">Larp</button>
+        </form>
+        <p class="error" id="error" role="alert"></p>
+      </div>
+
+      <div class="stats">
+        <span class="stat">⚡ Electrifying larp</span>
+        <span class="stat">🔋 Save energy to larp</span>
+        <span class="stat">🌍 Biggest larp wins bonus</span>
+      </div>
+    </main>
+  </div>
+
+  <div class="ticker" aria-label="Save the planet. Clear the smog. Race for clean air. There is no Planet B.">
+    <div class="ticker-track" aria-hidden="true">
+      <span>Save the planet</span><span>Clear the smog</span><span>Race for clean air</span><span>There is no Planet B</span>
+      <span>Save the planet</span><span>Clear the smog</span><span>Race for clean air</span><span>There is no Planet B</span>
     </div>
-
-    <div class="stats">
-      <span class="stat">⚡ Electric cars</span>
-      <span class="stat">🔋 Save energy to boost</span>
-      <span class="stat">🌍 Lowest emissions wins bonus</span>
-    </div>
-  </main>
+  </div>
 
   <section class="steps">
     <div class="step">
@@ -62,8 +109,88 @@
       <p>Pick an eco car, manage your energy and race for first place.</p>
     </div>
   </section>
+  </div>
 
-  <footer>Built for the hackathon energy track 🌿</footer>
+  <section class="page garage" data-page="cars">
+    <h2 class="section-title">Meet the cars</h2>
+    <p class="section-sub">Every car's stats add up to 12, so no car is simply the best. Tap a colour to see each one.</p>
+    <div class="car-grid" id="carGrid"></div>
+  </section>
+
+  <section class="page about" data-page="about">
+    <h2 class="section-title">About</h2>
+    <p class="section-sub">A party racing game about cleaning up a polluted world.</p>
+
+    <div class="about-grid">
+      <article class="panel">
+        <h3>🏭 The problem</h3>
+        <p>Pollution turns the air grey and makes the planet harder to live on. It's a big problem that can feel far away, so we wanted to make it something you can see and change in a few minutes with your friends.</p>
+      </article>
+      <article class="panel">
+        <h3>🏁 The game</h3>
+        <p>The host draws a race track on the big screen. Up to 6 players scan the QR code and race from their phones, steering with two buttons. Add bots if you're short on players.</p>
+      </article>
+      <article class="panel">
+        <h3>🌳 Clean it up</h3>
+        <p>The map starts grey and polluted. Answer questions about energy and the planet correctly and the world turns green, lap by lap. <span class="soon">Coming soon</span></p>
+      </article>
+      <article class="panel">
+        <h3>🛠️ How it's built</h3>
+        <p>One Node.js server runs the race 60 times a second and sends it over WebSockets. The big screen and the phones draw it with HTML canvas. No app to install: just a browser.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="page team" data-page="team">
+    <h2 class="section-title">Meet the team</h2>
+    <p class="section-sub">The people racing to clean up the planet.</p>
+
+    <!-- Placeholders: add each person's name, role, and LinkedIn/GitHub href -->
+    <div class="team-grid">
+      <article class="panel member">
+        <div class="avatar">1</div>
+        <h3>Fiolarp</h3>
+        <p class="role">Role</p>
+        <p>A line about what they worked on.</p>
+        <div class="links">
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M0 1.15C0 .52.52 0 1.18 0h13.64C15.48 0 16 .52 16 1.15v13.7c0 .63-.52 1.15-1.18 1.15H1.18C.52 16 0 15.48 0 14.85V1.15zm4.94 12.24V6.17H2.54v7.22h2.4zM3.74 5.18c.84 0 1.36-.55 1.36-1.25-.02-.71-.52-1.25-1.34-1.25-.82 0-1.36.54-1.36 1.25 0 .7.52 1.25 1.33 1.25h.01zm2.47 8.21h2.4V9.36c0-.22.02-.43.08-.58.17-.43.57-.88 1.23-.88.87 0 1.22.66 1.22 1.64v3.86h2.4V9.25c0-2.22-1.18-3.25-2.76-3.25-1.27 0-1.84.7-2.16 1.19v.03h-.02l.02-.03V6.17h-2.4c.03.68 0 7.22 0 7.22z"/></svg> LinkedIn</a>
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+        </div>
+      </article>
+      <article class="panel member">
+        <div class="avatar">2</div>
+        <h3>Jeremlarp</h3>
+        <p class="role">Role</p>
+        <p>A line about what they worked on.</p>
+        <div class="links">
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M0 1.15C0 .52.52 0 1.18 0h13.64C15.48 0 16 .52 16 1.15v13.7c0 .63-.52 1.15-1.18 1.15H1.18C.52 16 0 15.48 0 14.85V1.15zm4.94 12.24V6.17H2.54v7.22h2.4zM3.74 5.18c.84 0 1.36-.55 1.36-1.25-.02-.71-.52-1.25-1.34-1.25-.82 0-1.36.54-1.36 1.25 0 .7.52 1.25 1.33 1.25h.01zm2.47 8.21h2.4V9.36c0-.22.02-.43.08-.58.17-.43.57-.88 1.23-.88.87 0 1.22.66 1.22 1.64v3.86h2.4V9.25c0-2.22-1.18-3.25-2.76-3.25-1.27 0-1.84.7-2.16 1.19v.03h-.02l.02-.03V6.17h-2.4c.03.68 0 7.22 0 7.22z"/></svg> LinkedIn</a>
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+        </div>
+      </article>
+      <article class="panel member">
+        <div class="avatar">3</div>
+        <h3>Clarp</h3>
+        <p class="role">Role</p>
+        <p>A line about what they worked on.</p>
+        <div class="links">
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M0 1.15C0 .52.52 0 1.18 0h13.64C15.48 0 16 .52 16 1.15v13.7c0 .63-.52 1.15-1.18 1.15H1.18C.52 16 0 15.48 0 14.85V1.15zm4.94 12.24V6.17H2.54v7.22h2.4zM3.74 5.18c.84 0 1.36-.55 1.36-1.25-.02-.71-.52-1.25-1.34-1.25-.82 0-1.36.54-1.36 1.25 0 .7.52 1.25 1.33 1.25h.01zm2.47 8.21h2.4V9.36c0-.22.02-.43.08-.58.17-.43.57-.88 1.23-.88.87 0 1.22.66 1.22 1.64v3.86h2.4V9.25c0-2.22-1.18-3.25-2.76-3.25-1.27 0-1.84.7-2.16 1.19v.03h-.02l.02-.03V6.17h-2.4c.03.68 0 7.22 0 7.22z"/></svg> LinkedIn</a>
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+        </div>
+      </article>
+      <article class="panel member">
+        <div class="avatar">4</div>
+        <h3>Johnalarp</h3>
+        <p class="role">Role</p>
+        <p>A line about what they worked on.</p>
+        <div class="links">
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M0 1.15C0 .52.52 0 1.18 0h13.64C15.48 0 16 .52 16 1.15v13.7c0 .63-.52 1.15-1.18 1.15H1.18C.52 16 0 15.48 0 14.85V1.15zm4.94 12.24V6.17H2.54v7.22h2.4zM3.74 5.18c.84 0 1.36-.55 1.36-1.25-.02-.71-.52-1.25-1.34-1.25-.82 0-1.36.54-1.36 1.25 0 .7.52 1.25 1.33 1.25h.01zm2.47 8.21h2.4V9.36c0-.22.02-.43.08-.58.17-.43.57-.88 1.23-.88.87 0 1.22.66 1.22 1.64v3.86h2.4V9.25c0-2.22-1.18-3.25-2.76-3.25-1.27 0-1.84.7-2.16 1.19v.03h-.02l.02-.03V6.17h-2.4c.03.68 0 7.22 0 7.22z"/></svg> LinkedIn</a>
+          <a class="link" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <footer>Built for the hackathon energy track 🌿 Let's clean up the planet, one lap at a time.</footer>
 
   <script src="/landing.js"></script>
 </body>
