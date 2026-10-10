@@ -78,9 +78,13 @@ input {
 #results h2 { font-size: 30px; margin-bottom: 12px; }
 #results ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 #results li { display: flex; align-items: center; gap: 14px; font-size: 22px; font-weight: 700; }
-#results li:first-child { font-size: 30px; color: var(--accent); }
+#results li:first-child { font-size: 26px; }
 #results .place { width: 2.2em; }
-#results .time { margin-left: auto; padding-left: 20px; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 18px; }
+#results .score { margin-left: auto; padding-left: 20px; font-variant-numeric: tabular-nums; }
+#results .time { width: 6.5em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 18px; }
+#results li.real .score { color: var(--accent); }
+#realWinner { font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 14px; }
+#greenResult { color: var(--muted); margin-top: 14px; }
 
 #side {
   display: flex; flex-direction: column; gap: 18px; padding: 20px;
@@ -131,14 +135,22 @@ input {
   padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
   max-width: 460px; margin: 0 auto;
 }
-.card h1 { font-size: 34px; line-height: 1.1; }
+.card h1 { font-size: 30px; line-height: 1.1; }
 .card label { display: grid; gap: 6px; color: var(--muted); font-size: 14px; font-weight: 700; }
 #codeInput { text-transform: uppercase; letter-spacing: 0.2em; font-size: 26px; text-align: center; }
 #joinError { color: var(--danger); min-height: 1.4em; }
 .card button { font-size: 20px; padding: 16px; }
 
 #lobby { align-items: center; text-align: center; }
-#myCar { display: grid; place-items: center; width: 150px; height: 230px; border-radius: 20px; background: var(--panel); }
+#myCar { display: grid; place-items: center; width: 130px; height: 190px; border-radius: 20px; background: var(--panel); }
+#carCard { width: 100%; max-width: 320px; text-align: left; background: var(--panel); border-radius: 16px; padding: 14px 16px; }
+#carName { font-weight: 800; margin-bottom: 10px; }
+#carStats { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; align-items: center; }
+#carStats dt { color: var(--muted); font-size: 14px; }
+#carStats dd { margin: 0; display: flex; gap: 4px; }
+.pip { flex: 1; height: 10px; border-radius: 3px; background: var(--line); }
+.pip.on { background: var(--accent); }
+#carNote { color: var(--muted); font-size: 14px; margin-top: 10px; }
 #status { color: var(--muted); }
 
 #race { background: #6f6c66; touch-action: none; }
@@ -175,3 +187,59 @@ input {
 #done ol { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; text-align: left; font-weight: 700; }
 #done li { display: flex; align-items: center; gap: 10px; }
 #done li.me { color: var(--accent); }
+
+/* ---------- Questions (both screens) ---------- */
+
+.quiz-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 800; color: var(--muted); }
+.quiz h2 { font-weight: 800; line-height: 1.2; }
+.choices { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.choice {
+  display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+  padding: 12px 14px; border-radius: 14px; border: 3px solid transparent; font-weight: 700; color: #14161a;
+}
+.choice .letter {
+  flex: none; display: grid; place-items: center; width: 1.9em; height: 1.9em; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22); color: #fff; font-weight: 900;
+}
+.choice .votes { margin-left: auto; padding-left: 12px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.choice.c0 { background: #f08a5d; }
+.choice.c1 { background: #6fb1f5; }
+.choice.c2 { background: #f6d55c; }
+.choice.c3 { background: #c7a6f5; }
+.choice:disabled { opacity: 1; cursor: default; }
+.choice.picked { border-color: #fff; }
+.choice.dim { opacity: 0.32; }
+.choice.right { background: var(--accent); border-color: #fff; }
+.choice.right .letter { background: var(--accent-ink); }
+.timer { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.timer div { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
+.good { color: var(--accent); }
+.bad { color: var(--danger); }
+
+#stage .quiz {
+  pointer-events: auto; display: grid; gap: 16px; width: min(820px, 88%);
+  background: rgba(23, 25, 28, 0.95); border: 1px solid var(--line); border-radius: 22px; padding: 26px 30px;
+}
+#stage .quiz h2 { font-size: clamp(22px, 2.6vw, 36px); }
+#stage .choices { grid-template-columns: 1fr 1fr; }
+#stage .choice { font-size: clamp(15px, 1.5vw, 21px); }
+
+.meter { height: 16px; margin-top: 8px; border-radius: 999px; background: #55514b; overflow: hidden; }
+#greenBar { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width 1.2s ease; }
+#greenValue { color: var(--accent); margin-left: 6px; }
+#joinBox.small { grid-template-columns: auto 1fr; justify-items: start; text-align: left; column-gap: 14px; align-items: center; }
+#joinBox.small #qr { width: 84px; height: 84px; grid-row: span 4; }
+#joinBox.small #code { font-size: 30px; }
+
+.phone .quiz {
+  position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(23, 25, 28, 0.93); overflow-y: auto; touch-action: manipulation;
+}
+.phone .quiz h2 { font-size: 21px; }
+.phone .choices { margin-top: auto; }
+.phone .choice { font-size: 17px; min-height: 62px; }
+#hudRight { text-align: right; }
+#score { font-size: 20px; color: var(--accent); }
+#myScore, #doneWinner { max-width: 22em; }
+#doneWinner { font-weight: 800; color: var(--accent); }

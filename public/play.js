@@ -1,6 +1,8 @@
-// Phone: join with a code, then steer with two buttons while watching a close-up of your car.
-import { prepareTrack, WORLD } from '/shared/track.js';
-import { carIcon, connect, createSnapshots, drawCar, loadCars, ordinal, renderMap } from '/render.js';
+// Phone: join with a code, steer with two buttons while watching a close-up of your car, and
+// answer the questions that stop the race.
+import { CAR_TYPES, STAT_LABELS } from '/shared/cars.js';
+import { prepareTrack } from '/shared/track.js';
+import { carIcon, connect, createEffects, createLife, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('view');
@@ -9,6 +11,7 @@ const banner = $('banner');
 const FIRST = ['Speedy', 'Sleepy', 'Turbo', 'Wobbly', 'Lucky', 'Zippy', 'Grumpy', 'Sunny', 'Rusty', 'Funky'];
 const SECOND = ['Otter', 'Panda', 'Llama', 'Gecko', 'Moose', 'Koala', 'Robin', 'Tiger', 'Whale', 'Bison'];
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
+const RACING = ['countdown', 'race', 'question', 'reveal'];
 
 const store = {
   get(area, key) {
@@ -32,17 +35,31 @@ let me = saved && (!roomInUrl || saved.code === roomInUrl) ? saved : null; // { 
 let pending = null; // join request waiting for an answer
 let state = null;
 let track = null;
-let map = null;
+let tiles = null;
+let life = null; // the moving layer: smoke, birds, river
+let lastFrame = 0;
 let sheet = null;
 let steer = 0;
 let countdownEnd = 0;
 let goUntil = 0;
+let questionEnd = 0;
 let retryTimer = 0;
+let carInfo = null; // shared/cars.json, once it has loaded
+let myChoice = null; // what this phone picked for the question on screen
+let choiceFor = 0; // the question number that pick belongs to
 const held = { left: false, right: false };
 const snapshots = createSnapshots();
+const effects = createEffects();
 
 $('codeInput').value = roomInUrl;
 $('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
 // ---------- Screens ----------
 
@@ -51,31 +68,87 @@ function showScreen() {
   let screen = 'join';
   // Someone who joined after the race has no result to show, so they wait in the lobby.
   const raced = state?.results?.some((entry) => entry.id === me?.id);
-  if (me && state) screen = phase === 'results' && raced ? 'results' : phase === 'countdown' || phase === 'race' ? 'race' : 'lobby';
+  if (me && state) screen = phase === 'results' && raced ? 'results' : RACING.includes(phase) ? 'race' : 'lobby';
   document.body.dataset.screen = screen;
   if (screen === 'join') return;
 
   const mine = state.players.find((player) => player.id === me.id);
   if (!mine) return;
   $('hello').textContent = `You are in, ${mine.name}!`;
-  $('myCar').replaceChildren(carIcon(mine.color, mine.type, 200));
+  $('myCar').replaceChildren(carIcon(mine.color, mine.type, 170));
+  showCarCard(mine.type);
   $('status').textContent = {
     draw: 'Look at the big screen. The host is drawing the track.',
     results: 'A race just ended. You are in the next one!',
   }[phase] ?? 'The track is ready. The race starts soon!';
+  $('score').textContent = `✓ ${mine.correct}`;
 
-  if (screen === 'results') {
-    const result = state.results.find((entry) => entry.id === me.id);
-    $('myPlace').textContent = result ? ordinal(result.place) : '';
-    $('doneList').replaceChildren(...state.results.map((entry) => {
-      const row = document.createElement('li');
-      if (entry.id === me.id) row.className = 'me';
-      const name = document.createElement('span');
-      name.textContent = `${ordinal(entry.place)}  ${entry.name}`;
-      row.append(carIcon(entry.color, entry.type, 32), name);
-      return row;
-    }));
+  showQuiz(mine);
+  if (screen === 'results') showResults();
+}
+
+// What the chosen car is good and bad at, from the team's car stats.
+function showCarCard(type) {
+  const car = carInfo?.types[CAR_TYPES[type]];
+  $('carCard').hidden = !car;
+  if (!car) return;
+  $('carName').textContent = `${car.name} · ${car.title}`;
+  $('carNote').textContent = car.strength;
+  $('carStats').replaceChildren(...Object.entries(STAT_LABELS).flatMap(([key, label]) => {
+    const pips = element('dd');
+    pips.setAttribute('aria-label', `${car.stats[key]} out of 5`);
+    for (let i = 1; i <= 5; i++) pips.append(element('span', i <= car.stats[key] ? 'pip on' : 'pip'));
+    return [element('dt', '', label), pips];
+  }));
+}
+
+function showQuiz(mine) {
+  const { question, reveal, phase } = state;
+  const asking = phase === 'question' || phase === 'reveal';
+  $('quiz').hidden = !asking;
+  if (!asking || !question) return;
+  if (choiceFor !== question.number) {
+    choiceFor = question.number;
+    myChoice = null;
+    releaseAll();
   }
+  const picked = reveal ? mine.answer ?? myChoice : myChoice;
+  $('quizNumber').textContent = `Question ${question.number}`;
+  $('quizText').textContent = question.text;
+  let note = picked === null ? 'Pick one' : 'Answer sent';
+  if (reveal) note = picked === null ? 'Too slow!' : picked === reveal.correct ? 'Right! Speed boost' : 'Wrong';
+  $('quizNote').textContent = note;
+  $('quizNote').className = reveal ? (picked === reveal.correct ? 'good' : 'bad') : '';
+  $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
+    const button = element('button', `choice c${index}`);
+    button.type = 'button';
+    button.disabled = picked !== null || !!reveal;
+    if (picked === index) button.classList.add('picked');
+    if (reveal) button.classList.add(index === reveal.correct ? 'right' : 'dim');
+    button.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
+    // pointerdown, not click: the buttons are rebuilt whenever someone else answers.
+    button.addEventListener('pointerdown', () => {
+      if (myChoice !== null || state.phase !== 'question') return;
+      myChoice = index;
+      send({ t: 'answer', choice: index });
+      showQuiz(mine);
+    });
+    return button;
+  }));
+}
+
+function showResults() {
+  const { results, summary } = state;
+  const result = results.find((entry) => entry.id === me.id);
+  const winner = results.find((entry) => entry.id === summary?.realWinner);
+  $('myPlace').textContent = ordinal(result.place);
+  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right. The map is ${Math.round(summary.green * 100)}% green.`;
+  $('doneWinner').textContent = winner ? (winner.id === me.id ? 'You are the real winner!' : `Real winner: ${winner.name}`) : '';
+  $('doneList').replaceChildren(...results.map((entry) => {
+    const row = element('li', entry.id === me.id ? 'me' : '');
+    row.append(carIcon(entry.color, entry.type, 32), element('span', '', `${ordinal(entry.place)}  ${entry.name}  ✓ ${entry.correct}`));
+    return row;
+  }));
 }
 
 // ---------- Steering ----------
@@ -115,7 +188,7 @@ for (const side of ['left', 'right']) {
 
 const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
 addEventListener('keydown', (event) => {
-  if (!KEYS[event.code] || document.body.dataset.screen !== 'race') return;
+  if (!KEYS[event.code] || state?.phase !== 'race') return;
   held[KEYS[event.code]] = true;
   sendSteer();
   event.preventDefault();
@@ -132,7 +205,9 @@ addEventListener('blur', releaseAll);
 function frame(now) {
   requestAnimationFrame(frame);
   const screen = document.body.dataset.screen;
-  if ((screen !== 'race' && screen !== 'results') || !track || !sheet || !me) return;
+  if ((screen !== 'race' && screen !== 'results') || !tiles || !sheet || !me) return;
+
+  if (state.phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const width = canvas.clientWidth;
@@ -144,7 +219,6 @@ function frame(now) {
   const cars = snapshots.sample();
   const mine = cars.get(me.id);
   if (!mine || !width) return;
-  map ??= renderMap(track, 1);
 
   // The camera turns with the car, so "left" on the phone is always the car's left.
   const zoom = (height >= width ? Math.max(width / 640, height / 1100) : height / 620) * dpr;
@@ -156,18 +230,37 @@ function frame(now) {
   ctx.rotate(-mine.a - Math.PI / 2);
   ctx.scale(zoom, zoom);
   ctx.translate(-mine.x, -mine.y);
-  ctx.drawImage(map, 0, 0, WORLD.width, WORLD.height);
 
+  // Work out which part of the world is on screen, plus a margin so the next tiles are ready.
   const camera = ctx.getTransform();
+  const toWorld = camera.inverse();
+  const corners = [[0, 0], [canvas.width, 0], [0, canvas.height], [canvas.width, canvas.height]].map(([x, y]) => toWorld.transformPoint(new DOMPoint(x, y)));
+  const margin = 260;
+  const region = {
+    x0: Math.min(...corners.map((p) => p.x)) - margin,
+    y0: Math.min(...corners.map((p) => p.y)) - margin,
+    x1: Math.max(...corners.map((p) => p.x)) + margin,
+    y1: Math.max(...corners.map((p) => p.y)) + margin,
+  };
+  tiles.draw(ctx, state.green, region);
+
+  const racing = state.phase === 'race';
+  const pixel = dpr / zoom; // world units per screen pixel
+  const dt = Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
+  life.ground(ctx, state.green, now / 1000, region, pixel);
+  effects.update(cars, { dt, now, green: state.green, racing, length: CAR_LENGTH });
+  effects.draw(ctx, now);
   const labels = [];
   for (const player of state.players) {
     const car = cars.get(player.id);
     if (!car || player.id === me.id) continue;
-    drawCar(ctx, sheet, player.color, player.type, car.x, car.y, car.a);
+    drawCar(ctx, sheet, player.color, player.type, car.x, car.y, car.a, undefined, car.boost && racing);
     labels.push([player.name, camera.transformPoint(new DOMPoint(car.x, car.y))]);
   }
   const self = state.players.find((player) => player.id === me.id);
-  if (self) drawCar(ctx, sheet, self.color, self.type, mine.x, mine.y, mine.a);
+  if (self) drawCar(ctx, sheet, self.color, self.type, mine.x, mine.y, mine.a, undefined, mine.boost && racing);
+  life.sky(ctx, state.green, now / 1000, region, pixel);
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.font = '700 13px system-ui, sans-serif';
@@ -192,7 +285,8 @@ function frame(now) {
   let text = '';
   if (state.phase === 'countdown') text = String(Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000))));
   else if (now < goUntil) text = 'GO!';
-  else if (mine.done && state.phase === 'race') text = `Finished!<small>${ordinal(mine.place)} place</small>`;
+  else if (mine.done && racing) text = `Finished!<small>${ordinal(mine.place)} place</small>`;
+  else if (mine.boost && racing) text = '<small>Speed boost!</small>';
   if (banner.innerHTML !== text) banner.innerHTML = text;
 }
 
@@ -227,14 +321,19 @@ const send = connect({
       else pending = null;
       showScreen();
     } else if (message.t === 'state') {
-      if (state?.phase === 'countdown' && message.phase === 'race') goUntil = performance.now() + 900;
-      if (message.phase === 'countdown') countdownEnd = performance.now() + message.countdown;
-      if (message.phase === 'draw') track = map = null;
+      const now = performance.now();
+      if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
+      if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+      if (message.phase === 'question') questionEnd = now + message.question.endsIn;
+      if (message.phase === 'draw') track = tiles = life = null;
       state = message;
       showScreen();
     } else if (message.t === 'track') {
       track = prepareTrack(message.track);
-      map = null;
+      const scene = createScene(track);
+      tiles = createTiles(scene);
+      life = createLife(scene);
+      effects.clear();
     } else if (message.t === 's') {
       snapshots.push(message);
     }
@@ -257,4 +356,8 @@ $('changeCar').addEventListener('click', () => {
 loadCars().then((image) => {
   sheet = image;
 });
+fetch('/shared/cars.json').then((response) => response.json()).then((info) => {
+  carInfo = info;
+  showScreen();
+}).catch(() => { /* the game works without the stats card */ });
 requestAnimationFrame(frame);

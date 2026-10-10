@@ -1,6 +1,6 @@
 // Big screen: the host draws the track here, and everyone watches the race here.
 import { prepareTrack, MAX_PLAYERS, WORLD } from '/shared/track.js';
-import { carIcon, connect, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH } from '/render.js';
+import { carIcon, connect, createEffects, createLife, createScene, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH } from '/render.js';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -19,19 +19,32 @@ const LABELS = {
   lobby: ['Start race', 'Draw again'],
   results: ['Race again', 'New track'],
 };
+const RACING = ['countdown', 'race', 'question', 'reveal'];
+const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
+const MAP_FADE = 1500;
 
-let state = { phase: 'draw', players: [], laps: 3, results: null };
+let state = { phase: 'draw', players: [], laps: 2, green: 0, results: null };
 let track = null;
+let scene = null;
+let life = null; // the moving layer: smoke, birds, river
+let lastFrame = 0;
 let map = null;
+let oldMap = null; // the map before the last change of green, while it fades out
+let shownGreen = 0;
+let fadeStart = 0;
 let sheet = null;
 let view = { width: 0, height: 0, scale: 1, dpr: 1 };
 let stroke = []; // the drawn line, as fractions of the canvas size
 let drawing = false;
 let countdownEnd = 0;
 let goUntil = 0;
+let questionEnd = 0;
+let revealStart = 0;
 let trackError = '';
 let listStamp = 0;
 const snapshots = createSnapshots();
+const effects = createEffects();
+const WHOLE_MAP = { x0: 0, y0: 0, x1: WORLD.width, y1: WORLD.height };
 
 function loadSaved() {
   try {
@@ -45,7 +58,7 @@ function loadSaved() {
 
 function layout() {
   const box = stage.getBoundingClientRect();
-  const scale = Math.max(0.05, Math.min((box.width - 40) / WORLD.width, (box.height - 40) / WORLD.height));
+  const scale = Math.max(0.02, Math.min((box.width - 40) / WORLD.width, (box.height - 40) / WORLD.height));
   view = { width: Math.floor(WORLD.width * scale), height: Math.floor(WORLD.height * scale), scale, dpr: Math.min(window.devicePixelRatio || 1, 2) };
   for (const canvas of [drawCanvas, gameCanvas]) {
     canvas.style.width = `${view.width}px`;
@@ -53,7 +66,7 @@ function layout() {
     canvas.width = view.width * view.dpr;
     canvas.height = view.height * view.dpr;
   }
-  map = null; // drawn again at the new size
+  map = oldMap = null; // drawn again at the new size
   paintDrawing();
 }
 
@@ -129,27 +142,24 @@ for (const type of ['pointerup', 'pointercancel']) {
 
 // ---------- Side panel ----------
 
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
 function playerRow(player, { place, info } = {}) {
-  const row = document.createElement('li');
+  const row = element('li');
   if (!player.bot && !player.connected) row.classList.add('gone');
-  if (place) {
-    const number = document.createElement('span');
-    number.className = 'place';
-    number.textContent = place;
-    row.append(number);
-  }
-  const name = document.createElement('span');
-  name.className = 'name';
-  name.textContent = player.name;
-  const note = document.createElement('span');
-  note.className = 'info';
-  note.textContent = info ?? (player.bot ? 'bot' : player.connected ? '' : 'left');
-  row.append(carIcon(player.color, player.type, 40), name, note);
+  if (place) row.append(element('span', 'place', place));
+  row.append(carIcon(player.color, player.type, 40), element('span', 'name', player.name));
+  row.append(element('span', 'info', info ?? (player.bot ? 'bot' : player.connected ? '' : 'left')));
   return row;
 }
 
 function paintPlayers() {
-  const racing = state.phase === 'countdown' || state.phase === 'race';
+  const racing = RACING.includes(state.phase);
   const cars = snapshots.latest()?.cars;
   let rows;
   if (racing && cars) {
@@ -157,40 +167,64 @@ function paintPlayers() {
       .sort((a, b) => (cars.get(a.id)?.place ?? 9) - (cars.get(b.id)?.place ?? 9))
       .map((player) => {
         const car = cars.get(player.id);
-        return playerRow(player, { place: car?.place, info: car?.done ? 'Finished' : `Lap ${car?.lap ?? 1}/${state.laps}` });
+        const lap = car?.done ? 'Finished' : `Lap ${car?.lap ?? 1}/${state.laps}`;
+        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${lap}` });
       });
   } else {
     rows = state.players.map((player) => playerRow(player));
-    if (!rows.length) {
-      const empty = document.createElement('li');
-      empty.className = 'empty';
-      empty.textContent = 'Scan the code to join';
-      rows.push(empty);
-    }
+    if (!rows.length) rows.push(element('li', 'empty', 'Scan the code to join'));
   }
   $('players').replaceChildren(...rows);
   $('listTitle').textContent = racing ? 'Ranking' : `Players (${state.players.length}/${MAX_PLAYERS})`;
 }
 
 function paintResults() {
-  $('resultList').replaceChildren(...(state.results ?? []).map((result) => {
-    const row = document.createElement('li');
-    const place = document.createElement('span');
-    place.className = 'place';
-    place.textContent = ordinal(result.place);
-    const name = document.createElement('span');
-    name.textContent = result.name;
-    const time = document.createElement('span');
-    time.className = 'time';
-    time.textContent = result.time === null ? 'Did not finish' : formatTime(result.time);
-    row.append(place, carIcon(result.color, result.type, 44), name, time);
+  const { results, summary } = state;
+  const winner = results.find((result) => result.id === summary?.realWinner);
+  $('realWinner').textContent = winner
+    ? `Real winner: ${winner.name}, with ${winner.correct} right ${winner.correct === 1 ? 'answer' : 'answers'}`
+    : summary?.questions ? 'No real winner this time: nobody got a question right.' : '';
+  $('greenResult').textContent = summary ? `Together you made the map ${Math.round(summary.green * 100)}% green.` : '';
+  $('resultList').replaceChildren(...results.map((result) => {
+    const row = element('li');
+    if (result.id === summary?.realWinner) row.classList.add('real');
+    row.append(
+      element('span', 'place', ordinal(result.place)),
+      carIcon(result.color, result.type, 44),
+      element('span', 'name', result.name),
+      element('span', 'score', `✓ ${result.correct}`),
+      element('span', 'time', result.time === null ? 'Did not finish' : formatTime(result.time)),
+    );
     return row;
   }));
 }
 
+function paintQuiz() {
+  const { question, reveal, players } = state;
+  if (!question) return;
+  $('quizNumber').textContent = `Question ${question.number}`;
+  $('quizCount').textContent = reveal
+    ? `${players.filter((player) => player.answer === reveal.correct).length} of ${players.length} got it right`
+    : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
+  $('quizText').textContent = question.text;
+  $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
+    const row = element('li', `choice c${index}`);
+    if (reveal) row.classList.add(index === reveal.correct ? 'right' : 'dim');
+    row.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
+    if (reveal) row.append(element('span', 'votes', String(reveal.counts[index])));
+    return row;
+  }));
+}
+
+function paintGreen() {
+  const percent = Math.round(shownGreen * 100);
+  $('greenValue').textContent = `${percent}%`;
+  $('greenBar').style.width = `${percent}%`;
+}
+
 function updateUI() {
   const { phase } = state;
-  const racing = phase === 'countdown' || phase === 'race';
+  const racing = RACING.includes(phase);
   drawCanvas.hidden = phase !== 'draw';
   gameCanvas.hidden = phase === 'draw';
   hint.hidden = !HINTS[phase];
@@ -208,8 +242,11 @@ function updateUI() {
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
   $('removeBot').disabled = !state.players.some((player) => player.bot);
   $('clock').hidden = !racing;
+  $('greenBox').hidden = !racing && phase !== 'results';
+  $('joinBox').classList.toggle('small', racing || phase === 'results');
   $('results').hidden = phase !== 'results';
   if (phase === 'results') paintResults();
+  paintQuiz();
   paintPlayers();
 }
 
@@ -230,7 +267,13 @@ function frame(now) {
     count.hidden = true;
   }
 
-  if (phase === 'draw' || !track || !sheet || !view.width) return;
+  // The question stays up while people answer and for a moment after the answer is shown.
+  // Then it steps aside so the room can watch the map change.
+  const holding = phase === 'reveal' && now < revealStart + REVEAL_HOLD;
+  $('quiz').hidden = !(phase === 'question' || holding);
+  if (phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
+
+  if (phase === 'draw' || !scene || !sheet || !view.width) return;
   if (phase === 'race') {
     $('clock').textContent = formatTime(snapshots.latest()?.time ?? 0);
     if (now - listStamp > 250) {
@@ -239,20 +282,43 @@ function frame(now) {
     }
   }
 
-  map ??= renderMap(track, view.scale * view.dpr);
+  if (!holding && shownGreen !== state.green) {
+    oldMap = map;
+    map = null;
+    shownGreen = state.green;
+    fadeStart = now;
+    paintGreen();
+  }
+  map ??= renderMap(scene, view.scale * view.dpr, shownGreen);
+  const fade = oldMap ? Math.min(1, (now - fadeStart) / MAP_FADE) : 1;
   const ctx = gameCanvas.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (fade < 1) {
+    ctx.drawImage(oldMap, 0, 0, gameCanvas.width, gameCanvas.height);
+    ctx.globalAlpha = fade;
+  } else {
+    oldMap = null;
+  }
   ctx.drawImage(map, 0, 0, gameCanvas.width, gameCanvas.height);
+  ctx.globalAlpha = 1;
 
   const cars = snapshots.sample();
   const shown = state.players.filter((player) => cars.has(player.id)).sort((a, b) => cars.get(b.id).place - cars.get(a.id).place);
   const zoom = view.scale * view.dpr;
+  const pixel = 1 / view.scale; // world units per screen pixel
+  const dt = Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
   ctx.setTransform(zoom, 0, 0, zoom, 0, 0);
-  // Cars are drawn larger than life so they can be seen from the back of the room.
+  // The map is far bigger than the screen, so cars are drawn as large icons, not to scale.
+  const length = Math.max(CAR_LENGTH * 1.45, 40 / view.scale);
+  life.ground(ctx, shownGreen, now / 1000, WHOLE_MAP, pixel);
+  effects.update(cars, { dt, now, green: shownGreen, racing: phase === 'race', length });
+  effects.draw(ctx, now);
   for (const player of shown) {
     const car = cars.get(player.id);
-    drawCar(ctx, sheet, player.color, player.type, car.x, car.y, car.a, CAR_LENGTH * 1.45);
+    drawCar(ctx, sheet, player.color, player.type, car.x, car.y, car.a, length, car.boost && phase === 'race');
   }
+  life.sky(ctx, shownGreen, now / 1000, WHOLE_MAP, pixel);
   ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   ctx.font = '700 13px system-ui, sans-serif';
   ctx.textAlign = 'center';
@@ -260,7 +326,7 @@ function frame(now) {
   for (const player of shown) {
     const car = cars.get(player.id);
     const x = car.x * view.scale;
-    const y = car.y * view.scale - 26;
+    const y = car.y * view.scale - 32;
     const width = ctx.measureText(player.name).width + 12;
     ctx.fillStyle = 'rgba(23, 25, 28, 0.78)';
     ctx.beginPath();
@@ -297,14 +363,20 @@ const send = connect({
       } catch { /* the room still works, it just will not survive a reload */ }
       showJoin(message.code);
     } else if (message.t === 'state') {
-      if (state.phase === 'countdown' && message.phase === 'race') goUntil = performance.now() + 900;
-      if (message.phase === 'countdown') countdownEnd = performance.now() + message.countdown;
-      if (message.phase === 'draw') track = map = null;
+      const now = performance.now();
+      if (message.phase === 'race' && (state.phase === 'countdown' || state.phase === 'reveal')) goUntil = now + 900;
+      if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+      if (message.phase === 'question') questionEnd = now + message.question.endsIn;
+      if (message.phase === 'reveal' && state.phase !== 'reveal') revealStart = now;
+      if (message.phase === 'draw') track = scene = life = map = oldMap = null;
       state = message;
       updateUI();
     } else if (message.t === 'track') {
       track = prepareTrack(message.track);
-      map = null;
+      scene = createScene(track);
+      life = createLife(scene);
+      effects.clear();
+      map = oldMap = null;
       trackError = '';
     } else if (message.t === 's') {
       snapshots.push(message);

@@ -13,9 +13,17 @@
   <div id="hint"></div>
   <div id="overlay">
     <div id="count" hidden></div>
+    <div id="quiz" class="quiz" hidden>
+      <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
+      <h2 id="quizText"></h2>
+      <ol id="quizChoices" class="choices"></ol>
+      <div class="timer"><div id="quizTimer"></div></div>
+    </div>
     <div id="results" hidden>
       <h2>Results</h2>
+      <p id="realWinner"></p>
       <ol id="resultList"></ol>
+      <p id="greenResult"></p>
     </div>
   </div>
 </main>
@@ -27,6 +35,10 @@
     <div class="label">Game code</div>
     <div id="code">····</div>
   </section>
+  <section id="greenBox" hidden>
+    <div class="label">How green is the map <span id="greenValue">0%</span></div>
+    <div class="meter"><div id="greenBar"></div></div>
+  </section>
   <section>
     <div class="label" id="listTitle">Players</div>
     <ol id="players"></ol>
@@ -35,7 +47,7 @@
     <div id="clock" hidden></div>
     <div id="lapsRow" hidden>
       <span class="label">Laps</span>
-      <div><button id="lapsDown" type="button" aria-label="Fewer laps">−</button><span id="laps">3</span><button id="lapsUp" type="button" aria-label="More laps">+</button></div>
+      <div><button id="lapsDown" type="button" aria-label="Fewer laps">−</button><span id="laps">2</span><button id="lapsUp" type="button" aria-label="More laps">+</button></div>
     </div>
     <button id="main" class="primary" type="button"></button>
     <button id="second" type="button"></button>
