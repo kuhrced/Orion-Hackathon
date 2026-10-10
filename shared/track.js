@@ -22,6 +22,63 @@ export function seededRandom(seed) {
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+function orientation(a, b, c) {
+  return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+}
+
+function onSegment(a, b, p, epsilon) {
+  return Math.abs(orientation(a, b, p)) <= epsilon
+    && p[0] >= Math.min(a[0], b[0]) - epsilon
+    && p[0] <= Math.max(a[0], b[0]) + epsilon
+    && p[1] >= Math.min(a[1], b[1]) - epsilon
+    && p[1] <= Math.max(a[1], b[1]) + epsilon;
+}
+
+function segmentsTouch(a, b, c, d, epsilon) {
+  const ab = orientation(a, b, c);
+  const ab2 = orientation(a, b, d);
+  const cd = orientation(c, d, a);
+  const cd2 = orientation(c, d, b);
+  if (((ab > epsilon && ab2 < -epsilon) || (ab < -epsilon && ab2 > epsilon))
+    && ((cd > epsilon && cd2 < -epsilon) || (cd < -epsilon && cd2 > epsilon))) return true;
+  return onSegment(a, b, c, epsilon) || onSegment(a, b, d, epsilon)
+    || onSegment(c, d, a, epsilon) || onSegment(c, d, b, epsilon);
+}
+
+function pointSegmentDistance(point, a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const length = dx * dx + dy * dy;
+  const t = length ? clamp(((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / length, 0, 1) : 0;
+  return dist(point, [a[0] + dx * t, a[1] + dy * t]);
+}
+
+function segmentsTooClose(a, b, c, d, gap) {
+  return pointSegmentDistance(a, c, d) <= gap || pointSegmentDistance(b, c, d) <= gap
+    || pointSegmentDistance(c, a, b) <= gap || pointSegmentDistance(d, a, b) <= gap;
+}
+
+// A track is a simple loop. Reject crossings and retracing before smoothing can hide them.
+function selfIntersects(points, size) {
+  const gap = Math.max(size * 0.025, 0.01);
+  const last = points.length - 1;
+  for (let i = 0; i <= last; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    for (let j = i + 1; j <= last; j++) {
+      // Consecutive segments share an endpoint by design. The first and last
+      // segments also meet at the intended loop closure.
+      const separation = Math.min(j - i, points.length - (j - i));
+      const nearClosure = (i === 0 || j === last) && separation <= 2;
+      if (separation <= 1 || nearClosure) continue;
+      const c = points[j];
+      const d = points[(j + 1) % points.length];
+      if (segmentsTouch(a, b, c, d, 1e-8) || segmentsTooClose(a, b, c, d, gap)) return true;
+    }
+  }
+  return false;
+}
+
 function bounds(points) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const [x, y] of points) {
@@ -104,38 +161,10 @@ function turns(points) {
 
 const tightestRadius = (points) => SPACING / Math.max(1e-6, ...turns(points));
 
-// A big map from a simple drawing gives long, dull curves, so this adds extra bends. The road
-// swings left and right of the drawn line, less where another part of the track is close.
-function addBends(outline, random, margin) {
-  const step = 90;
-  const points = resampleClosed(splineClosed(outline, 6), step);
-  const n = points.length;
-  const length = n * step;
-  const waves = [[1500, 240], [2300, 170]].map(([wavelength, size]) => ({
-    cycles: Math.max(2, Math.round((length / wavelength) * (0.8 + random() * 0.4))),
-    size,
-    phase: random() * Math.PI * 2,
-  }));
-  const apart = Math.ceil(1600 / step); // ignore neighbours along the road itself
-  const bent = points.map(([x, y], i) => {
-    const [ax, ay] = points[(i - 1 + n) % n];
-    const [bx, by] = points[(i + 1) % n];
-    const along = Math.hypot(bx - ax, by - ay) || 1;
-    let nearest = Infinity;
-    for (let j = 0; j < n; j++) {
-      const gap = Math.abs(i - j);
-      if (Math.min(gap, n - gap) > apart) nearest = Math.min(nearest, dist(points[i], points[j]));
-    }
-    const room = clamp((nearest - ROAD_WIDTH * 3.4) / (ROAD_WIDTH * 4), 0, 1);
-    let swing = 0;
-    for (const wave of waves) swing += wave.size * Math.sin((i / n) * wave.cycles * Math.PI * 2 + wave.phase);
-    swing *= room;
-    return [
-      clamp(x - ((by - ay) / along) * swing, margin, WORLD.width - margin),
-      clamp(y + ((bx - ax) / along) * swing, margin, WORLD.height - margin),
-    ];
-  });
-  return smoothClosed(bent, 2);
+// Keep the generated track faithful to the player's line. Artificial sinusoidal bends make
+// a clean drawing turn into an unrelated squiggly track.
+function addBends(outline) {
+  return smoothClosed(outline, 2);
 }
 
 // Index where the longest straight begins, so the start grid sits on a straight.
@@ -172,7 +201,8 @@ export function buildTrack(raw, seed = 1) {
     return { ok: false, reason: 'Draw a big loop, not a straight line.' };
   }
 
-  // If the pen came back past the start, cut the overlap off.
+  // A short final approach to the start is the intended loop closure. Keep it,
+  // but reject any other crossing or retracing instead of silently cutting it off.
   const closeEnough = size * 0.06;
   for (let i = Math.floor(points.length * 0.6); i < points.length; i++) {
     if (dist(points[i], points[0]) < closeEnough) {
@@ -180,9 +210,10 @@ export function buildTrack(raw, seed = 1) {
       break;
     }
   }
-
   points = points.map(([x, y]) => [(x - box.minX) / size, (y - box.minY) / size]);
-  points = smoothClosed(resampleClosed(points, 0.04), 8);
+  points = resampleClosed(points, 0.04);
+  if (selfIntersects(points, 1)) return { ok: false, reason: 'Track lines cannot cross or overlap.' };
+  points = smoothClosed(points, 3);
   if (points.length < 12) return { ok: false, reason: 'Draw a bigger loop.' };
 
   // Fit the shape into the world, leaving room for the bends and the road at the edges.
@@ -193,7 +224,7 @@ export function buildTrack(raw, seed = 1) {
   const offsetX = (WORLD.width - shape.width * scale) / 2 - shape.minX * scale;
   const offsetY = (WORLD.height - shape.height * scale) / 2 - shape.minY * scale;
   let outline = points.map(([x, y]) => [x * scale + offsetX, y * scale + offsetY]);
-  outline = addBends(outline, seededRandom(seed), margin);
+  outline = addBends(outline);
 
   // Round the corners more until a car at full steer can get round every one of them.
   for (let round = 0; ; round++) {

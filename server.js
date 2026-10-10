@@ -20,8 +20,9 @@ const OFFROAD_SPEED = 170;
 const ACCEL = 320;
 const BRAKE = 700;
 const TURN = 2.7; // radians per second at full steer
-const CAR_RADIUS = 17;
+const CAR_RADIUS = 24; // large enough for the visible car bodies to make contact
 const COUNTDOWN_MS = 3500;
+const QUESTION_READY_MS = 3000;
 const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
 const MAX_RACE_MS = 10 * 60 * 1000;
 
@@ -34,7 +35,7 @@ const GREEN_TARGET = 0.7; // share of right answers that turns the whole map gre
 const BOT_RIGHT_CHANCE = 0.5;
 
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
-const RACING = new Set(['countdown', 'race', 'question', 'reveal']);
+const RACING = new Set(['countdown', 'race', 'question-countdown', 'question', 'reveal']);
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const mod = (value, n) => ((value % n) + n) % n;
@@ -158,6 +159,7 @@ function stateMessage(room) {
     question: question && {
       number: question.number, text: question.text, choices: question.choices,
       endsIn: Math.max(0, question.endsAt - now), seconds: ANSWER_MS / 1000,
+      readyIn: room.phase === 'question-countdown' ? Math.max(0, question.readyAt - now) : 0,
     },
     reveal: reveal && { correct: reveal.correct, counts: reveal.counts, endsIn: Math.max(0, reveal.until - now) },
     results: room.results,
@@ -232,13 +234,16 @@ function askQuestion(room, now) {
   const picked = pool[crypto.randomInt(pool.length)];
   room.asked.add(picked.id);
   room.questionCount++;
-  room.phase = 'question';
-  room.question = { number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct, endsAt: now + ANSWER_MS, closeAt: null };
+  room.phase = 'question-countdown';
+  room.question = {
+    number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct,
+    readyAt: now + QUESTION_READY_MS, endsAt: now + QUESTION_READY_MS + ANSWER_MS, closeAt: null,
+  };
   for (const player of room.players) {
     player.answer = null;
     const right = Math.random() < BOT_RIGHT_CHANCE;
     player.botAnswer = player.bot
-      ? { at: now + 1500 + Math.random() * 6000, choice: right ? picked.correct : (picked.correct + 1 + crypto.randomInt(3)) % 4 }
+      ? { at: room.question.readyAt + 1500 + Math.random() * 6000, choice: right ? picked.correct : (picked.correct + 1 + crypto.randomInt(3)) % 4 }
       : null;
   }
   sendState(room);
@@ -365,18 +370,28 @@ function pushApart(players) {
       const b = players[j].car;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
-      const d = Math.hypot(dx, dy) || 0.01;
+      let d = Math.hypot(dx, dy);
+      if (d < 0.001) {
+        // Give perfectly coincident cars a deterministic direction to separate.
+        dx = players[j].id >= players[i].id ? 1 : -1;
+        dy = 0;
+        d = 1;
+      }
       const overlap = CAR_RADIUS * 2 - d;
       if (overlap <= 0) continue;
-      // The heavier car moves less, so a pickup shoves a hatchback aside.
       const massA = TUNING[players[i].type].mass;
       const massB = TUNING[players[j].type].mass;
-      const pushA = (overlap / d) * (massB / (massA + massB));
-      const pushB = (overlap / d) * (massA / (massA + massB));
+      // The heavier car always wins contact. It keeps its line and speed while
+      // the lighter car is moved clear; equal weights share the correction.
+      const pushA = (overlap / d) * (massA === massB ? 0.5 : massA < massB ? 1 : 0);
+      const pushB = (overlap / d) * (massA === massB ? 0.5 : massB < massA ? 1 : 0);
       a.x -= dx * pushA;
       a.y -= dy * pushA;
       b.x += dx * pushB;
       b.y += dy * pushB;
+      if (massA < massB) a.v *= 0.72;
+      else if (massB < massA) b.v *= 0.72;
+      else { a.v *= 0.88; b.v *= 0.88; }
     }
   }
 }
@@ -413,6 +428,13 @@ function stepRoom(room, now) {
       sendState(room);
     } else if (room.tick++ % 12 === 0) {
       broadcast(room, snapshotMessage(room));
+    }
+    return;
+  }
+  if (room.phase === 'question-countdown') {
+    if (now >= room.question.readyAt) {
+      room.phase = 'question';
+      sendState(room);
     }
     return;
   }
