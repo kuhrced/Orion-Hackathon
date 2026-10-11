@@ -1,5 +1,6 @@
 // Big screen: the host draws the track here, and everyone watches the race here.
 import { prepareTrack, MAX_PLAYERS, WORLD } from '/shared/track.js';
+import { createCommentator } from '/commentator.js';
 import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH, WORLDS } from '/render.js';
 
 const $ = (id) => document.getElementById(id);
@@ -23,7 +24,7 @@ const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal']
 const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
 const MAP_FADE = 1500;
 
-let state = { phase: 'draw', players: [], laps: 2, mode: 'solo', results: null };
+let state = { phase: 'draw', players: [], laps: 1, mode: 'team', results: null };
 let track = null;
 let scene = null;
 let life = null; // the moving layer: smoke, birds, river
@@ -47,6 +48,7 @@ let listStamp = 0;
 const snapshots = createSnapshots();
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
+const commentator = createCommentator($('caption'));
 const WHOLE_MAP = { x0: 0, y0: 0, x1: WORLD.width, y1: WORLD.height };
 
 function loadSaved() {
@@ -171,7 +173,7 @@ function paintPlayers() {
       .map((player) => {
         const car = cars.get(player.id);
         const lap = car?.done ? 'Finished' : `Lap ${car?.lap ?? 1}/${state.laps}`;
-        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${LEVELS[player.level]} · ${lap}` });
+        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${lap}` });
       });
   } else {
     rows = state.players.map((player) => playerRow(player));
@@ -195,7 +197,7 @@ function paintResults() {
   const winner = results.find((result) => result.id === summary?.realWinner);
   $('realWinner').textContent = winner
     ? `Real winner: ${winner.name}, with ${winner.correct} right ${winner.correct === 1 ? 'answer' : 'answers'}`
-    : summary?.questions ? 'No real winner this time: nobody got a question right.' : '';
+    : summary?.questions ? 'No real winner this time: no player got a question right.' : '';
   $('resultList').replaceChildren(...results.map((result) => {
     const row = element('li');
     if (result.id === summary?.realWinner) row.classList.add('real');
@@ -214,29 +216,44 @@ function paintResults() {
   }));
 }
 
-// Every player has a different question, so the big screen shows one row per player.
+// Team mode: everyone has the same question, so it is shown big, with its four answers, and
+// each player is a small tag underneath.
+function paintClassQuiz(shared) {
+  const { reveal, players } = state;
+  const asked = players.filter((player) => player.q);
+  const right = reveal ? asked[0].right : null;
+  $('quizNumber').replaceChildren(`Question ${state.question.number} `, levelBadge(shared.level));
+  $('quizText').textContent = shared.text;
+  $('quizChoices').replaceChildren(...shared.choices.map((choice, index) => {
+    const row = element('li', `choice c${index}`);
+    row.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
+    if (reveal) {
+      row.classList.add(index === right ? 'right' : 'dim');
+      row.append(element('span', 'votes', String(asked.filter((player) => player.answer === index).length))); // how many picked it
+    }
+    return row;
+  }));
+  $('quizWho').replaceChildren(...asked.map((player) => {
+    const correct = reveal && player.answer !== null && player.answer === right;
+    const tag = element('li', reveal ? (correct ? 'good' : 'bad') : player.answered ? 'in' : '');
+    tag.append(carIcon(player.color, player.type, 26), element('span', 'name', player.name), element('span', 'mark', reveal ? (correct ? '✓' : '✗') : player.answered ? '●' : '…'));
+    return tag;
+  }));
+}
+
+// Solo mode: every player has a different question, so the big screen shows one row per player.
 function paintQuiz() {
   const { question, reveal, players } = state;
   if (!question) return;
-  $('quizNumber').textContent = `Question ${question.number}`;
-  if (state.mode === 'team') {
-    const shared = players.find((player) => player.q)?.q;
-    $('quizCount').textContent = reveal
-      ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
-      : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
-    $('quizText').textContent = shared?.text ?? 'Team question';
-    $('quizRows').replaceChildren(...(shared?.choices ?? []).map((choice, index) => {
-      const correct = reveal && index === players.find((player) => player.q)?.right;
-      const row = element('li', correct ? 'team-answer right' : 'team-answer');
-      row.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
-      return row;
-    }));
-    return;
-  }
   $('quizCount').textContent = reveal
     ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
     : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
-  $('quizText').textContent = reveal ? 'Time is up!' : state.mode === 'team' ? 'Team question — everyone answers together' : 'Everyone gets their own question';
+  const shared = state.mode === 'team' ? players.find((player) => player.q)?.q : null;
+  $('quizChoices').hidden = $('quizWho').hidden = !shared;
+  $('quizRows').hidden = !!shared;
+  if (shared) return paintClassQuiz(shared);
+  $('quizNumber').textContent = `Question ${question.number}`;
+  $('quizText').textContent = reveal ? 'Time is up!' : 'Everyone gets their own question';
   $('quizRows').replaceChildren(...players.filter((player) => player.q).map((player) => {
     const row = element('li');
     const text = element('span', 'ask');
@@ -258,8 +275,9 @@ function updateUI() {
   hint.textContent = (phase === 'draw' && trackError) || HINTS[phase] || '';
   hint.classList.toggle('error', phase === 'draw' && !!trackError);
 
-  const [mainLabel, secondLabel] = LABELS[phase] ?? [];
-  mainButton.hidden = secondButton.hidden = racing;
+  const [mainLabel, secondLabel] = LABELS[phase] ?? (racing ? [null, 'End race'] : []);
+  mainButton.hidden = racing;
+  secondButton.hidden = phase === 'countdown'; // not during 3-2-1, so a double click on Start cannot end the race
   const { bank } = state;
   // The race waits for Gemini: the questions the host asked for are the ones that get played.
   const writing = uploading || !!bank?.writing;
@@ -270,6 +288,9 @@ function updateUI() {
   // The topic can be set while the track is still being drawn, so Gemini works in the meantime.
   const choosing = phase === 'draw' || phase === 'lobby';
   $('topicRow').hidden = $('sourceRow').hidden = !choosing;
+  $('modeRow').title = state.mode === 'team'
+    ? 'Team: everyone gets the same question, on the big screen. The level follows the group.'
+    : 'Solo: each player gets their own question, at their own level.';
   if (document.activeElement !== $('topic')) $('topic').value = state.topic?.startsWith('PDF: ') ? '' : state.topic ?? '';
   $('pdfButton').classList.toggle('disabled', writing || !bank?.gemini);
   $('pdf').disabled = writing || !bank?.gemini;
@@ -286,7 +307,8 @@ function updateUI() {
   }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
-  $('botRow').hidden = phase !== 'draw' && phase !== 'lobby';
+  // The commentator's switch stays in reach all the time; the bot buttons only before a race.
+  $('addBot').hidden = $('removeBot').hidden = phase !== 'draw' && phase !== 'lobby';
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
   $('removeBot').disabled = !state.players.some((player) => player.bot);
   $('clock').hidden = !racing;
@@ -311,9 +333,11 @@ function frame(now) {
   if (phase === 'countdown') {
     count.hidden = false;
     count.textContent = Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000)));
+    $('clock').textContent = formatTime(0); // not the time of the last race
   } else if (phase === 'question-countdown') {
     count.hidden = false;
-    count.textContent = `GET READY ${Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))}`;
+    // Small words above the big digit, so it fits any screen.
+    count.replaceChildren(element('small', '', 'GET READY'), String(Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))));
   } else if (now < goUntil) {
     count.hidden = false;
     count.textContent = 'GO!';
@@ -325,6 +349,7 @@ function frame(now) {
   // Then it steps aside so the room can watch the map change.
   const holding = phase === 'reveal' && now < revealStart + REVEAL_HOLD;
   $('quiz').hidden = !(phase === 'question' || holding);
+  $('ranking').style.visibility = $('quiz').hidden ? '' : 'hidden'; // the Top 3 box would lie on the question panel
   if (phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
   if (phase === 'draw' || !scene || !sheet || !view.width) return;
@@ -390,16 +415,18 @@ function frame(now) {
 
 async function showJoin(code) {
   let base = location.origin;
-  if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
-    // Phones cannot open "localhost", so show this computer's Wi-Fi address instead.
-    try {
-      const info = await (await fetch('/info')).json();
-      if (info.lan[0]) base = info.lan[0];
-    } catch { /* keep the origin */ }
-  }
+  try {
+    const info = await (await fetch('/info')).json();
+    // A public address, if the game has one, works for every phone. Otherwise phones cannot
+    // open "localhost", so show this computer's Wi-Fi address instead.
+    if (info.public) base = info.public.replace(/\/$/, '');
+    else if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) && info.lan[0]) base = info.lan[0];
+  } catch { /* keep the origin */ }
   const url = `${base}/play?room=${code}`;
   $('qr').src = `/qr.svg?d=${encodeURIComponent(url)}`;
-  $('joinUrl').textContent = url;
+  // No address to type: the QR code goes straight into this game. The code is for anyone
+  // whose camera will not scan; the front page has a box for it.
+  $('joinUrl').textContent = `No camera? Open ${base.replace(/^https?:\/\//, '')} and type the code.`;
   $('code').textContent = code;
 }
 
@@ -438,6 +465,8 @@ const send = connect({
     } else if (message.t === 'break') {
       const what = message.limb ? props.loseLimb(message.id) : props.smash(message.id) && 'crate';
       if (what) effects.shatter(what, message.x, message.y, message.vx, message.vy, Math.max(1, 1 / view.scale / 3));
+    } else if (message.t === 'say') {
+      commentator.say(message);
     } else if (message.t === 'trackError') {
       trackError = message.reason;
       updateUI();
@@ -450,13 +479,17 @@ mainButton.addEventListener('click', () => {
   else if (state.phase === 'lobby') send({ t: 'start' });
   else if (state.phase === 'results') send({ t: 'again' });
 });
+let endedAt = -Infinity; // when "End race" was pressed; a moment later the same button says "New track"
 secondButton.addEventListener('click', () => {
   if (state.phase === 'draw') {
     stroke = [];
     trackError = '';
     paintDrawing();
     updateUI();
-  } else {
+  } else if (RACING.includes(state.phase)) {
+    endedAt = performance.now();
+    send({ t: 'end' });
+  } else if (performance.now() - endedAt > 1500) { // a double click on "End race" must not throw the track away
     send({ t: 'redraw' });
   }
 });
@@ -498,6 +531,15 @@ $('teacher').addEventListener('click', () => {
   const { code, key } = loadSaved();
   if (code) window.open(`/teacher#${code}.${key}`, 'teacher');
 });
+const showVoice = () => {
+  $('voiceToggle').textContent = `Voice: ${commentator.muted ? 'off' : 'on'}`;
+  $('voiceToggle').title = 'In team mode a voice reads the question and the right answer.';
+};
+$('voiceToggle').addEventListener('click', () => {
+  commentator.toggle();
+  showVoice();
+});
+showVoice();
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
 $('soloMode').addEventListener('click', () => send({ t: 'mode', mode: 'solo' }));

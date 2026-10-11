@@ -9,6 +9,10 @@ const $ = (id) => document.getElementById(id);
 const canvas = $('view');
 const banner = $('banner');
 
+// A made-up name for a phone that joins for the first time; it can be changed in the lobby.
+const FIRST = ['Speedy', 'Sleepy', 'Turbo', 'Wobbly', 'Lucky', 'Zippy', 'Grumpy', 'Sunny', 'Rusty', 'Funky'];
+const SECOND = ['Otter', 'Panda', 'Llama', 'Gecko', 'Moose', 'Koala', 'Robin', 'Tiger', 'Whale', 'Bison'];
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal'];
 
 const store = {
@@ -55,11 +59,23 @@ const snapshots = createSnapshots(100); // a little more patience than the big s
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
-$('codeInput').value = roomInUrl;
-$('nameInput').value = roomInUrl ? '' : store.get('localStorage', 'race-name') || '';
-if (roomInUrl) {
-  $('codeInput').readOnly = true;
-  $('codeInput').setAttribute('aria-label', `Game code ${roomInUrl}`);
+// A random id that this phone keeps, so the game can remember the player between races.
+// It is not tied to a name or an account.
+function deviceId() {
+  let id = store.get('localStorage', 'race-device');
+  if (typeof id !== 'string' || id.length < 8) {
+    id = Array.from(crypto.getRandomValues(new Uint8Array(12)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    store.set('localStorage', 'race-device', id);
+  }
+  return id;
+}
+
+// Scanning the QR code is all it takes to join: the link carries the game code, and the name is
+// the one this phone used last time, or a made-up one. The name can be changed in the lobby.
+if (!me && roomInUrl) {
+  pending = { code: roomInUrl, name: store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`, device: deviceId() };
+} else if (!me) {
+  location.replace('/'); // no game code: the front page is where a code can be typed
 }
 
 function element(tag, className, text) {
@@ -83,6 +99,20 @@ function showScreen() {
   const mine = state.players.find((player) => player.id === me.id);
   if (!mine) return;
   $('hello').textContent = `You are in, ${mine.name}!`;
+  if (document.activeElement !== $('nameInput')) $('nameInput').value = mine.name;
+  if (me.name !== mine.name) {
+    me.name = mine.name; // so a reconnect comes back under the new name
+    store.set('sessionStorage', 'race-player', me);
+  }
+  // The game remembers players between races: say so, and say what it will do with it.
+  const { back } = mine;
+  $('welcome').hidden = !back;
+  if (back) {
+    const review = state.mode === 'team' ? '' : back.weak.slice(0, 2).join(' and ').toLowerCase(); // team questions are not personal
+    $('welcome').textContent = back.sameTopic
+      ? `Welcome back! You start on ${LEVELS[mine.level].toLowerCase()}${review ? `, and ${review} will come back first` : ''}.`
+      : `Welcome back! Last time you got ${back.last.right} of ${back.last.asked} right on ${back.last.topic}.`;
+  }
   $('myCar').replaceChildren(carIcon(mine.color, mine.type, 170));
   showCarCard(mine.type);
   $('status').textContent = {
@@ -145,6 +175,11 @@ function showQuiz(mine) {
   if (reveal) note = `${picked === null ? 'Too slow!' : correct ? 'Right! Speed boost.' : 'Wrong.'} Next: ${LEVELS[mine.level].toLowerCase()}`;
   $('quizNote').textContent = note;
   $('quizNote').className = reveal ? (correct ? 'good' : 'bad') : '';
+  // The buttons are rebuilt only when something has changed for this player. News of other
+  // players' answers arrives all the time, and a rebuild under the finger would lose the tap.
+  const look = JSON.stringify([question.number, mine.q.text, picked, locked, !!reveal, mine.right]);
+  if ($('quizChoices').dataset.look === look) return;
+  $('quizChoices').dataset.look = look;
   $('quizChoices').replaceChildren(...mine.q.choices.map((choice, index) => {
     const button = element('button', `choice c${index}`);
     button.type = 'button';
@@ -153,12 +188,20 @@ function showQuiz(mine) {
     if (picked === index) button.classList.add('picked');
     if (reveal) button.classList.add(index === mine.right ? 'right' : 'dim');
     button.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
-    // pointerdown, not click: the buttons are rebuilt whenever someone else answers.
+    // A tap picks the answer. A swipe to scroll does not: when the browser starts to scroll it
+    // cancels the press.
+    let pressed = false;
     button.addEventListener('pointerdown', () => {
-      if (myChoice !== null || state.phase !== 'question' || performance.now() < answersOpenAt) return;
+      pressed = true;
+    });
+    button.addEventListener('pointercancel', () => {
+      pressed = false;
+    });
+    button.addEventListener('pointerup', () => {
+      if (!pressed || myChoice !== null || state.phase !== 'question' || performance.now() < answersOpenAt) return;
       myChoice = index;
       send({ t: 'answer', choice: index });
-      showQuiz(mine);
+      showScreen();
     });
     return button;
   }));
@@ -331,7 +374,7 @@ function join(request) {
 
 const send = connect({
   onOpen() {
-    if (me) join({ code: me.code, key: me.key, name: me.name });
+    if (me) join({ code: me.code, key: me.key, name: me.name, device: deviceId() });
     else if (pending) join(pending);
   },
   onMessage(message) {
@@ -339,23 +382,32 @@ const send = connect({
       me = { id: message.id, key: message.key, code: message.code, name: pending?.name ?? me?.name };
       pending = null;
       store.set('sessionStorage', 'race-player', me);
+      if (me.name) store.set('localStorage', 'race-name', me.name); // the same name next time
       $('joinError').textContent = '';
       steer = 0;
       sendSteer();
       showScreen();
     } else if (message.t === 'error') {
-      // A saved seat that no longer exists: go back to the join form.
+      // The seat is gone, the game is full, or a race is running. Say why. A running race
+      // ends soon, so keep asking; anything else needs a new code.
       me = null;
       store.set('sessionStorage', 'race-player', null);
-      $('joinError').textContent = message.reason;
       clearTimeout(retryTimer);
-      if (message.retry && pending) retryTimer = setTimeout(() => pending && join(pending), 2000);
+      const waiting = !!(message.retry && pending);
+      if (waiting) retryTimer = setTimeout(() => pending && join(pending), 2000);
       else pending = null;
+      $('joinTitle').textContent = waiting ? 'Almost there…' : 'Could not join';
+      $('joinError').textContent = message.reason;
+      $('joinHome').hidden = waiting;
       showScreen();
     } else if (message.t === 'state') {
       const now = performance.now();
       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+      if (!RACING.includes(message.phase)) { // between races: the next race counts its questions from 1 again
+        choiceFor = 0;
+        myChoice = null;
+      }
       if (message.phase === 'question-countdown') questionEnd = now + message.question.readyIn;
       if (message.phase === 'question') {
         questionEnd = now + message.question.endsIn;
@@ -390,13 +442,16 @@ const send = connect({
   },
 });
 
-$('join').addEventListener('submit', (event) => {
+$('rename').addEventListener('submit', (event) => {
   event.preventDefault();
   const name = $('nameInput').value.trim();
-  store.set('localStorage', 'race-name', name);
-  navigator.wakeLock?.request('screen').catch(() => {}); // keep the phone awake where allowed
-  join({ code: $('codeInput').value.trim().toUpperCase(), name });
+  $('nameInput').blur();
+  if (!name) return;
+  store.set('localStorage', 'race-name', name); // this phone uses it again next time
+  send({ t: 'name', name });
 });
+// Keep the phone awake where that is allowed. Browsers only allow it after a touch.
+addEventListener('pointerdown', () => navigator.wakeLock?.request('screen').catch(() => {}), { once: true });
 
 $('changeCar').addEventListener('click', () => {
   const mine = state?.players.find((player) => player.id === me?.id);

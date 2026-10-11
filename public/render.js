@@ -6,6 +6,18 @@ import { circle, paintScene, tint, TAU } from '/worlds.js';
 
 export { createLife, createScene, WORLDS } from '/worlds.js';
 
+// Phones that stopped at iOS 15 do not have these two. Without them the race view stays empty.
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, width, height) {
+    this.rect(x, y, width, height); // square corners are fine there
+  };
+}
+if (!Array.prototype.at) {
+  Array.prototype.at = function (index) {
+    return this[index < 0 ? this.length + index : index];
+  };
+}
+
 export const CAR_LENGTH = 78;
 const CELL = { width: 128, height: 256 }; // one car in cars.png; 6 colours across, 4 types down
 

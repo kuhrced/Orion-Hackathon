@@ -9,9 +9,11 @@ import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { geminiModel, geminiReady, writeFeedback, writeQuestions } from './gemini.js';
+import { loadMemory, recall, remember } from './memory.js';
 import { carTuning, CAR_TYPES } from './shared/cars.js';
 import { buildProps, PROP_KINDS } from './shared/props.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
+import { clip, speak, voiceReady } from './voice.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 try {
@@ -50,6 +52,10 @@ const LEVEL_WEIGHT = [0, 0.7, 1, 1.4]; // a harder question cleans more of the m
 const BOT_RIGHT_CHANCE = [0, 0.75, 0.55, 0.35]; // by level
 
 const HEARTBEAT_MS = 1500;
+// How long the Start button waits for Gemini before the host may start with the built-in
+// questions. Gemini normally answers in 5 seconds; reading a PDF takes longer.
+const GEMINI_WAIT_MS = Number(process.env.GEMINI_WAIT_MS) || 25000;
+const GEMINI_WAIT_PDF_MS = Number(process.env.GEMINI_WAIT_PDF_MS) || 60000;
 const MAX_PDF_BYTES = 12 * 1024 * 1024; // Gemini takes about 20 MB per request, and the file grows by a third on the way
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
 const RACING = new Set(['countdown', 'race', 'question-countdown', 'question', 'reveal']);
@@ -69,6 +75,17 @@ const makeBank = (topic, source, questions, made = {}) => ({
   topic, source, count: questions.length, made, questions,
   levels: [null, 1, 2, 3].map((level) => (level ? questions.filter((q) => q.level === level) : null)),
 });
+// There are no built-in questions: every question is written by Gemini or added on the teacher
+// screen. Until there are questions, a race cannot start.
+// For tests, and as a last resort if Gemini is down on the day, starting the server with
+// BUILTIN_QUESTIONS=1 loads the old set from data/questions.json as spare questions.
+const SPARE = process.env.BUILTIN_QUESTIONS === '1'
+  ? JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'))
+    .filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct) && [1, 2, 3].includes(q.level))
+  : [];
+const spareBank = SPARE.length ? makeBank('Spare questions', 'backup', SPARE) : null;
+// What a room has while it has no questions of its own.
+const noBank = (topic) => spareBank ?? makeBank(topic, 'empty', []);
 const banks = new Map(); // key -> a bank Gemini has already written, so it is asked only once
 const writing = new Map(); // key -> the request that is writing it right now, shared by every room that wants it
 
@@ -91,6 +108,7 @@ function writeBank(key, topic, pdf) {
 function useBank(room, bank) {
   if (room.bank === bank) return;
   room.bank = bank;
+  room.classSeen = new Set();
   for (const player of room.players) player.seen = new Set(); // new questions: nobody has seen any
 }
 
@@ -99,7 +117,7 @@ function useBank(room, bank) {
 function prepareBank(room) {
   const topic = room.topic;
   // Keep questions edited or added by the teacher for the rest of this room.
-  if (room.bank.topic === topic && room.bank.questions.length) {
+  if (room.bank !== spareBank && room.bank.topic === topic && room.bank.questions.length) {
     room.bankNote = '';
     room.writing = false;
     return;
@@ -110,30 +128,52 @@ function prepareBank(room) {
     useBank(room, cached);
     room.bankNote = '';
     room.writing = false;
+    room.pending = null; // an answer that is still on its way is for another topic
     return;
   }
   if (!geminiReady()) {
-    useBank(room, makeBank(topic, 'empty', []));
-    room.bankNote = 'No generated questions are available. Add questions on the teacher screen.';
+    useBank(room, noBank(topic));
+    room.bankNote = spareBank ? 'No Gemini key: the spare questions are used.' : 'No generated questions are available. Add questions on the teacher screen.';
     room.writing = false;
+    room.pending = null; // an answer that is still on its way is for another topic
     return;
   }
-  if (room.writing) return; // already asked; the answer is on its way
-  useBank(room, makeBank(topic, 'empty', []));
-  room.bankNote = '';
-  room.writing = true;
+  if (room.pending === key) return; // already asked; the answer is on its way
+  // Gemini has already failed on this topic: ask again, but do not show "writing" again.
+  const letDown = room.letDown === key;
+  const failed = spareBank ? 'Gemini could not write the questions, so the spare questions are used.' : 'Gemini could not write the questions. Add questions on the teacher screen or try again.';
+  const slow = spareBank ? 'Gemini is slow right now. You can start with the spare questions, or wait for Gemini.' : 'Gemini is slow right now. Wait a little longer, or add questions on the teacher screen.';
+  useBank(room, noBank(topic));
+  room.bankNote = letDown ? failed : '';
+  room.writing = !letDown;
+  room.pending = key;
   room.writingSince = Date.now();
-  writeBank(key, topic, key === room.pdf?.key ? room.pdf.data : null).then(() => {
-    if (room.topic !== topic) return; // the host has moved on to another topic
+  const pdf = key === room.pdf?.key ? room.pdf.data : null;
+  // If Gemini is slow, say so instead of showing "writing" for ever. Its questions are still
+  // used when they arrive; until then the teacher can add questions by hand.
+  const giveUp = setTimeout(() => {
+    if (room.pending !== key || !room.writing) return;
+    room.writing = false;
+    room.bankNote = slow;
+    sendState(room);
+  }, pdf ? GEMINI_WAIT_PDF_MS : GEMINI_WAIT_MS);
+  writeBank(key, topic, pdf).then(() => {
+    if (room.pending !== key) return; // the host has moved on to another topic
     room.writing = false;
     if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
+    room.bankNote = '';
     useBank(room, banks.get(key));
   }).catch((error) => {
     console.log(`Gemini could not write questions: ${error.message}`);
-    if (room.topic !== topic) return;
+    if (room.pending !== key) return;
     room.writing = false;
-    room.bankNote = 'Gemini could not write the questions. Add questions on the teacher screen or try again.';
-  }).finally(() => sendState(room));
+    room.letDown = key;
+    room.bankNote = failed;
+  }).finally(() => {
+    clearTimeout(giveUp);
+    if (room.pending === key) room.pending = null;
+    sendState(room);
+  });
 }
 
 // ---------- HTTP ----------
@@ -171,7 +211,7 @@ async function receivePdf(request, response) {
   const name = header('x-name').replace(/\.pdf$/i, '').replace(/[^\p{L}\p{N} ._()-]/gu, '').trim().slice(0, 40) || 'document';
   room.pdf = { topic: `PDF: ${name}`, key: `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`, data };
   room.topic = room.pdf.topic;
-  room.writing = false;
+  room.letDown = null; // a new upload means: ask Gemini again, and wait for it
   prepareBank(room);
   sendState(room);
   reply(200);
@@ -184,12 +224,31 @@ function lanUrls() {
     .map((net) => `http://${net.address}:${PORT}`);
 }
 
+// One line in the server's output for every page a device opens, and for every join. When a
+// phone "cannot get in", this shows at once whether it reached this computer at all (if
+// nothing is printed, the network is in the way, not the game).
+function seen(request, what) {
+  const agent = request.headers['user-agent'] ?? '';
+  const device = /Android/i.test(agent) ? 'Android' : /iPhone|iPad|iPod/i.test(agent) ? 'iPhone' : 'computer';
+  const address = (request.socket.remoteAddress ?? '?').replace(/^::ffff:/, '');
+  console.log(`${new Date().toLocaleTimeString()}  ${device} at ${address} ${what}`);
+}
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  if (Object.hasOwn(PAGES, url.pathname)) seen(request, `opened ${url.pathname}${url.search}`);
   if (url.pathname === '/pdf' && request.method === 'POST') return receivePdf(request, response);
+  if (url.pathname.startsWith('/voice/')) {
+    const sound = clip(url.pathname.slice(7).replace(/\.mp3$/, ''));
+    response.writeHead(sound ? 200 : 404, { 'Content-Type': sound ? 'audio/mpeg' : 'text/plain', 'Cache-Control': 'no-store' });
+    response.end(sound ?? 'Not found');
+    return;
+  }
   if (url.pathname === '/info') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify({ lan: lanUrls() }));
+    // PUBLIC_URL is for when the game is reachable at another address (online, or a tunnel):
+    // the QR code then points there.
+    response.end(JSON.stringify({ lan: lanUrls(), public: process.env.PUBLIC_URL || null }));
     return;
   }
   if (url.pathname === '/qr.svg') {
@@ -229,11 +288,14 @@ function createRoom() {
   const room = {
     code, hostKey: token(), host: null, players: [], nextId: 1,
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
-    track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
-    mode: 'solo',
+    track: null, laps: 1, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
-    topic: DEFAULT_TOPIC, bank: makeBank(DEFAULT_TOPIC, 'empty', []), bankNote: '', writing: false,
+    topic: DEFAULT_TOPIC, bank: noBank(DEFAULT_TOPIC), bankNote: '', writing: false, pending: null, letDown: null,
+    // 'solo': each player gets their own question at their own level.
+    // 'team': everyone gets the same question, and the level follows the group as a whole.
+    mode: 'team', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
     lastWorld: null, props: [], watchers: new Set(), pdf: null, writingSince: 0, tick: 0, lastActive: Date.now(),
+    voiceLine: Promise.resolve(),
   };
   rooms.set(code, room);
   return room;
@@ -277,6 +339,11 @@ function stateMessage(room) {
     players: room.players.map((player) => ({
       id: player.id, name: player.name, color: player.color, type: player.type, bot: player.bot,
       connected: player.connected, correct: player.correct, score: player.score, level: player.level,
+      back: player.past && {
+        races: player.past.races, right: player.past.right, asked: player.past.asked,
+        last: { topic: player.past.last.topic, right: player.past.last.right, asked: player.past.last.asked },
+        weak: player.past.here?.weak ?? [], sameTopic: !!player.past.here,
+      },
       // Everyone has their own question. The right answer is only sent once time is up.
       q: showing && player.q ? { text: player.q.question, choices: player.q.choices, level: player.q.level, subtopic: player.q.subtopic } : null,
       answered: player.answer !== null,
@@ -338,8 +405,11 @@ function editBank(room, message) {
     questions.splice(index, 1);
   } else if (index >= 0) questions[index] = updated;
   else questions.unshift(updated);
-  useBank(room, makeBank(room.bank.topic, room.bank.source, questions, room.bank.made));
-  sendBank(room, room.host);
+  // Questions the teacher adds to an empty set (or to the spare one) become this room's own
+  // set, so they are kept (see prepareBank).
+  const own = room.bank === spareBank || room.bank.source === 'empty' || room.bank.source === 'teacher';
+  useBank(room, makeBank(own ? room.topic : room.bank.topic, own ? 'teacher' : room.bank.source, questions, room.bank.made));
+  room.bankNote = ''; // the note about having no questions is no longer true
   for (const socket of room.watchers) sendBank(room, socket);
   sendState(room);
 }
@@ -354,14 +424,25 @@ function placeOnGrid(room) {
   if (!room.track) return;
   room.players.forEach((player, slot) => {
     const spot = gridSlot(room.track, slot);
-    Object.assign(player, { steer: 0, correct: 0, score: 0, answer: null, answerAt: 0, q: null, botAnswer: null, boostUntil: 0, level: 2, history: [], weak: new Set() });
+    // Someone who has played this topic before starts on the level they reached, and the
+    // subtopics they got wrong come back first. Everyone else starts on medium.
+    // In team mode everyone shares one level, so nobody brings their own.
+    player.past = player.device ? recall(player.device, room.bank.topic) : null;
+    const before = room.mode === 'team' ? null : player.past?.here;
+    Object.assign(player, {
+      steer: 0, correct: 0, score: 0, answer: null, answerAt: 0, q: null, botAnswer: null, boostUntil: 0,
+      level: before?.level ?? 2, history: [], weak: new Set(before?.weak ?? []),
+    });
     player.car = {
       x: spot.x, y: spot.y, a: spot.angle, v: 0, steer: 0,
       index: spot.index, progress: -spot.back, lap: 1, place: slot + 1,
       lost: 0, wrong: 0, done: false, finishTime: null,
     };
   });
-  Object.assign(room, { raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null });
+  Object.assign(room, {
+    raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null,
+    classLevel: 2, classWeak: new Set(),
+  });
   // Everything on the road is stood back up for the new race.
   room.props = buildProps(room.track).map((prop) => ({ ...prop, z: 0, vx: 0, vy: 0, vz: 0, spin: 0, gone: false, moving: false, settled: false }));
   broadcast(room, propsMessage(room));
@@ -374,7 +455,7 @@ function propsMessage(room) {
   return { t: 'props', props: room.props.map((prop) => [prop.id, Math.round(prop.x), Math.round(prop.y), Math.round(prop.a * 100) / 100, prop.gone ? 1 : 0]) };
 }
 
-function addPlayer(room, { name, bot = false, socket = null }) {
+function addPlayer(room, { name, bot = false, socket = null, device = null }) {
   const used = new Set(room.players.map((player) => player.color));
   const color = [0, 1, 2, 3, 4, 5].find((index) => !used.has(index));
   const player = {
@@ -382,6 +463,7 @@ function addPlayer(room, { name, bot = false, socket = null }) {
     connected: !bot && !!socket, leftAt: null, steer: 0, car: null,
     correct: 0, score: 0, answer: null, answerAt: 0, q: null, botAnswer: null, boostUntil: 0,
     level: 2, history: [], weak: new Set(), seen: new Set(), // everyone starts on medium
+    device, past: null, // what is remembered about this player from earlier races
     pace: bot ? 0.84 + Math.random() * 0.1 : 1, lane: (Math.random() - 0.5) * 90,
   };
   room.players.push(player);
@@ -395,20 +477,41 @@ function playersChanged(room) {
 
 // ---------- Questions during the race ----------
 
-// Picks this player's next question: at their level, not one they have had, and from a
-// subtopic they got wrong before if there is one, so weak spots come round again.
-function pickQuestion(room, player) {
-  const { levels } = room.bank;
-  let fresh = levels[player.level].filter((q) => !player.seen.has(q.id));
-  if (!fresh.length) fresh = [1, 2, 3].flatMap((level) => levels[level]).filter((q) => !player.seen.has(q.id));
-  if (!fresh.length) {
-    player.seen.clear();
-    fresh = levels[player.level];
+// ---------- The voice ----------
+
+// The voice on the big screen reads the question out when it appears, and the right answer
+// when time is up. Nothing else: no race commentary. Only in team mode, where everyone has
+// the same question; in solo mode every phone has a different one.
+// `cut` stops whatever is still being read, so the answer never waits behind the question.
+function say(room, text, cut = false) {
+  const { host } = room;
+  if (!host) return; // only the big screen has a voice
+  if (!voiceReady()) {
+    send(host, { t: 'say', text, audio: null, cut }); // the browser's own voice reads it
+    return;
   }
-  const weak = fresh.filter((q) => player.weak.has(q.subtopic));
-  const from = weak.length ? weak : fresh;
+  // ElevenLabs makes the sound. One line at a time, so they reach the screen in order; if it
+  // fails, the screen gets the words alone and reads them out with the browser's own voice.
+  room.voiceLine = room.voiceLine.then(() => speak(text)).then((id) => send(host, { t: 'say', text, audio: id && `/voice/${id}.mp3`, cut }));
+}
+
+const answerLine = (q) => `The answer is: ${q.choices[q.correct]}.`;
+
+// Picks a question at `level` that has not been `seen`, from a `weak` subtopic if there is one.
+// It is used for one player (personal mode) and for the whole room (class mode).
+function pickFrom(bank, level, seen, weak) {
+  const { levels } = bank;
+  let fresh = levels[level].filter((q) => !seen.has(q.id));
+  if (!fresh.length) fresh = [1, 2, 3].flatMap((other) => levels[other]).filter((q) => !seen.has(q.id));
+  if (!fresh.length) {
+    seen.clear();
+    // A small set made by a teacher may have nothing at this level: then any question will do.
+    fresh = levels[level].length ? levels[level] : bank.questions;
+  }
+  const again = fresh.filter((q) => weak.has(q.subtopic));
+  const from = again.length ? again : fresh;
   const picked = from[crypto.randomInt(from.length)];
-  player.seen.add(picked.id);
+  seen.add(picked.id);
   return picked;
 }
 
@@ -420,17 +523,27 @@ function askQuestion(room, now) {
     // askedAt is the moment the questions themselves appear, after the "get ready" countdown.
     readyAt: now + QUESTION_READY_MS, askedAt: now + QUESTION_READY_MS, endsAt: now + QUESTION_READY_MS + ANSWER_MS, closeAt: null,
   };
-  const teamQuestion = room.mode === 'team' && room.players.length ? pickQuestion(room, room.players[0]) : null;
+  // Team mode: one question for everybody. Solo mode: one each.
+  const shared = room.mode === 'team' ? pickFrom(room.bank, room.classLevel, room.classSeen, room.classWeak) : null;
   for (const player of room.players) {
     player.answer = null;
     player.answerAt = 0;
-    player.q = teamQuestion ?? pickQuestion(room, player);
+    player.q = shared ?? pickFrom(room.bank, player.level, player.seen, player.weak);
+    // Each mode remembers what the other one asked, so changing mode does not repeat a question.
+    if (shared) player.seen.add(shared.id);
+    else room.classSeen.add(player.q.id);
     const right = Math.random() < BOT_RIGHT_CHANCE[player.q.level];
     player.botAnswer = player.bot
       ? { at: room.question.readyAt + 1500 + Math.random() * 6000, choice: right ? player.q.correct : (player.q.correct + 1 + crypto.randomInt(3)) % 4 }
       : null;
   }
   sendState(room);
+  // While "get ready" counts down, the two sound clips can already be made, so the voice
+  // starts the moment the question appears.
+  if (shared && room.host && voiceReady()) {
+    speak(shared.question);
+    speak(answerLine(shared));
+  }
 }
 
 function stepQuestion(room, now) {
@@ -454,7 +567,6 @@ function stepQuestion(room, now) {
   // Only people count for the map: bots guess, and their guesses should not hold it back.
   // No answer counts as wrong, so everyone has to take part.
   const voters = humans.length ? humans : room.players;
-  let cleaned = 0;
   for (const player of room.players) {
     const right = player.answer === player.q.correct;
     player.history.push({ subtopic: player.q.subtopic, level: player.q.level, right });
@@ -464,16 +576,30 @@ function stepQuestion(room, now) {
       player.score += Math.round(1000 * Math.max(0, 1 - elapsed / ANSWER_MS));
       player.boostUntil = room.raceTime + BOOST_MS * LEVEL_WEIGHT[player.q.level];
       player.weak.delete(player.q.subtopic);
-      if (voters.includes(player)) cleaned += LEVEL_WEIGHT[player.q.level];
     } else {
       player.weak.add(player.q.subtopic);
     }
     // Right moves a player up a level for next time; wrong moves them down.
     if (room.mode !== 'team') player.level = clamp(player.level + (right ? 1 : -1), 1, 3);
   }
+  if (room.mode === 'team') {
+    // The group moves as one: up a level when most people were right, down when most were
+    // wrong, and a subtopic most people missed comes back.
+    const { subtopic } = room.players[0].q;
+    const share = voters.filter((player) => player.answer === player.q.correct).length / Math.max(1, voters.length);
+    if (share >= 0.6) {
+      room.classLevel = Math.min(3, room.classLevel + 1);
+      room.classWeak.delete(subtopic);
+    } else if (share <= 0.4) {
+      room.classLevel = Math.max(1, room.classLevel - 1);
+      room.classWeak.add(subtopic);
+    }
+    for (const player of room.players) player.level = room.classLevel;
+  }
   room.reveal = { until: now + REVEAL_MS };
   room.phase = 'reveal';
   sendState(room);
+  if (room.mode === 'team' && room.players[0]?.q) say(room, answerLine(room.players[0].q), true);
 }
 
 function resumeRace(room) {
@@ -551,7 +677,8 @@ function stepCar(room, player, dt) {
   car.wrong = Math.abs(facing) > 2.1 && car.v > 60 ? car.wrong + dt : 0;
   if (car.lost > 2.2 || car.wrong > 1.5) respawn(track, car);
 
-  const input = player.bot || car.done ? autoSteer(track, player) : player.steer;
+  // A car whose phone has gone drives itself until the phone is back, so it does not hold the race up.
+  const input = player.bot || car.done || !player.connected ? autoSteer(track, player) : player.steer;
   car.steer += (input - car.steer) * Math.min(1, 12 * dt);
   const onRoad = off < track.width / 2 + 4;
   car.offRoad = !onRoad; // sent to the screens so they can kick up dust
@@ -599,9 +726,14 @@ function pushApart(players) {
       a.y -= dy * pushA;
       b.x += dx * pushB;
       b.y += dy * pushB;
-      if (massA < massB) a.v *= 0.72;
-      else if (massB < massA) b.v *= 0.72;
-      else { a.v *= 0.88; b.v *= 0.88; }
+      // Whoever runs into the back of another car loses speed, so it pays to steer round it.
+      // Weight still counts: a heavier car shoves the lighter one aside (above) and loses
+      // little. Only the car behind is slowed: slowing both kept them touching, and they
+      // crawled round stuck together.
+      const aBehind = a.progress < b.progress;
+      const behind = aBehind ? a : b;
+      const heavier = aBehind ? massA > massB : massB > massA;
+      behind.v *= heavier ? 0.95 : 0.85;
     }
   }
 }
@@ -739,10 +871,31 @@ function finishRace(room) {
   broadcast(room, snapshotMessage(room));
   sendState(room);
 
+  // Remember this race for every person who answered, so their next race can build on it.
+  const at = Date.now();
+  for (const player of order) {
+    if (player.bot || !player.device || !player.history.length) continue;
+    const score = new Map();
+    for (const { subtopic, right } of player.history) score.set(subtopic, (score.get(subtopic) ?? 0) + (right ? 1 : -1));
+    remember({
+      student: player.device, name: player.name, topic: room.bank.topic, asked: player.history.length, right: player.correct,
+      // In team mode player.level is the level of the whole group. That says nothing about
+      // this player, so they keep the level they had before.
+      level: room.mode === 'team' ? (player.past?.here?.level ?? 2) : player.level,
+      weak: [...score].filter(([, points]) => points < 0).map(([subtopic]) => subtopic),
+      strong: [...score].filter(([, points]) => points > 0).map(([subtopic]) => subtopic),
+      at,
+    });
+  }
+
   // Ask Gemini for a personal sentence for each person. The results are already on screen;
   // this only improves the notes if the answer arrives while they are still showing.
   const { results } = room;
-  const asked = order.filter((player) => !player.bot && player.history.length).map(({ id, name, history }) => ({ id, name, answers: history }));
+  const asked = order.filter((player) => !player.bot && player.history.length).map(({ id, name, history, past }) => ({
+    id, name, answers: history,
+    // What they needed to review last time on this topic, so the note can speak about progress.
+    ...(past?.here ? { earlier: { right: past.here.right, asked: past.here.asked, neededReview: past.here.weak } } : {}),
+  }));
   if (!geminiReady() || !asked.length) return;
   writeFeedback(room.bank.topic, asked).then((notes) => {
     if (room.results !== results) return;
@@ -767,6 +920,7 @@ function stepRoom(room, now) {
     if (now >= room.question.readyAt) {
       room.phase = 'question';
       sendState(room);
+      if (room.mode === 'team' && room.players[0]?.q) say(room, room.players[0].q.question);
     }
     return;
   }
@@ -781,7 +935,8 @@ function stepRoom(room, now) {
   for (const player of room.players) stepCar(room, player, TICK);
   pushApart(room.players);
   stepProps(room, TICK);
-  ranked(room).forEach((player, index) => {
+  const order = ranked(room);
+  order.forEach((player, index) => {
     player.car.place = index + 1;
   });
   if (room.tick++ % 2 === 0) {
@@ -867,10 +1022,11 @@ const hostActions = {
   },
   // What the questions are about. Gemini writes a new set for any topic the host types.
   topic(room, message) {
-    if (room.phase !== 'lobby' && room.phase !== 'draw') return;
-    room.topic = String(message.topic ?? '').replace(/[^\p{L}\p{N} ,.'&()-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULT_TOPIC;
+    if (RACING.has(room.phase)) return;
+    // No colon (a topic that starts with "PDF: " means an uploaded file) and no quotes or angle brackets.
+    room.topic = String(message.topic ?? '').replace(/[^\p{L}\p{N} ,.'&()+#\/%=^?!-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULT_TOPIC;
     room.pdf = null;
-    room.writing = false;
+    room.letDown = null; // Set means: ask Gemini again, and wait for it
     prepareBank(room);
     sendState(room);
   },
@@ -895,6 +1051,7 @@ const hostActions = {
   mode(room, message) {
     if (room.phase !== 'draw' && room.phase !== 'lobby') return;
     room.mode = message.mode === 'team' ? 'team' : 'solo';
+    if (room.phase === 'lobby') placeOnGrid(room); // starting levels depend on the mode
     sendState(room);
   },
   bot(room, message) {
@@ -922,6 +1079,12 @@ const hostActions = {
     });
     sendState(room);
   },
+  // The host ends a race early, for example when the players have walked away.
+  end(room) {
+    if (!RACING.has(room.phase)) return;
+    if (room.phase === 'question-countdown' || room.phase === 'question') room.questionCount--; // this one was never marked
+    finishRace(room);
+  },
   again(room) {
     if (room.phase !== 'results') return;
     room.phase = 'lobby';
@@ -935,7 +1098,10 @@ const hostActions = {
 
 function onHost(socket, message) {
   let room = rooms.get(String(message.code ?? ''));
-  if (!room || room.hostKey !== message.key) room = createRoom();
+  if (!room || room.hostKey !== message.key) {
+    room = createRoom();
+    prepareBank(room); // so the first screen already says whether the questions are ready
+  }
   if (room.host && room.host !== socket) room.host.close();
   room.host = socket;
   socket.room = room;
@@ -977,7 +1143,9 @@ function onJoin(socket, message) {
       send(socket, { t: 'error', reason: 'This game is full (6 players).' });
       return;
     }
-    player = addPlayer(room, { name: cleanName(message.name), socket });
+    // The phone's own id, so this player is recognised in later races. Anything odd is ignored.
+    const device = typeof message.device === 'string' && /^[A-Za-z0-9_-]{8,40}$/.test(message.device) ? message.device : null;
+    player = addPlayer(room, { name: cleanName(message.name), socket, device });
   }
   if (player.socket && player.socket !== socket) player.socket.close();
   player.socket = socket;
@@ -985,6 +1153,7 @@ function onJoin(socket, message) {
   socket.room = room;
   socket.player = player;
   send(socket, { t: 'joined', id: player.id, key: player.key, code: room.code });
+  if (socket.request) seen(socket.request, `joined game ${room.code} as "${player.name}"`);
   if (room.track) sendTrack(room, socket);
   if (room.track) send(socket, propsMessage(room));
   playersChanged(room);
@@ -994,6 +1163,9 @@ function onJoin(socket, message) {
 function onPlayer(room, player, message) {
   if (message.t === 'input') {
     player.steer = clamp(Number(message.steer) || 0, -1, 1);
+  } else if (message.t === 'name' && !RACING.has(room.phase)) {
+    player.name = cleanName(message.name);
+    sendState(room);
   } else if (message.t === 'car' && !RACING.has(room.phase)) {
     player.type = mod(Math.round(Number(message.type)) || 0, 4);
     sendState(room);
@@ -1006,10 +1178,29 @@ function onPlayer(room, player, message) {
   }
 }
 
+// A phone that "cannot get in" either never reaches this computer, or reaches it and asks in a
+// way the server cannot read (most often its browser tries https). These two lines in the
+// server's output tell the three cases apart.
+const knocked = new Map(); // address -> when it was last printed
+const addressOf = (socket) => (socket.remoteAddress ?? '?').replace(/^::ffff:/, '');
+server.on('connection', (socket) => {
+  const address = addressOf(socket);
+  if (address === '::1' || address === '127.0.0.1') return;
+  if (Date.now() - (knocked.get(address) ?? 0) < 60000) return;
+  knocked.set(address, Date.now());
+  console.log(`${new Date().toLocaleTimeString()}  a device at ${address} connected`);
+});
+server.on('clientError', (error, socket) => {
+  console.log(`${new Date().toLocaleTimeString()}  the device at ${addressOf(socket)} sent something that is not plain http (${error.code}). Its browser is probably trying https: type http:// in front of the address.`);
+  if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  else socket.destroy();
+});
+
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
 
-wss.on('connection', (socket) => {
+wss.on('connection', (socket, request) => {
   socket.alive = true;
+  socket.request = request;
   socket.on('pong', () => {
     socket.alive = true;
   });
@@ -1068,6 +1259,12 @@ setInterval(() => {
   }
 }, 15000);
 
+loadMemory().then(({ store, players }) => {
+  console.log(store === 'backboard'
+    ? `Backboard key found: player memory is kept in Backboard (${players} players remembered).`
+    : `Player memory is kept in data/memory.json (${players} players remembered). Add a Backboard key to keep it online.`);
+});
+
 // Have the default questions ready before anyone joins, so the first race does not wait.
 if (geminiReady()) {
   writeBank(DEFAULT_TOPIC.toLowerCase(), DEFAULT_TOPIC, null)
@@ -1078,5 +1275,7 @@ if (geminiReady()) {
 server.listen(PORT, () => {
   console.log(`Race game running. Open the big screen at http://localhost:${PORT}/host`);
   console.log(geminiReady() ? 'Gemini key found: questions will be written by Gemini.' : 'No Gemini key in .env: add questions from the teacher screen.');
+  if (spareBank) console.log(`BUILTIN_QUESTIONS=1: ${SPARE.length} spare questions are loaded for when Gemini has none.`);
+  console.log(voiceReady() ? 'ElevenLabs key found: the commentator speaks with an ElevenLabs voice.' : 'No ElevenLabs key in .env: the commentator uses the browser\'s own voice.');
   for (const url of lanUrls()) console.log(`Phones on the same Wi-Fi can reach it at ${url}`);
 });

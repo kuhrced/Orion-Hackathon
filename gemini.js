@@ -13,7 +13,8 @@ export const geminiModel = MODEL;
 
 // `pdf` is an optional Buffer holding a PDF for Gemini to read along with the prompt.
 async function ask(prompt, schema, pdf = null) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL()}:generateContent`;
+  // GEMINI_URL lets a test stand in for Gemini.
+  const url = `${process.env.GEMINI_URL || 'https://generativelanguage.googleapis.com'}/v1beta/models/${MODEL()}:generateContent`;
   const body = {
     contents: [{ parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
     // Low thinking: writing quiz questions does not need deep reasoning, and it is about three
@@ -140,6 +141,9 @@ ${JSON.stringify(players)}
 
 For each player write ONE short, friendly sentence of at most 110 characters. Say what they know well and
 what to review next, using only the results above. Speak to the player as "you". Simple words. No emojis.
+Do not write level numbers; say "easy", "medium" or "hard" questions if the level matters.
+Some players have "earlier": their result the last time they played this topic. For them, say if they
+improved, when the results show it.
 
 Return JSON in exactly this shape: {"notes": [{"id": 1, "note": "..."}]}`;
   const schema = {

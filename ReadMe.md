@@ -25,10 +25,11 @@ the big screen (`/host`).
 
 1. On the big screen, draw a loop and press **Make track**. The game adds bends and scenery, and
    picks one of five worlds: forest, ocean, swamp, desert or ice. Press **Change** to try another.
-2. Players scan the QR code with their phone camera. The phone must be on the same Wi-Fi as the
-   laptop. They type a name and press **Join**.
-3. Players can press **Change car** on their phone. Each car type drives differently, and the
-   phone shows its stats.
+2. Players scan the QR code with their phone camera. That is all: the phone joins the game
+   straight away, with a made-up name. The phone must be on the same Wi-Fi as the laptop.
+   (If a camera will not scan, open the address under the game code and type the code.)
+3. On the phone, players can change their name and press **Change car**. Each car type drives
+   differently, and the phone shows its stats.
 4. Press **Add bot** if you want computer cars too. Bots also answer questions.
 5. Press **Start race**. Cars drive forward by themselves; players steer with the two buttons.
    Cones, tyres, crates, barrels and crash-test dummies stand on the road. Hitting them sends
@@ -38,7 +39,9 @@ the big screen (`/host`).
    speed boost, and every right answer makes the shared map greener.
 7. After the race, press **Race again** or **New track**.
 
-A lap takes 45 to 60 seconds. Two laps is the default; the host can change it before the start.
+A lap takes 30 to 50 seconds of driving. One lap is the default, so a race with its questions is
+about a minute and a half; the host can change it before the start. The host can press
+**End race** at any time to go straight to the results.
 A short race asks questions more often, so the map can always become fully clean.
 
 If a phone cannot open the page, check that it is on the same Wi-Fi, and allow Node.js in the
@@ -47,9 +50,15 @@ hotspot fixes that.
 
 ## Questions
 
-Every player gets their own question, at their own level: easy, medium or hard. A right answer
-moves a player up a level and a wrong one moves them down. Harder questions give a longer boost
-and clean more of the map. Subtopics a player gets wrong come back later.
+The host picks one of two modes before the race, with **Questions > Change**:
+
+- **Personal** (the default): every player gets their own question, at their own level: easy,
+  medium or hard. A right answer moves a player up a level and a wrong one moves them down.
+  Subtopics a player gets wrong come back later.
+- **Class**: everyone gets the same question, shown big on the screen with its four answers.
+  The level follows the class: up when most players are right, down when most are wrong.
+
+Harder questions give a longer boost and clean more of the map.
 
 ### Gemini writes the questions
 
@@ -73,17 +82,30 @@ Press **Teacher screen** on the big screen to open a second page, `/teacher`. It
 working, every question with its right answer, and how each player is doing during the race.
 It needs the host's key, so players cannot open it.
 
-### Backup questions
+### No built-in questions
 
-Without a key, or if Gemini cannot be reached, the game uses the built-in questions below.
+Every question is written by Gemini or added on the teacher screen. Without questions a race
+cannot start. As a last resort (Gemini is down on the day), start the server with
+`BUILTIN_QUESTIONS=1 npm start`: it loads the old set of 100 from `data/questions.json`.
 
-The 100 built-in questions are in `data/questions.json`, each with a level and a subtopic. They
-were exported from `questions.db`. After changing the database, refresh the copy (this needs
-Node.js 22.13 or newer); levels and subtopics already set are kept:
+## Voice
 
-```bash
-npm run export-questions
-```
+In Team mode a voice on the big screen reads each question out when it appears, and the right
+answer when time is up. It says nothing else. The **Voice: on/off** button turns it off.
+
+Without a key the browser's own voice is used. To get an ElevenLabs voice, add
+`ELEVENLABS_API_KEY=` and your key to `.env` and restart.
+
+## Player memory
+
+The game remembers each player between races: the topic, how many answers were right, the
+subtopics they got wrong and the level they reached. A returning player starts on their own
+level, their weak subtopics come back first, and the phone says "Welcome back". A player is
+known by a random id that their phone keeps; there are no accounts.
+
+The memory is kept in `data/memory.json` (Git ignores it). With `BACKBOARD_API_KEY=` and a key
+from https://app.backboard.io in `.env`, every race is also saved as a memory in Backboard, so it
+is still there when the game runs on another computer.
 
 ## Put it online
 
@@ -109,6 +131,9 @@ code uses the site's own address.
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
 | `public/teacher.html`, `public/teacher.js`, `public/teacher.css` | The teacher screen: Gemini's questions with answers, and the players' progress |
 | `gemini.js` | Asks Gemini for questions (from a topic or a PDF) and for the personal notes |
+| `voice.js` | The ElevenLabs voice that reads the question and the answer |
+| `public/commentator.js` | Plays that voice on the big screen |
+| `memory.js` | What the game remembers about each player (a file, and Backboard with a key) |
 | `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
 | `questions.db` | Where the backup questions were first written |
 | `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |
@@ -126,5 +151,5 @@ the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.jso
 
 ## Not built yet
 
-Music, the ElevenLabs commentator, sound effects, and putting the server online.
+Music, sound effects, and putting the server online.
 figuring out who "json" is and why he sent me packages

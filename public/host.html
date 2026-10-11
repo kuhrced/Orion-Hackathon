@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Race game: big screen</title>
+<!-- The fonts load in the background: a phone with no internet on this Wi-Fi must not wait for them. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="host">
@@ -13,12 +14,15 @@
   <canvas id="draw"></canvas>
   <canvas id="game" hidden></canvas>
   <div id="hint"></div>
+  <div id="caption" hidden></div>
   <div id="overlay">
     <div id="count" hidden></div>
     <div id="ranking" aria-live="polite" hidden></div>
     <div id="quiz" class="quiz" hidden>
       <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
       <h2 id="quizText"></h2>
+      <ol id="quizChoices" class="choices" hidden></ol>
+      <ol id="quizWho" hidden></ol>
       <ol id="quizRows"></ol>
       <div class="timer"><div id="quizTimer"></div></div>
     </div>
@@ -32,12 +36,11 @@
 <aside id="side">
   <section id="joinBox">
     <img id="qr" alt="QR code to join the game">
-    <div class="label">Join at</div>
-    <div id="joinUrl"></div>
-    <div class="label">Game code</div>
+    <div class="label" id="scanLabel">Scan to join</div>
     <div id="code">····</div>
+    <div id="joinUrl"></div>
   </section>
-  <section>
+  <section class="list">
     <div class="label" id="listTitle">Players</div>
     <ol id="players"></ol>
   </section>
@@ -59,11 +62,12 @@
     </div>
     <div id="lapsRow" class="option" hidden>
       <span class="label">Laps</span>
-      <div><button id="lapsDown" type="button" aria-label="Fewer laps">−</button><span id="laps">2</span><button id="lapsUp" type="button" aria-label="More laps">+</button></div>
+      <div><button id="lapsDown" type="button" aria-label="Fewer laps">−</button><span id="laps">1</span><button id="lapsUp" type="button" aria-label="More laps">+</button></div>
     </div>
     <button id="main" class="primary" type="button"></button>
     <button id="second" type="button"></button>
     <div class="row" id="botRow">
+      <button id="voiceToggle" type="button"></button>
       <button id="addBot" type="button">Add bot</button>
       <button id="removeBot" type="button">Remove bot</button>
     </div>
