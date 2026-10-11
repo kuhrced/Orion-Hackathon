@@ -40,6 +40,10 @@ const MAX_RACE_MS = 10 * 60 * 1000;
 const QUESTION_EVERY_MS = 20000; // of driving time; the clock stops during a question
 const QUESTION_FASTEST_MS = 10000; // short races ask more often, down to this
 const MIN_QUESTIONS = 5; // every race should have at least this many
+// Team mode has no laps: the cars drive round until a set number of questions has been asked.
+// Then the goal opens, a short way ahead of the leader, and the first car to reach it wins.
+const TEAM_QUESTION_EVERY_MS = 9000; // of driving time between two questions
+const GOAL_AHEAD = 0.45; // of a lap, in front of the leading car
 const ANSWER_MS = 12000;
 const ANSWER_LOCK_MS = 900; // a steering tap just as the question appears must not count as an answer
 const REVEAL_MS = 4500;
@@ -308,7 +312,7 @@ function createRoom() {
   const room = {
     code, hostKey: token(), host: null, players: [], nextId: 1,
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
-    track: null, laps: 1, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
+    track: null, laps: 1, goal: 5, goalAt: Infinity, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
     topic: DEFAULT_TOPIC, bank: noBank(DEFAULT_TOPIC), bankNote: '', writing: false, pending: null, letDown: null,
     // 'solo': each player gets their own question at their own level.
@@ -353,6 +357,10 @@ function stateMessage(room) {
     phase: room.phase,
     laps: room.laps,
     mode: room.mode,
+    // Team mode: how many questions before the goal opens, how many were asked, and where the goal is.
+    goal: room.goal,
+    asked: room.questionCount,
+    goalIndex: room.track && Number.isFinite(room.goalAt) ? mod(Math.round(room.goalAt), room.track.n) : null,
     topic: room.topic,
     bank: { topic: room.bank.topic, source: room.bank.source, count: room.bank.count, writing: room.writing, note: room.bankNote, gemini: geminiReady() },
     countdown: room.phase === 'countdown' ? Math.max(0, room.startAt - now) : 0,
@@ -460,7 +468,7 @@ function placeOnGrid(room) {
     };
   });
   Object.assign(room, {
-    raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null,
+    raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null, goalAt: Infinity,
     classLevel: 2, classWeak: new Set(),
   });
   // Everything on the road is stood back up for the new race.
@@ -631,6 +639,12 @@ function resumeRace(room) {
     player.answer = null;
     player.q = null;
   }
+  // Team mode: that was the last question, so the goal opens. It stands a short way in front
+  // of the leader, so the cars that answered well (and were boosted) are the closest to it.
+  if (room.mode === 'team' && !Number.isFinite(room.goalAt) && room.questionCount >= room.goal) {
+    const lead = Math.max(...room.players.map((player) => player.car.progress));
+    room.goalAt = Math.round(lead + room.track.n * GOAL_AHEAD);
+  }
   sendState(room);
 }
 
@@ -712,8 +726,9 @@ function stepCar(room, player, dt) {
   car.x = clamp(car.x + Math.cos(car.a) * car.v * dt, 20, WORLD.width - 20);
   car.y = clamp(car.y + Math.sin(car.a) * car.v * dt, 20, WORLD.height - 20);
 
-  car.lap = clamp(Math.floor(car.progress / track.n) + 1, 1, room.laps);
-  if (!car.done && car.progress >= room.laps * track.n) {
+  const team = room.mode === 'team';
+  car.lap = clamp(Math.floor(car.progress / track.n) + 1, 1, team ? 99 : room.laps);
+  if (!car.done && car.progress >= (team ? room.goalAt : room.laps * track.n)) {
     car.done = true;
     car.finishTime = room.raceTime;
     room.firstFinish ??= room.raceTime;
@@ -970,7 +985,7 @@ function stepRoom(room, now) {
     || (room.firstFinish !== null && room.raceTime - room.firstFinish > FINISH_GRACE_MS)
     || room.raceTime > MAX_RACE_MS;
   if (over) finishRace(room);
-  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt) askQuestion(room, now);
+  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt && !Number.isFinite(room.goalAt)) askQuestion(room, now);
 }
 
 let last = performance.now();
@@ -1068,6 +1083,13 @@ const hostActions = {
     room.laps = clamp(Number.isFinite(laps) ? Math.round(laps) : 2, 1, 5);
     sendState(room);
   },
+  // Team mode: how many questions are asked before the goal opens.
+  goal(room, message) {
+    if (RACING.has(room.phase)) return;
+    const goal = Number(message.goal);
+    room.goal = clamp(Number.isFinite(goal) ? Math.round(goal) : 5, 1, 15);
+    sendState(room);
+  },
   mode(room, message) {
     if (room.phase !== 'draw' && room.phase !== 'lobby') return;
     room.mode = message.mode === 'team' ? 'team' : 'solo';
@@ -1092,10 +1114,11 @@ const hostActions = {
     // A question every 20 seconds of driving, or more often in a short race, so that every race
     // has enough questions for the map to become fully clean.
     const raceMs = ((room.laps * room.track.length) / (MAX_SPEED * 0.88)) * 1000;
-    const questionEvery = clamp(raceMs / (MIN_QUESTIONS + 0.5), QUESTION_FASTEST_MS, QUESTION_EVERY_MS);
+    const team = room.mode === 'team';
+    const questionEvery = team ? TEAM_QUESTION_EVERY_MS : clamp(raceMs / (MIN_QUESTIONS + 0.5), QUESTION_FASTEST_MS, QUESTION_EVERY_MS);
     Object.assign(room, {
       phase: 'countdown', startAt: performance.now() + COUNTDOWN_MS, results: null, summary: null, tick: 0,
-      questionEvery, nextQuestionAt: questionEvery, expectedQuestions: Math.max(3, Math.floor(raceMs / questionEvery)),
+      questionEvery, nextQuestionAt: questionEvery, expectedQuestions: team ? room.goal : Math.max(3, Math.floor(raceMs / questionEvery)),
     });
     sendState(room);
   },

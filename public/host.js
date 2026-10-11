@@ -1,7 +1,7 @@
 // Big screen: the host draws the track here, and everyone watches the race here.
 import { prepareTrack, MAX_PLAYERS, WORLD } from '/shared/track.js';
 import { createCommentator } from '/commentator.js';
-import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH, WORLDS } from '/render.js';
+import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, drawCar, drawGoal, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH, WORLDS } from '/render.js';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -39,6 +39,7 @@ let stroke = []; // the drawn line, as fractions of the canvas size
 let drawing = false;
 let countdownEnd = 0;
 let goUntil = 0;
+let goalUntil = 0; // team mode: until when the big screen says that the goal is open
 let questionEnd = 0;
 let revealStart = 0;
 let trackError = '';
@@ -172,7 +173,10 @@ function paintPlayers() {
       .sort((a, b) => (cars.get(a.id)?.place ?? 9) - (cars.get(b.id)?.place ?? 9))
       .map((player) => {
         const car = cars.get(player.id);
-        const lap = car?.done ? 'Finished' : `Lap ${car?.lap ?? 1}/${state.laps}`;
+        // Team mode has no laps: the cars drive until the questions are done, then race to the goal.
+        const lap = car?.done ? 'Finished'
+          : state.mode !== 'team' ? `Lap ${car?.lap ?? 1}/${state.laps}`
+            : state.goalIndex != null ? 'To the goal' : `Question ${Math.min(state.asked, state.goal)}/${state.goal}`;
         return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${lap}` });
       });
   } else {
@@ -308,7 +312,9 @@ function updateUI() {
             : bank.note || (bank.count ? `${bank.count} questions ready.` : 'Add questions on the teacher screen to start.');
   }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
-  $('laps').textContent = state.laps;
+  $('lapsLabel').textContent = state.mode === 'team' ? 'Questions' : 'Laps';
+  $('lapsRow').title = state.mode === 'team' ? 'After this many questions the goal opens. The first car to reach it wins.' : '';
+  $('laps').textContent = state.mode === 'team' ? state.goal : state.laps;
   // The commentator's switch stays in reach all the time; the bot buttons only before a race.
   $('addBot').hidden = $('removeBot').hidden = phase !== 'draw' && phase !== 'lobby';
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
@@ -340,6 +346,9 @@ function frame(now) {
     count.hidden = false;
     // Small words above the big digit, so it fits any screen.
     count.replaceChildren(element('small', '', 'GET READY'), String(Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))));
+  } else if (now < goalUntil) {
+    count.hidden = false;
+    count.replaceChildren(element('small', '', 'RACE TO THE'), 'GOAL!');
   } else if (now < goUntil) {
     count.hidden = false;
     count.textContent = 'GO!';
@@ -388,6 +397,7 @@ function frame(now) {
   const length = Math.max(CAR_LENGTH * 1.45, 40 / view.scale);
   life.ground(ctx, shownGreen, now / 1000, WHOLE_MAP, pixel);
   effects.update(cars, { dt, now, green: shownGreen, racing: phase === 'race', length, spray: scene.theme.spray });
+  if (state.goalIndex != null && RACING.includes(phase)) drawGoal(ctx, track, state.goalIndex, now, pixel);
   props.draw(ctx, WHOLE_MAP, Math.max(1, pixel / 3)); // drawn larger than life, like the cars
   effects.draw(ctx, now);
   for (const player of shown) {
@@ -443,6 +453,7 @@ const send = connect({
     } else if (message.t === 'state') {
       const now = performance.now();
       if (message.phase === 'race' && (state.phase === 'countdown' || state.phase === 'reveal')) goUntil = now + 900;
+      if (message.goalIndex != null && state.goalIndex == null && message.phase === 'race') goalUntil = now + 2600;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
       if (message.phase === 'question-countdown') questionEnd = now + message.question.readyIn;
       if (message.phase === 'question') questionEnd = now + message.question.endsIn;
@@ -501,8 +512,13 @@ secondButton.addEventListener('click', () => {
     send({ t: 'redraw' });
   }
 });
-$('lapsDown').addEventListener('click', () => send({ t: 'laps', laps: Math.max(1, state.laps - 1) }));
-$('lapsUp').addEventListener('click', () => send({ t: 'laps', laps: Math.min(5, state.laps + 1) }));
+// The same two buttons set the laps of a solo race and the number of questions of a team race.
+function fewerOrMore(step) {
+  if (state.mode === 'team') send({ t: 'goal', goal: Math.max(1, Math.min(15, (state.goal ?? 5) + step)) });
+  else send({ t: 'laps', laps: Math.max(1, Math.min(5, state.laps + step)) });
+}
+$('lapsDown').addEventListener('click', () => fewerOrMore(-1));
+$('lapsUp').addEventListener('click', () => fewerOrMore(1));
 $('worldNext').addEventListener('click', () => send({ t: 'world' }));
 $('topicRow').addEventListener('submit', (event) => {
   event.preventDefault();

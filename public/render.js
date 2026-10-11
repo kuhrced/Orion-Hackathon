@@ -475,6 +475,44 @@ export function createEffects() {
 // Keeps the last few server updates and blends between them, so cars move smoothly even
 // though updates arrive only 30 times a second.
 //
+// The goal of a team race: a yellow chequered line across the road and a sign that says GOAL.
+// `pixel` is how many world units one screen pixel covers, so the sign can be read on any screen.
+export function drawGoal(ctx, track, index, now, pixel = 1) {
+  const { points } = track;
+  const width = track.width ?? 190;
+  const [x, y] = points[index % points.length];
+  const [nextX, nextY] = points[(index + 1) % points.length];
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(nextY - y, nextX - x));
+  const squares = 8;
+  const size = width / squares;
+  for (let row = 0; row < 2; row++) {
+    for (let k = 0; k < squares; k++) {
+      ctx.fillStyle = (row + k) % 2 ? '#ffd23f' : '#1c1c20';
+      ctx.fillRect(row * size - size, -width / 2 + k * size, size, size);
+    }
+  }
+  ctx.restore();
+  const tall = Math.max(64, 26 * pixel) * (1 + 0.08 * Math.sin(now / 160));
+  ctx.save();
+  ctx.translate(x, y - width / 2 - tall * 1.2);
+  ctx.font = `900 ${tall}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const wide = ctx.measureText('GOAL').width + tall * 0.6;
+  ctx.fillStyle = '#ffd23f';
+  ctx.beginPath();
+  ctx.roundRect(-wide / 2, -tall * 0.65, wide, tall * 1.3, tall * 0.25);
+  ctx.moveTo(-tall * 0.3, tall * 0.6);
+  ctx.lineTo(tall * 0.3, tall * 0.6);
+  ctx.lineTo(0, tall * 1.1);
+  ctx.fill();
+  ctx.fillStyle = '#1c1c20';
+  ctx.fillText('GOAL', 0, tall * 0.05);
+  ctx.restore();
+}
+
 // The blending follows the server's race clock (`time` in each update), not the moment an
 // update arrived. Over Wi-Fi, updates often arrive in bunches: nothing for a tenth of a second,
 // then three at once. Going by arrival time would make every car stop and jump; going by the

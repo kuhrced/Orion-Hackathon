@@ -64,6 +64,10 @@ questions right.
   with a key, in Backboard. `placeOnGrid` uses `recall` to set a returning player's level and
   weak subtopics; `finishRace` calls `remember`. Players are known by an id their phone keeps.
 
+- Team mode has no laps. The host sets a number of questions (`room.goal`). After the last one
+  the goal opens (`room.goalAt`, a short way in front of the leader) and the first car to reach
+  it wins. `drawGoal` in `public/render.js` draws it. Solo mode still uses laps.
+
 Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question-countdown`,
 `question` and `reveal` every 10 to 20 seconds of driving, and finally `results`.
 

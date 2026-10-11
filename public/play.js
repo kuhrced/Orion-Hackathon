@@ -2,7 +2,7 @@
 // answer the questions that stop the race.
 import { carTuning, glide, rollAhead, CAR_TYPES, STAT_LABELS, STEER_EASE, TURN } from '/shared/cars.js';
 import { prepareTrack } from '/shared/track.js';
-import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
+import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, createTiles, drawCar, drawGoal, loadCars, ordinal, CAR_LENGTH } from '/render.js';
 import { mixColor } from '/worlds.js';
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +47,7 @@ let sheet = null;
 let steer = 0;
 let countdownEnd = 0;
 let goUntil = 0;
+let goalUntil = 0; // team mode: until when the phone says that the goal is open
 let questionEnd = 0;
 let retryTimer = 0;
 let carInfo = null; // shared/cars.json, once it has loaded
@@ -367,6 +368,7 @@ function frame(now) {
   if (slowFrames > 0.6) lite = true;
   life.ground(ctx, 0, now / 1000, region, pixel, lite);
   effects.update(cars, { dt, now, green: 0, racing, length: CAR_LENGTH, spray: scene.theme.spray });
+  if (state.goalIndex != null && racing) drawGoal(ctx, track, state.goalIndex, now, pixel);
   props.draw(ctx, region);
   effects.draw(ctx, now);
   const labels = [];
@@ -397,13 +399,16 @@ function frame(now) {
 
   const place = `${ordinal(mine.place)}<small>of ${state.players.length}</small>`;
   if ($('place').innerHTML !== place) $('place').innerHTML = place;
-  $('lap').textContent = `Lap ${mine.lap}/${state.laps}`;
+  // Team mode has no laps: the cars drive until the questions are done, then race to the goal.
+  $('lap').textContent = state.mode !== 'team' ? `Lap ${mine.lap}/${state.laps}`
+    : state.goalIndex != null ? 'Race to the goal!' : `Question ${Math.min(state.asked, state.goal)}/${state.goal}`;
 
   let text = '';
   if (state.phase === 'countdown') text = String(Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000))));
   else if (state.phase === 'question-countdown') text = `<small>Get ready</small>${Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))}`;
-  else if (now < goUntil) text = 'GO!';
   else if (mine.done && racing) text = `Finished!<small>${ordinal(mine.place)} place</small>`;
+  else if (now < goalUntil) text = 'GOAL!<small>The goal is open. Race to it!</small>';
+  else if (now < goUntil) text = 'GO!';
   else if (mine.boost && racing) text = '<small>Speed boost!</small>';
   if (banner.innerHTML !== text) banner.innerHTML = text;
 }
@@ -446,6 +451,7 @@ const send = connect({
     } else if (message.t === 'state') {
       const now = performance.now();
       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
+      if (message.goalIndex != null && state?.goalIndex == null && message.phase === 'race') goalUntil = now + 2600;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
       if (!RACING.includes(message.phase)) { // between races: the next race counts its questions from 1 again
         choiceFor = 0;
