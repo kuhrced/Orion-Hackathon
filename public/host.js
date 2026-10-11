@@ -24,7 +24,7 @@ const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal']
 const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
 const MAP_FADE = 1500;
 
-let state = { phase: 'draw', players: [], laps: 1, green: 0, results: null };
+let state = { phase: 'draw', players: [], laps: 1, mode: 'solo', results: null };
 let track = null;
 let scene = null;
 let life = null; // the moving layer: smoke, birds, river
@@ -183,6 +183,12 @@ function paintPlayers() {
   $('listTitle').textContent = racing ? 'Ranking' : `Players (${state.players.length}/${MAX_PLAYERS})`;
 }
 
+function paintRanking() {
+  const rows = (state.leaderboard ?? []).map((player, index) => `${index + 1}. ${player.name} <span>${player.correct} right</span> <b>${player.score}</b>`);
+  $('ranking').hidden = !rows.length || !RACING.includes(state.phase) && state.phase !== 'results';
+  $('ranking').innerHTML = rows.length ? `<strong>Top 3</strong>${rows.map((row) => `<div>${row}</div>`).join('')}` : '';
+}
+
 const LEVELS = [null, 'Easy', 'Medium', 'Hard'];
 const levelBadge = (level) => element('span', `level l${level}`, LEVELS[level]);
 
@@ -192,7 +198,6 @@ function paintResults() {
   $('realWinner').textContent = winner
     ? `Real winner: ${winner.name}, with ${winner.correct} right ${winner.correct === 1 ? 'answer' : 'answers'}`
     : summary?.questions ? 'No real winner this time: no player got a question right.' : '';
-  $('greenResult').textContent = summary ? `Together you made the map ${Math.round(summary.green * 100)}% clean. Topic: ${summary.topic}.` : '';
   $('resultList').replaceChildren(...results.map((result) => {
     const row = element('li');
     if (result.id === summary?.realWinner) row.classList.add('real');
@@ -204,14 +209,14 @@ function paintResults() {
       carIcon(result.color, result.type, 44),
       who,
       levelBadge(result.level),
-      element('span', 'score', `✓ ${result.correct}`),
+      element('span', 'score', `${result.score} pts · ✓ ${result.correct}`),
       element('span', 'time', result.time === null ? 'Did not finish' : formatTime(result.time)),
     );
     return row;
   }));
 }
 
-// Class mode: everyone has the same question, so it is shown big, with its four answers, and
+// Team mode: everyone has the same question, so it is shown big, with its four answers, and
 // each player is a small tag underneath.
 function paintClassQuiz(shared) {
   const { reveal, players } = state;
@@ -236,14 +241,14 @@ function paintClassQuiz(shared) {
   }));
 }
 
-// Personal mode: every player has a different question, so the big screen shows one row per player.
+// Solo mode: every player has a different question, so the big screen shows one row per player.
 function paintQuiz() {
   const { question, reveal, players } = state;
   if (!question) return;
   $('quizCount').textContent = reveal
     ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
     : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
-  const shared = state.mode === 'class' ? players.find((player) => player.q)?.q : null;
+  const shared = state.mode === 'team' ? players.find((player) => player.q)?.q : null;
   $('quizChoices').hidden = $('quizWho').hidden = !shared;
   $('quizRows').hidden = !!shared;
   if (shared) return paintClassQuiz(shared);
@@ -278,16 +283,14 @@ function updateUI() {
   const writing = uploading || !!bank?.writing;
   mainButton.textContent = (phase === 'lobby' && writing ? 'Gemini is writing…' : mainLabel) ?? '';
   secondButton.textContent = secondLabel ?? '';
-  mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && (!state.players.length || writing));
+  mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && (!state.players.length || writing || !bank?.count));
   $('lapsRow').hidden = $('worldRow').hidden = phase !== 'lobby';
   // The topic can be set while the track is still being drawn, so Gemini works in the meantime.
   const choosing = phase === 'draw' || phase === 'lobby';
-  $('topicRow').hidden = $('sourceRow').hidden = $('modeRow').hidden = !choosing;
-  const classMode = state.mode === 'class';
-  $('modeName').textContent = classMode ? 'Class' : 'Personal';
-  $('modeRow').title = classMode
-    ? 'Everyone gets the same question, on the big screen. The level follows the class.'
-    : 'Each player gets their own question, at their own level.';
+  $('topicRow').hidden = $('sourceRow').hidden = !choosing;
+  $('modeRow').title = state.mode === 'team'
+    ? 'Team: everyone gets the same question, on the big screen. The level follows the group.'
+    : 'Solo: each player gets their own question, at their own level.';
   if (document.activeElement !== $('topic')) $('topic').value = state.topic?.startsWith('PDF: ') ? '' : state.topic ?? '';
   $('pdfButton').classList.toggle('disabled', writing || !bank?.gemini);
   $('pdf').disabled = writing || !bank?.gemini;
@@ -300,7 +303,7 @@ function updateUI() {
       : bank.writing ? `Gemini is writing questions ${about}…`
         : uploadError ? uploadError
           : bank.source === 'gemini' ? `Gemini wrote ${bank.count} questions ${about}, in three levels.`
-            : bank.note || `Using the ${bank.count} built-in environment questions.`;
+            : bank.note || (bank.count ? `${bank.count} questions ready.` : 'Add questions on the teacher screen to start.');
   }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
@@ -309,11 +312,15 @@ function updateUI() {
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
   $('removeBot').disabled = !state.players.some((player) => player.bot);
   $('clock').hidden = !racing;
+  $('modeRow').hidden = phase !== 'draw' && phase !== 'lobby';
+  $('soloMode').classList.toggle('primary', state.mode !== 'team');
+  $('teamMode').classList.toggle('primary', state.mode === 'team');
   $('joinBox').classList.toggle('small', racing || phase === 'results');
   $('results').hidden = phase !== 'results';
   if (phase === 'results') paintResults();
   paintQuiz();
   paintPlayers();
+  paintRanking();
 }
 
 // ---------- The race view ----------
@@ -353,12 +360,7 @@ function frame(now) {
     }
   }
 
-  if (!holding && shownGreen !== state.green) {
-    oldMap = map;
-    map = null;
-    shownGreen = state.green;
-    fadeStart = now;
-  }
+  shownGreen = 0;
   map ??= renderMap(scene, view.scale * view.dpr, shownGreen);
   const fade = oldMap ? Math.min(1, (now - fadeStart) / MAP_FADE) : 1;
   const ctx = gameCanvas.getContext('2d');
@@ -493,7 +495,6 @@ secondButton.addEventListener('click', () => {
 $('lapsDown').addEventListener('click', () => send({ t: 'laps', laps: Math.max(1, state.laps - 1) }));
 $('lapsUp').addEventListener('click', () => send({ t: 'laps', laps: Math.min(5, state.laps + 1) }));
 $('worldNext').addEventListener('click', () => send({ t: 'world' }));
-$('modeNext').addEventListener('click', () => send({ t: 'mode', mode: state.mode === 'class' ? 'personal' : 'class' }));
 $('topicRow').addEventListener('submit', (event) => {
   event.preventDefault();
   $('topic').blur();
@@ -540,6 +541,8 @@ $('voiceToggle').addEventListener('click', () => {
 showVoice();
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
+$('soloMode').addEventListener('click', () => send({ t: 'mode', mode: 'solo' }));
+$('teamMode').addEventListener('click', () => send({ t: 'mode', mode: 'team' }));
 
 new ResizeObserver(layout).observe(stage);
 layout();

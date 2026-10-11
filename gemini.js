@@ -1,5 +1,5 @@
 // Talks to Gemini. Everything here is optional: without a key, or if a call fails, the game
-// carries on with the backup questions in data/questions.json.
+// The server requires generated or teacher-created questions; there is no built-in fallback.
 //
 // The key comes from GEMINI_API_KEY in the .env file. It is never logged or sent to a browser.
 

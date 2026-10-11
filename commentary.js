@@ -27,13 +27,11 @@ export const LINES = {
     `Here comes question ${number}. Think fast!`,
     `Stop the cars. A right answer means a boost.`,
   ]),
-  // green: how clean the map is now, in percent, or null if this question did not change it.
-  reveal({ right, total, green }) {
-    const clean = green === null ? '' : green >= 100 ? ' The map is one hundred percent clean!' : ` The map is ${green} percent clean.`;
-    if (!right.length) return pick([`Nobody got that one. The map stays as it is.`, `Ouch. No right answers this time.`]);
-    if (right.length === total && total > 1) return pick([`Everybody got it right! Boosts for all.${clean}`, `A full house of right answers!${clean}`]);
-    if (right.length > 3) return `${right.length} right answers, and the boosts are on!${clean}`;
-    return pick([`${all(right)} got it right. Boost time!${clean}`, `Right answer from ${all(right)}!${clean}`]);
+  reveal({ right, total }) {
+    if (!right.length) return pick([`Nobody got that one. No boosts this time.`, `Ouch. No right answers this time.`]);
+    if (right.length === total && total > 1) return pick([`Everybody got it right! Boosts for all.`, `A full house of right answers!`]);
+    if (right.length > 3) return `${right.length} right answers, and the boosts are on!`;
+    return pick([`${all(right)} got it right. Boost time!`, `Right answer from ${all(right)}!`, `Points and a boost for ${all(right)}!`]);
   },
   smash: ({ name, what }) => pick(what === 'dummy' ? [
     `Ouch! ${name} sends a dummy flying!`,
@@ -44,12 +42,11 @@ export const LINES = {
   ]),
   lastLap: ({ name }) => pick([`Final lap for ${name}!`, `${name} starts the last lap!`, `One lap to go, and ${name} leads.`]),
   finish: ({ name }) => pick([`${name} takes the chequered flag!`, `${name} crosses the line first!`, `And ${name} wins the race!`]),
-  results({ winner, right, green }) {
-    const clean = `Together you cleaned ${green} percent of the map.`;
-    if (!winner) return `The race is over. ${clean}`;
+  results({ winner, right }) {
+    if (!winner) return pick([`The race is over. Thanks for playing!`, `And that is the race. Well driven, everyone.`]);
     return pick([
-      `But the real winner, with ${right} right ${right === 1 ? 'answer' : 'answers'}, is ${winner}! ${clean}`,
-      `The race is over, but knowledge wins: ${winner}, with ${right} right ${right === 1 ? 'answer' : 'answers'}! ${clean}`,
+      `But the real winner, with ${right} right ${right === 1 ? 'answer' : 'answers'}, is ${winner}!`,
+      `The race is over, but knowledge wins: ${winner}, with ${right} right ${right === 1 ? 'answer' : 'answers'}!`,
     ]);
   },
 };

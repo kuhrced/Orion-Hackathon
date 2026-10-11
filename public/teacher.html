@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Race game: teacher screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/teacher.css">
 </head>
@@ -41,6 +43,7 @@
 
   <section id="bank">
     <h2 id="bankTitle">Questions</h2>
+    <button id="addQuestion" type="button" class="primary">Add question</button>
     <div id="columns">
       <div><h3><span class="level l1">Easy</span></h3><ol id="level1"></ol></div>
       <div><h3><span class="level l2">Medium</span></h3><ol id="level2"></ol></div>
@@ -48,6 +51,20 @@
     </div>
   </section>
 </main>
+
+<div id="questionModal" class="modal" hidden>
+  <form id="addQuestionForm" class="modal-card">
+    <div class="modal-heading"><h2>Add question</h2><button id="cancelQuestion" type="button" aria-label="Close">×</button></div>
+    <label>Question<input id="newQuestion" required maxlength="300"></label>
+    <label>Answer A<input class="new-choice" required></label>
+    <label>Answer B<input class="new-choice" required></label>
+    <label>Answer C<input class="new-choice" required></label>
+    <label>Answer D<input class="new-choice" required></label>
+    <div class="modal-row"><label>Difficulty<select id="newLevel"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select></label><label>Correct answer<select id="newCorrect"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></label></div>
+    <label>Topic<input id="newSubtopic" value="General" maxlength="80"></label>
+    <button class="primary" type="submit">Add question</button>
+  </form>
+</div>
 
 <main id="locked" hidden>
   <h2>This screen is locked</h2>

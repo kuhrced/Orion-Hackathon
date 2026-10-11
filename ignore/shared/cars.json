@@ -1,0 +1,34 @@
+{
+  "_note": "From docs/car-stats.pdf. Stats are 1-5 and add up to 12 per car. Types match the rows of public/cars.png.",
+  "colors": ["red", "blue", "green", "yellow", "purple", "orange"],
+  "types": {
+    "formula": {
+      "name": "Formula",
+      "title": "The Speed Demon",
+      "strength": "Highest top speed, unbeatable on long straights.",
+      "weakness": "Slow off the line and slides wide on tight turns.",
+      "stats": { "topSpeed": 5, "acceleration": 2, "handling": 3, "weight": 2 }
+    },
+    "sports": {
+      "name": "Sports",
+      "title": "The All-Rounder",
+      "strength": "Balanced everywhere, easy for new players to pick up.",
+      "weakness": "Doesn't beat the others at any one thing.",
+      "stats": { "topSpeed": 3, "acceleration": 3, "handling": 3, "weight": 3 }
+    },
+    "hatch": {
+      "name": "Hatchback",
+      "title": "The Zippy One",
+      "strength": "Quickest to speed up and the tightest turning.",
+      "weakness": "Low top speed and gets knocked around in bumps.",
+      "stats": { "topSpeed": 2, "acceleration": 4, "handling": 5, "weight": 1 }
+    },
+    "pickup": {
+      "name": "Pickup",
+      "title": "The Tank",
+      "strength": "Heavy: shoves other cars aside and shrugs off hits.",
+      "weakness": "Slowest to speed up and sluggish in corners.",
+      "stats": { "topSpeed": 4, "acceleration": 1, "handling": 2, "weight": 5 }
+    }
+  }
+}
