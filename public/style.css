@@ -1,11 +1,11 @@
 :root {
-  --bg: #17191c;
-  --panel: #22262b;
-  --panel-2: #2c3138;
-  --line: #3a4049;
-  --text: #f1efe9;
-  --muted: #a3a8b0;
-  --accent: #b9ee4f; /* the one bright colour: the green the map is waiting for */
+  --bg: #242526;
+  --panel: #323435;
+  --panel-2: #3a3d3e;
+  --line: #4b4f50;
+  --text: #eeeee9;
+  --muted: #a7a8a2;
+  --accent: #b6e34a;
   --accent-ink: #1b2607;
   --danger: #ff8d7a;
 }
@@ -15,11 +15,13 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
+  background: linear-gradient(180deg, #3b3b37 0%, var(--bg) 45%, #1d1e1f 100%);
   color: var(--text);
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-text-size-adjust: 100%;
 }
+
+body { font-family: "Inter", system-ui, sans-serif; }
 
 h1, h2, p { margin: 0; }
 
@@ -70,6 +72,11 @@ input {
 
 #overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 #count { font-size: min(34vh, 300px); font-weight: 900; line-height: 1; text-shadow: 0 6px 0 rgba(0, 0, 0, 0.35); }
+
+#ranking { position: absolute; left: 28px; top: 28px; z-index: 3; min-width: 190px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(35, 37, 38, 0.9); box-shadow: 0 8px 22px rgba(0,0,0,.22); font-size: 14px; line-height: 1.7; }
+#ranking strong { display: block; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+#ranking b { float: right; color: var(--accent); }
+#ranking span { color: var(--muted); font-size: 11px; }
 
 #results {
   pointer-events: auto; background: rgba(23, 25, 28, 0.94); border: 1px solid var(--line);
@@ -140,6 +147,7 @@ input {
 #codeInput { text-transform: uppercase; letter-spacing: 0.2em; font-size: 26px; text-align: center; }
 #joinError { color: var(--danger); min-height: 1.4em; }
 .card button { font-size: 20px; padding: 16px; }
+input[readonly] { opacity: .7; }
 
 #lobby { align-items: center; text-align: center; }
 #myCar { display: grid; place-items: center; width: 130px; height: 190px; border-radius: 20px; background: var(--panel); }
@@ -160,6 +168,12 @@ input {
   padding: max(12px, env(safe-area-inset-top)) 16px 0; pointer-events: none;
   font-weight: 900; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
 }
+#liveLeaderboard { position: absolute; left: 16px; top: max(64px, calc(env(safe-area-inset-top) + 42px)); min-width: 175px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.22); border-radius: 12px; background: rgba(23,25,28,.68); text-shadow: none; font-size: 12px; line-height: 1.7; }
+#liveLeaderboard:empty { display: none; }
+#liveLeaderboard div { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+#liveLeaderboard span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#liveLeaderboard strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+#liveLeaderboard .leader-me { color: var(--accent); }
 #place { font-size: 46px; line-height: 1; }
 #place small { font-size: 18px; margin-left: 6px; }
 #lap { font-size: 22px; }
@@ -259,6 +273,10 @@ input {
 #quizRows .name { font-weight: 800; font-size: 14px; color: var(--muted); }
 #quizRows .text { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #quizRows .answer { color: var(--accent); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#quizRows .team-answer { font-size: 20px; padding: 12px 14px; }
+#quizRows .team-answer .letter { color: var(--accent); width: 1.4em; }
+#quizRows .team-answer .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#quizRows .team-answer.right { background: rgba(185, 238, 79, 0.14); color: var(--accent); }
 #quizRows .mark { font-size: 22px; font-weight: 900; width: 1.2em; text-align: center; color: var(--muted); }
 #quizRows .mark.good { color: var(--accent); }
 #quizRows .mark.bad { color: var(--danger); }

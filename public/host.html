@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Race game: big screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="host">
@@ -13,6 +15,7 @@
   <div id="hint"></div>
   <div id="overlay">
     <div id="count" hidden></div>
+    <div id="ranking" aria-live="polite" hidden></div>
     <div id="quiz" class="quiz" hidden>
       <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
       <h2 id="quizText"></h2>
@@ -23,7 +26,6 @@
       <h2>Results</h2>
       <p id="realWinner"></p>
       <ol id="resultList"></ol>
-      <p id="greenResult"></p>
     </div>
   </div>
 </main>
@@ -34,10 +36,6 @@
     <div id="joinUrl"></div>
     <div class="label">Game code</div>
     <div id="code">····</div>
-  </section>
-  <section id="greenBox" hidden>
-    <div class="label">How healthy is the map <span id="greenValue">0%</span></div>
-    <div class="meter"><div id="greenBar"></div></div>
   </section>
   <section>
     <div class="label" id="listTitle">Players</div>
@@ -54,6 +52,7 @@
       <button id="teacher" type="button">Teacher screen</button>
     </div>
     <p id="bankNote" hidden></p>
+    <div id="modeRow" class="option" hidden><span class="label">Mode</span><div><button id="soloMode" type="button">Solo</button><button id="teamMode" type="button">Team</button></div></div>
     <div id="worldRow" class="option" hidden>
       <span class="label">World</span>
       <div><span id="worldName"></span><button id="worldNext" type="button">Change</button></div>

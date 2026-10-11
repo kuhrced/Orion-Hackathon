@@ -127,3 +127,4 @@ the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.jso
 ## Not built yet
 
 Music, the ElevenLabs commentator, sound effects, and putting the server online.
+figuring out who "json" is and why he sent me packages

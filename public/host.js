@@ -23,7 +23,7 @@ const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal']
 const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
 const MAP_FADE = 1500;
 
-let state = { phase: 'draw', players: [], laps: 2, green: 0, results: null };
+let state = { phase: 'draw', players: [], laps: 2, mode: 'solo', results: null };
 let track = null;
 let scene = null;
 let life = null; // the moving layer: smoke, birds, river
@@ -181,6 +181,12 @@ function paintPlayers() {
   $('listTitle').textContent = racing ? 'Ranking' : `Players (${state.players.length}/${MAX_PLAYERS})`;
 }
 
+function paintRanking() {
+  const rows = (state.leaderboard ?? []).map((player, index) => `${index + 1}. ${player.name} <span>${player.correct} right</span> <b>${player.score}</b>`);
+  $('ranking').hidden = !rows.length || !RACING.includes(state.phase) && state.phase !== 'results';
+  $('ranking').innerHTML = rows.length ? `<strong>Top 3</strong>${rows.map((row) => `<div>${row}</div>`).join('')}` : '';
+}
+
 const LEVELS = [null, 'Easy', 'Medium', 'Hard'];
 const levelBadge = (level) => element('span', `level l${level}`, LEVELS[level]);
 
@@ -190,7 +196,6 @@ function paintResults() {
   $('realWinner').textContent = winner
     ? `Real winner: ${winner.name}, with ${winner.correct} right ${winner.correct === 1 ? 'answer' : 'answers'}`
     : summary?.questions ? 'No real winner this time: nobody got a question right.' : '';
-  $('greenResult').textContent = summary ? `Together you made the map ${Math.round(summary.green * 100)}% clean. Topic: ${summary.topic}.` : '';
   $('resultList').replaceChildren(...results.map((result) => {
     const row = element('li');
     if (result.id === summary?.realWinner) row.classList.add('real');
@@ -202,7 +207,7 @@ function paintResults() {
       carIcon(result.color, result.type, 44),
       who,
       levelBadge(result.level),
-      element('span', 'score', `✓ ${result.correct}`),
+      element('span', 'score', `${result.score} pts · ✓ ${result.correct}`),
       element('span', 'time', result.time === null ? 'Did not finish' : formatTime(result.time)),
     );
     return row;
@@ -214,10 +219,24 @@ function paintQuiz() {
   const { question, reveal, players } = state;
   if (!question) return;
   $('quizNumber').textContent = `Question ${question.number}`;
+  if (state.mode === 'team') {
+    const shared = players.find((player) => player.q)?.q;
+    $('quizCount').textContent = reveal
+      ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
+      : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
+    $('quizText').textContent = shared?.text ?? 'Team question';
+    $('quizRows').replaceChildren(...(shared?.choices ?? []).map((choice, index) => {
+      const correct = reveal && index === players.find((player) => player.q)?.right;
+      const row = element('li', correct ? 'team-answer right' : 'team-answer');
+      row.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
+      return row;
+    }));
+    return;
+  }
   $('quizCount').textContent = reveal
     ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
     : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
-  $('quizText').textContent = reveal ? 'Time is up!' : 'Everyone gets their own question';
+  $('quizText').textContent = reveal ? 'Time is up!' : state.mode === 'team' ? 'Team question — everyone answers together' : 'Everyone gets their own question';
   $('quizRows').replaceChildren(...players.filter((player) => player.q).map((player) => {
     const row = element('li');
     const text = element('span', 'ask');
@@ -228,12 +247,6 @@ function paintQuiz() {
     row.append(carIcon(player.color, player.type, 40), levelBadge(player.q.level), text, mark);
     return row;
   }));
-}
-
-function paintGreen() {
-  const percent = Math.round(shownGreen * 100);
-  $('greenValue').textContent = `${percent}%`;
-  $('greenBar').style.width = `${percent}%`;
 }
 
 function updateUI() {
@@ -252,7 +265,7 @@ function updateUI() {
   const writing = uploading || !!bank?.writing;
   mainButton.textContent = (phase === 'lobby' && writing ? 'Gemini is writing…' : mainLabel) ?? '';
   secondButton.textContent = secondLabel ?? '';
-  mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && (!state.players.length || writing));
+  mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && (!state.players.length || writing || !bank?.count));
   $('lapsRow').hidden = $('worldRow').hidden = phase !== 'lobby';
   // The topic can be set while the track is still being drawn, so Gemini works in the meantime.
   const choosing = phase === 'draw' || phase === 'lobby';
@@ -269,7 +282,7 @@ function updateUI() {
       : bank.writing ? `Gemini is writing questions ${about}…`
         : uploadError ? uploadError
           : bank.source === 'gemini' ? `Gemini wrote ${bank.count} questions ${about}, in three levels.`
-            : bank.note || `Using the ${bank.count} built-in environment questions.`;
+            : bank.note || (bank.count ? `${bank.count} questions ready.` : 'Add questions on the teacher screen to start.');
   }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
@@ -277,12 +290,15 @@ function updateUI() {
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
   $('removeBot').disabled = !state.players.some((player) => player.bot);
   $('clock').hidden = !racing;
-  $('greenBox').hidden = !racing && phase !== 'results';
+  $('modeRow').hidden = phase !== 'draw' && phase !== 'lobby';
+  $('soloMode').classList.toggle('primary', state.mode !== 'team');
+  $('teamMode').classList.toggle('primary', state.mode === 'team');
   $('joinBox').classList.toggle('small', racing || phase === 'results');
   $('results').hidden = phase !== 'results';
   if (phase === 'results') paintResults();
   paintQuiz();
   paintPlayers();
+  paintRanking();
 }
 
 // ---------- The race view ----------
@@ -320,13 +336,7 @@ function frame(now) {
     }
   }
 
-  if (!holding && shownGreen !== state.green) {
-    oldMap = map;
-    map = null;
-    shownGreen = state.green;
-    fadeStart = now;
-    paintGreen();
-  }
+  shownGreen = 0;
   map ??= renderMap(scene, view.scale * view.dpr, shownGreen);
   const fade = oldMap ? Math.min(1, (now - fadeStart) / MAP_FADE) : 1;
   const ctx = gameCanvas.getContext('2d');
@@ -389,7 +399,7 @@ async function showJoin(code) {
   }
   const url = `${base}/play?room=${code}`;
   $('qr').src = `/qr.svg?d=${encodeURIComponent(url)}`;
-  $('joinUrl').textContent = `${base.replace(/^https?:\/\//, '')}/play`;
+  $('joinUrl').textContent = url;
   $('code').textContent = code;
 }
 
@@ -490,6 +500,8 @@ $('teacher').addEventListener('click', () => {
 });
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
+$('soloMode').addEventListener('click', () => send({ t: 'mode', mode: 'solo' }));
+$('teamMode').addEventListener('click', () => send({ t: 'mode', mode: 'team' }));
 
 new ResizeObserver(layout).observe(stage);
 layout();

@@ -56,8 +56,8 @@ function paintStatus() {
     $('statusLine').textContent = `Gemini wrote ${bank.questions.length} questions ${about}`;
     $('statusDetail').textContent = `It took ${bank.made.seconds} seconds. Model: ${bank.made.model}. Source: ${bank.made.from === 'pdf' ? 'your PDF' : 'the topic you typed'}.`;
   } else {
-    $('statusLine').textContent = `Using the ${bank.questions.length} built-in questions`;
-    $('statusDetail').textContent = state.bank.note || 'Type a topic or upload a PDF, and Gemini writes new questions.';
+    $('statusLine').textContent = `${bank.questions.length} questions ready`;
+    $('statusDetail').textContent = state.bank.note || 'Type a topic, upload a PDF, or add questions below.';
   }
   const done = !writing && bank.source === 'gemini';
   $('step1').className = (writing && !uploading) || done ? 'done' : '';
@@ -83,14 +83,24 @@ setInterval(() => {
 function questionCard(q, index) {
   const card = element('li', 'card');
   card.style.animationDelay = `${index * 45}ms`;
-  card.append(element('span', 'subtopic', q.subtopic), element('p', 'ask', q.question));
+  const questionInput = element('input'); questionInput.value = q.question; questionInput.className = 'edit-question';
+  card.append(element('span', 'subtopic', q.subtopic), questionInput);
   const choices = element('ul');
   q.choices.forEach((choice, at) => {
     const row = element('li', at === q.correct ? 'right' : '');
-    row.append(element('span', 'letter', 'ABCD'[at]), element('span', '', choice));
+    const input = element('input'); input.value = choice; input.className = 'edit-choice'; input.dataset.index = at;
+    row.append(element('span', 'letter', 'ABCD'[at]), input);
     choices.append(row);
   });
   card.append(choices);
+  const controls = element('div', 'question-controls');
+  const level = element('select'); level.innerHTML = '<option value="1">Easy</option><option value="2">Medium</option><option value="3">Hard</option>'; level.value = q.level;
+  const save = element('button', 'primary', 'Save');
+  const remove = element('button', '', 'Remove');
+  const correct = element('select'); correct.innerHTML = '<option value="0">Correct: A</option><option value="1">Correct: B</option><option value="2">Correct: C</option><option value="3">Correct: D</option>'; correct.value = q.correct;
+  save.addEventListener('click', () => send({ t: 'editQuestion', question: { id: q.id, question: questionInput.value, choices: [...card.querySelectorAll('.edit-choice')].map((input) => input.value), correct: correct.value, level: level.value, subtopic: q.subtopic } }));
+  remove.addEventListener('click', () => send({ t: 'removeQuestion', question: { id: q.id, question: q.question, choices: q.choices, correct: q.correct, level: q.level, subtopic: q.subtopic } }));
+  controls.append(level, correct, save, remove); card.append(controls);
   return card;
 }
 
@@ -141,7 +151,7 @@ function paintClass() {
     } else if (state.phase === 'question') {
       mark = player.answered ? 'Answered' : 'Thinking…';
     }
-    row.append(carIcon(player.color, player.type, 36), who, now, element('span', markClass, mark), element('span', 'score', `✓ ${player.correct}`));
+    row.append(carIcon(player.color, player.type, 36), who, now, element('span', markClass, mark), element('span', 'score', `${player.score ?? 0} pts`));
     return row;
   });
   if (!rows.length) rows.push(element('li', 'empty', 'Nobody has joined yet. Players scan the QR code on the big screen.'));
@@ -167,6 +177,7 @@ const send = connect({
       paint();
     } else if (message.t === 'bank') {
       bank = message;
+      shownBank = '';
       writingSince = performance.now() - message.writingFor;
       paint();
     }
@@ -180,6 +191,26 @@ $('topicForm').addEventListener('submit', (event) => {
   formError = '';
   $('topic').blur();
   send({ t: 'topic', topic: $('topic').value });
+});
+
+const questionModal = $('questionModal');
+$('addQuestion').addEventListener('click', () => {
+  questionModal.hidden = false;
+  $('newQuestion').focus();
+});
+$('cancelQuestion').addEventListener('click', () => { questionModal.hidden = true; });
+$('addQuestionForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  send({ t: 'addQuestion', question: {
+    question: $('newQuestion').value,
+    choices: [...document.querySelectorAll('.new-choice')].map((input) => input.value),
+    correct: $('newCorrect').value,
+    level: $('newLevel').value,
+    subtopic: $('newSubtopic').value,
+  } });
+  questionModal.hidden = true;
+  event.target.reset();
+  $('newSubtopic').value = 'General';
 });
 
 $('pdf').addEventListener('change', async () => {

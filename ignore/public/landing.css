@@ -1,0 +1,632 @@
+/* Polluted grey world; the bright green is the clean future the players race for.
+   The air quality picker sets data-aq on <html>, which swaps the world colours below. */
+
+/* Registered so the colours fade smoothly when the air quality changes */
+@property --sky { syntax: "<color>"; inherits: true; initial-value: #3b3b37; }
+@property --bg { syntax: "<color>"; inherits: true; initial-value: #2b2d2e; }
+@property --bottom { syntax: "<color>"; inherits: true; initial-value: #242526; }
+@property --panel { syntax: "<color>"; inherits: true; initial-value: #323435; }
+@property --line { syntax: "<color>"; inherits: true; initial-value: #474a4b; }
+@property --haze { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --grass { syntax: "<color>"; inherits: true; initial-value: #5c6656; }
+@property --hill1 { syntax: "<color>"; inherits: true; initial-value: #3f443d; }
+@property --hill2 { syntax: "<color>"; inherits: true; initial-value: #474c44; }
+@property --tree1 { syntax: "<color>"; inherits: true; initial-value: #66735f; }
+@property --tree2 { syntax: "<color>"; inherits: true; initial-value: #75806b; }
+@property --smog { syntax: "<number>"; inherits: true; initial-value: 1; }
+
+:root {
+  --sky: #3b3b37;
+  --bg: #2b2d2e;
+  --bottom: #242526;
+  --panel: #323435;
+  --hill1: #3f443d;
+  --hill2: #474c44;
+  --tree1: #66735f;
+  --tree2: #75806b;
+  --smog: 1;
+  --aq: #ff6b5b;
+  --text: #eeeee9;
+  --muted: #a7a8a2;
+  --accent: #b6e34a;
+  --accent-dark: #7fa62a;
+  --hot: #2f9e5b;
+  --cool: #4cc9f0;
+  --cool-dark: #2a8fb3;
+  --haze: rgba(176, 152, 104, 0.2);
+  --danger: #ff6b5b;
+  --road: #303232;
+  --grass: #5c6656;
+  --line: #474a4b;
+  transition: --sky 1.2s, --bg 1.2s, --bottom 1.2s, --panel 1.2s, --line 1.2s, --haze 1.2s,
+    --grass 1.2s, --hill1 1.2s, --hill2 1.2s, --tree1 1.2s, --tree2 1.2s, --smog 1.2s;
+}
+
+:root[data-aq="unhealthy"] {
+  --sky: #3e4034; --bg: #2c302b; --bottom: #232723; --panel: #333833; --line: #4a5047;
+  --haze: rgba(196, 160, 86, 0.18); --grass: #5f7052;
+  --hill1: #3f4a3b; --hill2: #485443; --tree1: #66804f; --tree2: #74905a;
+  --smog: 0.65; --aq: #ff9f43;
+}
+:root[data-aq="moderate"] {
+  --sky: #33473a; --bg: #24332a; --bottom: #1c2821; --panel: #2b3b31; --line: #3f5446;
+  --haze: rgba(230, 205, 110, 0.16); --grass: #4f8a4b;
+  --hill1: #35593a; --hill2: #3d6642; --tree1: #4f9a52; --tree2: #62ad5f;
+  --smog: 0.3; --aq: #ffd166;
+}
+:root[data-aq="good"] {
+  --sky: #1d5a3c; --bg: #123526; --bottom: #0c2419; --panel: #183f2d; --line: #2a5d45;
+  --haze: rgba(255, 220, 110, 0.3); --grass: #3f8f4a;
+  --hill1: #1f5a35; --hill2: #24683c; --tree1: #3fae5a; --tree2: #58c46c;
+  --smog: 0; --aq: #b6e34a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 85% 6%, var(--haze), transparent 32%),
+    linear-gradient(180deg, var(--sky) 0%, var(--bg) 45%, var(--bottom) 100%);
+  color: var(--text);
+  font-family: "Inter", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Smog clouds drifting behind the page */
+.smog { position: fixed; inset: 0; pointer-events: none; z-index: -2; overflow: hidden; opacity: var(--smog); }
+.smog span {
+  position: absolute;
+  width: 60vw;
+  height: 34vh;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(150, 140, 118, 0.22), transparent);
+  filter: blur(20px);
+  animation: smog 38s linear infinite;
+}
+.smog span:nth-child(1) { top: 4%; animation-delay: 0s; }
+.smog span:nth-child(2) { top: 30%; animation-delay: -12s; animation-duration: 46s; }
+.smog span:nth-child(3) { top: 58%; animation-delay: -24s; }
+.smog span:nth-child(4) { top: 80%; animation-delay: -6s; animation-duration: 52s; }
+@keyframes smog {
+  from { transform: translateX(-70vw); }
+  to { transform: translateX(110vw); }
+}
+
+/* Hero */
+.hero-wrap { position: relative; max-width: 1200px; margin: 0 auto; }
+
+.hero {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 72px 16px 40px;
+  text-align: center;
+}
+
+.tag {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(182, 227, 74, 0.14);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.logo {
+  font-family: "Russo One", sans-serif;
+  font-size: clamp(56px, 14vw, 120px);
+  line-height: 1;
+  margin: 20px 0 16px;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-shadow: 6px 6px 0 #1f6b3e;
+}
+.logo span { color: var(--accent); margin-left: 8px; }
+
+.sub {
+  color: var(--muted);
+  font-size: clamp(16px, 2.6vw, 20px);
+  line-height: 1.5;
+  max-width: 520px;
+  margin: 0 auto 36px;
+}
+
+/* Save-the-planet notes around the hero (wide screens only) */
+.note {
+  position: absolute;
+  max-width: 200px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(53, 55, 56, 0.85);
+  border: 1px dashed #6d705f;
+  color: var(--text);
+  font-family: "Russo One", sans-serif;
+  font-size: 17px;
+  line-height: 1.3;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  animation: bob 5s ease-in-out infinite;
+}
+.note-1 { top: 60px; left: 24px; --r: -5deg; }
+.note-2 { top: 300px; left: 40px; --r: 4deg; animation-delay: -2s; color: #e0c48a; }
+.note-3 { top: 70px; right: 24px; --r: 5deg; animation-delay: -1s; }
+.note-4 { top: 310px; right: 36px; --r: -3deg; animation-delay: -3s; color: var(--accent); }
+@keyframes bob {
+  0%, 100% { transform: rotate(var(--r)) translateY(0); }
+  50% { transform: rotate(var(--r)) translateY(-8px); }
+}
+@media (max-width: 1120px) { .note { display: none; } }
+
+/* Buttons */
+.actions { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+.btn {
+  font-family: "Russo One", sans-serif;
+  font-size: 20px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn:active { transform: translateY(4px); }
+
+.btn-host {
+  width: 100%;
+  max-width: 360px;
+  padding: 20px 28px;
+  background: var(--accent);
+  color: #10240a;
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+.btn-host:active { box-shadow: 0 2px 0 var(--accent-dark); }
+.btn-icon { margin-right: 6px; }
+
+.join {
+  display: flex;
+  width: 100%;
+  max-width: 360px;
+  gap: 8px;
+}
+.join input {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: color-mix(in srgb, var(--bottom) 85%, black);
+  color: var(--text);
+  font-family: "Russo One", sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.join input:focus { outline: none; border-color: var(--cool); }
+.btn-join {
+  padding: 0 24px;
+  background: var(--cool);
+  color: #062433;
+  box-shadow: 0 6px 0 var(--cool-dark);
+}
+.btn-join:active { box-shadow: 0 2px 0 var(--cool-dark); }
+
+.error { color: #ff8a80; font-weight: 600; min-height: 1.2em; }
+
+/* Road with animated cars */
+.road {
+  position: relative;
+  height: 112px;
+  margin-top: 140px;
+  background: var(--road);
+  border-top: 10px solid var(--grass);
+  border-bottom: 10px solid var(--grass);
+}
+
+/* Air quality picker (top right) */
+.aq {
+  position: absolute;
+  top: 22px;
+  right: 16px;
+  z-index: 6;
+}
+.aq-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--aq) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aq) 55%, transparent);
+  color: var(--text);
+  font: 600 13px "Inter", system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.3s, border-color 0.3s;
+}
+.aq-btn:hover { background: color-mix(in srgb, var(--aq) 26%, transparent); }
+.aq-btn:focus-visible, .aq-menu button:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+.aq-btn b { color: var(--aq); text-transform: uppercase; letter-spacing: 0.05em; }
+.aq-btn .caret { color: var(--muted); }
+.aq-btn[aria-expanded="true"] .caret { transform: rotate(180deg); }
+.aq-btn i, .aq-menu i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--aq);
+}
+.aq-btn i { animation: pulse 1.4s ease-in-out infinite; }
+:root[data-aq="good"] .aq-btn i { animation: none; }
+
+.aq-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.aq-menu[hidden] { display: none; }
+.aq-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: 600 14px "Inter", system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.aq-menu button:hover { background: rgba(255, 255, 255, 0.06); }
+.aq-menu button[aria-checked="true"] { background: rgba(255, 255, 255, 0.1); }
+.aq-menu button[aria-checked="true"]::after { content: "✓"; margin-left: auto; color: var(--accent); }
+.aq-menu [data-aq="good"] i { background: #b6e34a; }
+.aq-menu [data-aq="moderate"] i { background: #ffd166; }
+.aq-menu [data-aq="unhealthy"] i { background: #ff9f43; }
+.aq-menu [data-aq="hazardous"] i { background: #ff6b5b; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+
+/* Grey hills, a factory and dull trees above the road */
+.scenery {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 80px;
+  overflow: hidden;
+  z-index: -1;
+}
+.hills {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 40px;
+  background:
+    radial-gradient(ellipse 120px 40px at 10% 100%, var(--hill1) 98%, transparent),
+    radial-gradient(ellipse 160px 46px at 35% 100%, var(--hill2) 98%, transparent),
+    radial-gradient(ellipse 140px 38px at 62% 100%, var(--hill1) 98%, transparent),
+    radial-gradient(ellipse 180px 48px at 90% 100%, var(--hill2) 98%, transparent);
+}
+.factory {
+  position: absolute;
+  bottom: 0;
+  left: 70%;
+  width: 90px;
+  height: 26px;
+  background: #3a3c3c;
+  border-radius: 3px 3px 0 0;
+}
+.stack {
+  opacity: max(var(--smog), 0.15);
+  position: absolute;
+  bottom: 100%;
+  width: 12px;
+  height: 30px;
+  background: #434545;
+}
+.s1 { left: 16px; }
+.s2 { left: 52px; height: 22px; }
+.stack em {
+  position: absolute;
+  left: -4px;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(120, 118, 108, 0.7);
+  animation: puff 3s ease-out infinite;
+}
+.stack em:nth-child(2) { animation-delay: -1s; }
+.stack em:nth-child(3) { animation-delay: -2s; }
+@keyframes puff {
+  from { transform: translate(0, 0) scale(0.5); opacity: 0.9; }
+  to { transform: translate(18px, -40px) scale(1.8); opacity: 0; }
+}
+.trees {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 56px;
+  background:
+    radial-gradient(circle 16px at 30px 22px, var(--tree1) 98%, transparent),
+    radial-gradient(circle 12px at 120px 32px, var(--tree2) 98%, transparent),
+    linear-gradient(90deg, transparent 27px, #4e4337 27px 33px, transparent 33px 118px, #4e4337 118px 123px, transparent 123px) 0 36px / 180px 20px repeat-x;
+  background-size: 180px 56px, 180px 56px, 180px 20px;
+  background-repeat: repeat-x;
+  animation: trees 6s linear infinite;
+}
+@keyframes trees { to { transform: translateX(-180px); } }
+.track { position: absolute; inset: 0; overflow: hidden; }
+.lane {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 200%;
+  height: 4px;
+  margin-top: -2px;
+  background: repeating-linear-gradient(90deg, #d8d8d0 0 40px, transparent 40px 80px);
+  animation: lane 0.6s linear infinite;
+}
+@keyframes lane { to { transform: translateX(-80px); } }
+
+.car {
+  position: absolute;
+  height: 38px;
+  width: auto;
+  animation: drive linear infinite;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.35));
+}
+
+/* Top lane: race car + truck, bottom lane: sedan + formula */
+.car-a { top: 4px; animation-duration: 3.6s; }
+.car-c { top: 4px; animation-duration: 3.6s; animation-delay: -1.8s; }
+.car-b { top: 50px; animation-duration: 4.4s; animation-delay: -0.6s; }
+.car-d { top: 50px; animation-duration: 4.4s; animation-delay: -2.8s; }
+
+@keyframes drive {
+  from { left: -90px; }
+  to { left: 100%; }
+}
+
+/* Save-the-planet ticker */
+.ticker {
+  margin: 24px 0 40px;
+  background: var(--accent);
+  color: #10240a;
+  overflow: hidden;
+  transform: rotate(-1.5deg);
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 24s linear infinite;
+}
+.ticker span {
+  padding: 12px 0;
+  font-family: "Russo One", sans-serif;
+  font-size: 20px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ticker span::after { content: "✦"; margin: 0 28px; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+
+/* How it works */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 900px;
+  margin: 24px auto 0;
+  padding: 0 16px;
+}
+.step {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+}
+.num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--hot);
+  font-family: "Russo One", sans-serif;
+  margin-bottom: 12px;
+}
+.step h3 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 22px; margin-bottom: 6px; }
+.step p { color: var(--muted); line-height: 1.5; }
+
+/* Tabs: only the page matching the URL hash is shown */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  gap: clamp(8px, 4vw, 40px);
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.tabs a {
+  padding: 10px 22px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+.tabs a:hover { color: var(--text); background: var(--panel); }
+.tabs a[aria-current="page"] { color: #10240a; background: var(--accent); }
+.tabs a:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+
+.page[hidden] { display: none; }
+
+/* Meet the cars, About, Team */
+.garage, .about, .team { max-width: 1000px; margin: 56px auto 0; padding: 0 16px; }
+.section-title {
+  font-family: "Russo One", sans-serif;
+  font-weight: 400;
+  font-size: clamp(32px, 6vw, 48px);
+  font-style: italic;
+  text-align: center;
+}
+.section-sub { color: var(--muted); text-align: center; margin: 8px auto 28px; max-width: 520px; line-height: 1.5; }
+
+.car-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+.car-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+}
+.car-stage {
+  display: grid;
+  place-items: center;
+  height: 120px;
+  border-radius: 14px;
+  background: repeating-linear-gradient(90deg, #d8d8d0 0 24px, transparent 24px 48px) center / 100% 3px no-repeat, var(--road);
+}
+.car-stage img { height: 78px; width: auto; filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.4)); }
+
+.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 10px 0 16px; }
+.swatches button {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: #2a2c2d;
+  cursor: pointer;
+}
+.swatches button:hover { border-color: var(--line); }
+.swatches button[aria-pressed="true"] { border-color: var(--accent); background: #3a3d3b; }
+.swatches button:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+.swatches img { height: 22px; width: auto; }
+
+.car-card h3 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 26px; }
+.nick { color: var(--accent); font-weight: 600; margin-bottom: 14px; }
+
+.bars { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; margin-bottom: 16px; }
+.bars dt { color: var(--muted); font-size: 14px; font-weight: 600; }
+.pips { display: flex; gap: 5px; }
+.pips i { flex: 1; max-width: 34px; height: 10px; border-radius: 3px; background: #45484a; }
+.pips i.on { background: var(--accent); }
+
+.pro, .con { font-size: 14px; line-height: 1.45; }
+.pro { color: #cfe8a6; margin-bottom: 4px; }
+.con { color: #e6b3a8; }
+.pro b, .con b { font-weight: 800; }
+
+.about-grid, .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+}
+.panel h3 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 22px; margin-bottom: 8px; }
+.panel p { color: var(--muted); line-height: 1.55; }
+.soon {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(182, 227, 74, 0.14);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.member { text-align: center; }
+.avatar {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--hot);
+  font-family: "Russo One", sans-serif;
+  font-size: 30px;
+}
+.member .role { color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+.team-grid { grid-template-columns: repeat(4, 1fr); }
+.member { display: flex; flex-direction: column; }
+.member > p:not(.role) { flex: 1; }
+.links { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--cool);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.link svg { width: 15px; height: 15px; }
+.link[href]:hover { border-color: var(--cool); }
+.link[aria-disabled="true"] { color: var(--muted); opacity: 0.6; }
+
+footer { text-align: center; color: var(--muted); padding: 56px 16px 32px; font-size: 14px; }
+
+@media (max-width: 960px) {
+  .team-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .car-grid, .about-grid, .team-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .hero { padding-top: 48px; }
+  .tabs a { padding: 8px 12px; }
+  .tabs { gap: 4px; }
+  .stats { gap: 8px; }
+  .steps { grid-template-columns: 1fr; }
+  .aq { right: 50%; transform: translateX(50%); }
+  .aq-menu { right: 50%; transform: translateX(50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lane, .car, .trees, .smog span, .note, .ticker-track, .stack em, .aq-btn i { animation: none; }
+  :root { transition: none; }
+}
+
+/* Eco stats strip */
+.stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.stat {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}

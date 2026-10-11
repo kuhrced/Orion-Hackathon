@@ -9,9 +9,6 @@ const $ = (id) => document.getElementById(id);
 const canvas = $('view');
 const banner = $('banner');
 
-const FIRST = ['Speedy', 'Sleepy', 'Turbo', 'Wobbly', 'Lucky', 'Zippy', 'Grumpy', 'Sunny', 'Rusty', 'Funky'];
-const SECOND = ['Otter', 'Panda', 'Llama', 'Gecko', 'Moose', 'Koala', 'Robin', 'Tiger', 'Whale', 'Bison'];
-const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal'];
 
 const store = {
@@ -59,7 +56,11 @@ const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
 $('codeInput').value = roomInUrl;
-$('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
+$('nameInput').value = roomInUrl ? '' : store.get('localStorage', 'race-name') || '';
+if (roomInUrl) {
+  $('codeInput').readOnly = true;
+  $('codeInput').setAttribute('aria-label', `Game code ${roomInUrl}`);
+}
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -90,9 +91,20 @@ function showScreen() {
     results: 'A race just ended. You are in the next one!',
   }[phase] ?? 'The track is ready. The race starts soon!';
   $('score').textContent = `✓ ${mine.correct}`;
+  paintLiveLeaderboard();
 
   showQuiz(mine);
   if (screen === 'results') showResults();
+}
+
+function paintLiveLeaderboard() {
+  const board = $('liveLeaderboard');
+  const rows = (state?.leaderboard ?? []).slice(0, 3);
+  board.replaceChildren(...rows.map((player, index) => {
+    const row = element('div', player.id === me?.id ? 'leader-me' : '');
+    row.append(element('b', '', `${index + 1}`), element('span', '', player.name), element('strong', '', `${player.score} pts`));
+    return row;
+  }));
 }
 
 // What the chosen car is good and bad at, from the team's car stats.
@@ -157,7 +169,7 @@ function showResults() {
   const result = results.find((entry) => entry.id === me.id);
   const winner = results.find((entry) => entry.id === summary?.realWinner);
   $('myPlace').textContent = ordinal(result.place);
-  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right and finished on ${LEVELS[result.level].toLowerCase()}. The map is ${Math.round(summary.green * 100)}% clean.`;
+  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right and earned ${result.score} points.`;
   $('myNote').textContent = result.note ?? '';
   $('doneWinner').textContent = winner ? (winner.id === me.id ? 'You are the real winner!' : `Real winner: ${winner.name}`) : '';
   $('doneList').replaceChildren(...results.map((entry) => {
@@ -240,7 +252,7 @@ function frame(now) {
   const zoom = (height >= width ? Math.max(width / 640, height / 1100) : height / 620) * dpr;
   const ctx = canvas.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = mixColor(scene.theme.ground[0], scene.theme.ground[1], state.green); // shows where a tile is not painted yet
+  ctx.fillStyle = mixColor(scene.theme.ground[0], scene.theme.ground[1], 0);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.translate(canvas.width / 2, canvas.height * 0.6);
   ctx.rotate(-mine.a - Math.PI / 2);
@@ -258,7 +270,7 @@ function frame(now) {
     x1: Math.max(...corners.map((p) => p.x)) + margin,
     y1: Math.max(...corners.map((p) => p.y)) + margin,
   };
-  tiles.draw(ctx, state.green, region);
+  tiles.draw(ctx, 0, region);
 
   const racing = state.phase === 'race';
   const pixel = dpr / zoom; // world units per screen pixel
@@ -266,8 +278,8 @@ function frame(now) {
   lastFrame = now;
   slowFrames = slowFrames * 0.97 + (dt > 0.034 ? 0.03 : 0);
   if (slowFrames > 0.6) lite = true;
-  life.ground(ctx, state.green, now / 1000, region, pixel, lite);
-  effects.update(cars, { dt, now, green: state.green, racing, length: CAR_LENGTH, spray: scene.theme.spray });
+  life.ground(ctx, 0, now / 1000, region, pixel, lite);
+  effects.update(cars, { dt, now, green: 0, racing, length: CAR_LENGTH, spray: scene.theme.spray });
   props.draw(ctx, region);
   effects.draw(ctx, now);
   const labels = [];
@@ -279,7 +291,7 @@ function frame(now) {
   }
   const self = state.players.find((player) => player.id === me.id);
   if (self) drawCar(ctx, sheet, self.color, self.type, mine.x, mine.y, mine.a, undefined, mine.boost && racing);
-  life.sky(ctx, state.green, now / 1000, region, pixel, lite);
+  life.sky(ctx, 0, now / 1000, region, pixel, lite);
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.font = '700 13px system-ui, sans-serif';
