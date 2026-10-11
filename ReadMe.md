@@ -47,11 +47,29 @@ hotspot fixes that.
 
 ## Questions
 
-The questions live in `questions.db` (SQLite). The server only reads this file. Each game
-remembers which questions it has used, so they do not repeat until all have been asked.
+Every player gets their own question, at their own level: easy, medium or hard. A right answer
+moves a player up a level and a wrong one moves them down. Harder questions give a longer boost
+and clean more of the map. Subtopics a player gets wrong come back later.
 
-`data/questions.json` is a copy for Node versions without built-in SQLite. After changing the
-database, refresh the copy (this needs Node.js 22.13 or newer):
+### Gemini writes the questions
+
+Copy `.env.example` to `.env` and put a Gemini API key in it (get one at
+https://aistudio.google.com/apikey). Git ignores `.env`; never put the key anywhere else.
+
+```bash
+npm run try-gemini
+```
+
+With a key, Gemini writes a fresh set of questions in three levels for the topic the host types in
+the lobby (the environment by default), and a personal note for each player after the race.
+
+### Backup questions
+
+Without a key, or if Gemini cannot be reached, the game uses the built-in questions below.
+
+The 100 built-in questions are in `data/questions.json`, each with a level and a subtopic. They
+were exported from `questions.db`. After changing the database, refresh the copy (this needs
+Node.js 22.13 or newer); levels and subtopics already set are kept:
 
 ```bash
 npm run export-questions
@@ -79,8 +97,9 @@ code uses the site's own address.
 | `public/worlds.js` | The five worlds: how each one looks polluted and clean, and everything that moves on the map |
 | `public/render.js` | Draws the cars and what they leave behind, and keeps the map picture ready |
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
-| `questions.db` | The questions |
-| `data/questions.json` | A copy of the questions for Node versions without built-in SQLite |
+| `gemini.js` | Asks Gemini for questions and for the personal notes |
+| `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
+| `questions.db` | Where the backup questions were first written |
 | `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |
 
 ## Things to tune
@@ -96,5 +115,4 @@ the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.jso
 
 ## Not built yet
 
-The Gemini "vibe" and music, the ElevenLabs commentator, sound effects, and putting the server
-online.
+Music, the ElevenLabs commentator, sound effects, and putting the server online.

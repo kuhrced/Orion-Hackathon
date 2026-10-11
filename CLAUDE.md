@@ -42,8 +42,11 @@ questions right.
   doll: the server moves the body, and each screen makes the limbs flop (`flopDoll` in
   `public/render.js`).
 - `public/host.js` is the big screen. `public/play.js` is the phone.
-- `questions.db` holds the questions. `data/questions.json` is a copy for Node versions
-  without built-in SQLite; run `npm run export-questions` after changing the database.
+- Questions are personal: each player has a level (1 easy, 2 medium, 3 hard) and gets their own
+  question each time. `gemini.js` asks Gemini to write a bank of questions for the room's topic;
+  `prepareBank` in `server.js` falls back to `data/questions.json` when there is no key or the
+  call fails. Everything Gemini returns is checked before it is used. Never call Gemini in the
+  middle of a race: banks are written in the lobby and reused.
 
 Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question-countdown`,
 `question` and `reveal` every 10 to 20 seconds of driving, and finally `results`.
@@ -68,5 +71,4 @@ give a short recap of what you understood before starting a big change.
 
 ## Not built yet
 
-The Gemini "vibe" and music, the ElevenLabs commentator, sound effects, and putting the server
-online.
+Music, the ElevenLabs commentator, sound effects, and putting the server online.
