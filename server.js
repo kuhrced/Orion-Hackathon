@@ -217,6 +217,17 @@ async function receivePdf(request, response) {
   reply(200);
 }
 
+// PUBLIC_URL as typed in .env, tidied: "example.com/host" becomes "https://example.com".
+function publicUrl() {
+  const typed = (process.env.PUBLIC_URL || '').trim();
+  if (!typed) return null;
+  try {
+    return new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`).origin;
+  } catch {
+    return null;
+  }
+}
+
 function lanUrls() {
   return Object.values(os.networkInterfaces())
     .flat()
@@ -244,11 +255,15 @@ const server = http.createServer(async (request, response) => {
     response.end(sound ?? 'Not found');
     return;
   }
+  if (url.pathname === '/favicon.ico') { // there is none; say so quietly instead of with a 404
+    response.writeHead(204).end();
+    return;
+  }
   if (url.pathname === '/info') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     // PUBLIC_URL is for when the game is reachable at another address (online, or a tunnel):
     // the QR code then points there.
-    response.end(JSON.stringify({ lan: lanUrls(), public: process.env.PUBLIC_URL || null }));
+    response.end(JSON.stringify({ lan: lanUrls(), public: publicUrl() }));
     return;
   }
   if (url.pathname === '/qr.svg') {
@@ -1191,7 +1206,11 @@ server.on('connection', (socket) => {
   console.log(`${new Date().toLocaleTimeString()}  a device at ${address} connected`);
 });
 server.on('clientError', (error, socket) => {
-  console.log(`${new Date().toLocaleTimeString()}  the device at ${addressOf(socket)} sent something that is not plain http (${error.code}). Its browser is probably trying https: type http:// in front of the address.`);
+  // Only a request that cannot be read at all points at https. A connection that simply
+  // dropped (a phone leaving the Wi-Fi) is normal and says nothing.
+  if (String(error.code).startsWith('HPE_')) {
+    console.log(`${new Date().toLocaleTimeString()}  the device at ${addressOf(socket)} sent something that is not plain http (${error.code}). Its browser is probably trying https: type http:// in front of the address.`);
+  }
   if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
   else socket.destroy();
 });
