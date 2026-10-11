@@ -59,6 +59,17 @@ const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
 $('codeInput').value = roomInUrl;
+// A random id that this phone keeps, so the game can remember the player between races.
+// It is not tied to a name or an account.
+function deviceId() {
+  let id = store.get('localStorage', 'race-device');
+  if (typeof id !== 'string' || id.length < 8) {
+    id = Array.from(crypto.getRandomValues(new Uint8Array(12)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    store.set('localStorage', 'race-device', id);
+  }
+  return id;
+}
+
 $('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
 
 function element(tag, className, text) {
@@ -82,6 +93,15 @@ function showScreen() {
   const mine = state.players.find((player) => player.id === me.id);
   if (!mine) return;
   $('hello').textContent = `You are in, ${mine.name}!`;
+  // The game remembers players between races: say so, and say what it will do with it.
+  const { back } = mine;
+  $('welcome').hidden = !back;
+  if (back) {
+    const review = back.weak.slice(0, 2).join(' and ').toLowerCase();
+    $('welcome').textContent = back.sameTopic
+      ? `Welcome back! You start on ${LEVELS[mine.level].toLowerCase()}${review ? `, and ${review} will come back first` : ''}.`
+      : `Welcome back! Last time you got ${back.last.right} of ${back.last.asked} right on ${back.last.topic}.`;
+  }
   $('myCar').replaceChildren(carIcon(mine.color, mine.type, 170));
   showCarCard(mine.type);
   $('status').textContent = {
@@ -383,7 +403,7 @@ $('join').addEventListener('submit', (event) => {
   const name = $('nameInput').value.trim();
   store.set('localStorage', 'race-name', name);
   navigator.wakeLock?.request('screen').catch(() => {}); // keep the phone awake where allowed
-  join({ code: $('codeInput').value.trim().toUpperCase(), name });
+  join({ code: $('codeInput').value.trim().toUpperCase(), name, device: deviceId() });
 });
 
 $('changeCar').addEventListener('click', () => {

@@ -130,7 +130,10 @@ function paintClass() {
       const right = answers.get(player.q.text);
       if (right) now.append(element('span', 'key', `Answer: ${right}`));
     } else {
-      now.append(element('span', 'idle', RACING.includes(state.phase) ? 'Driving' : state.phase === 'results' ? 'Finished' : 'Waiting'));
+      // Between questions there is room to show what is remembered about this player.
+      const { back } = player;
+      const memory = back ? ` · played ${back.races} ${back.races === 1 ? 'race' : 'races'} before, ${back.right} of ${back.asked} right${back.weak.length ? ` · review: ${back.weak.join(', ')}` : ''}` : '';
+      now.append(element('span', 'idle', `${RACING.includes(state.phase) ? 'Driving' : state.phase === 'results' ? 'Finished' : 'Waiting'}${memory}`));
     }
     let mark = '';
     let markClass = 'mark';

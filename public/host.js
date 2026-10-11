@@ -1,5 +1,6 @@
 // Big screen: the host draws the track here, and everyone watches the race here.
 import { prepareTrack, MAX_PLAYERS, WORLD } from '/shared/track.js';
+import { createCommentator } from '/commentator.js';
 import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, drawCar, formatTime, loadCars, ordinal, renderMap, CAR_LENGTH, WORLDS } from '/render.js';
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +48,7 @@ let listStamp = 0;
 const snapshots = createSnapshots();
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
+const commentator = createCommentator($('caption'));
 const WHOLE_MAP = { x0: 0, y0: 0, x1: WORLD.width, y1: WORLD.height };
 
 function loadSaved() {
@@ -428,6 +430,8 @@ const send = connect({
     } else if (message.t === 'break') {
       const what = message.limb ? props.loseLimb(message.id) : props.smash(message.id) && 'crate';
       if (what) effects.shatter(what, message.x, message.y, message.vx, message.vy, Math.max(1, 1 / view.scale / 3));
+    } else if (message.t === 'say') {
+      commentator.say(message);
     } else if (message.t === 'trackError') {
       trackError = message.reason;
       updateUI();
@@ -488,6 +492,14 @@ $('teacher').addEventListener('click', () => {
   const { code, key } = loadSaved();
   if (code) window.open(`/teacher#${code}.${key}`, 'teacher');
 });
+const showVoice = () => {
+  $('voiceToggle').textContent = `Commentator: ${commentator.muted ? 'off' : 'on'}`;
+};
+$('voiceToggle').addEventListener('click', () => {
+  commentator.toggle();
+  showVoice();
+});
+showVoice();
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
 

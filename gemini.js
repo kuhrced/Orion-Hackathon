@@ -140,6 +140,8 @@ ${JSON.stringify(players)}
 
 For each player write ONE short, friendly sentence of at most 110 characters. Say what they know well and
 what to review next, using only the results above. Speak to the player as "you". Simple words. No emojis.
+Some players have "earlier": their result the last time they played this topic. For them, say if they
+improved, when the results show it.
 
 Return JSON in exactly this shape: {"notes": [{"id": 1, "note": "..."}]}`;
   const schema = {

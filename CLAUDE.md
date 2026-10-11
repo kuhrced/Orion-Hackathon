@@ -54,6 +54,12 @@ questions right.
   heartbeat, and a screen that hears nothing for 5 seconds reconnects and shows a banner.
   Car positions are blended on the server's race clock, not on arrival time, so bunched-up
   Wi-Fi packets do not make the cars stutter.
+- The commentator: `say(room, kind, data)` in `server.js` picks a line from `commentary.js` and
+  sends it to the big screen only. With an ElevenLabs key, `voice.js` makes the sound first and
+  the screen plays it from `/voice/<id>.mp3`; otherwise the browser's own voice reads the words.
+- Player memory: `memory.js` keeps one record per player per race, in `data/memory.json` and,
+  with a key, in Backboard. `placeOnGrid` uses `recall` to set a returning player's level and
+  weak subtopics; `finishRace` calls `remember`. Players are known by an id their phone keeps.
 
 Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question-countdown`,
 `question` and `reveal` every 10 to 20 seconds of driving, and finally `results`.
@@ -78,4 +84,4 @@ give a short recap of what you understood before starting a big change.
 
 ## Not built yet
 
-Music, the ElevenLabs commentator, sound effects, and putting the server online.
+Music, sound effects, and putting the server online.

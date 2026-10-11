@@ -85,6 +85,26 @@ Node.js 22.13 or newer); levels and subtopics already set are kept:
 npm run export-questions
 ```
 
+## Commentator
+
+A commentator talks about the race on the big screen: the start, a new leader, questions, right
+answers, crashes, the last lap, the finish and the real winner. The words also show at the
+bottom of the map. The **Commentator: on/off** button on the big screen turns the sound off.
+
+Without a key the browser's own voice is used. To get an ElevenLabs voice, add
+`ELEVENLABS_API_KEY=` and your key to `.env` and restart. A race is about 600 letters of speech.
+
+## Player memory
+
+The game remembers each player between races: the topic, how many answers were right, the
+subtopics they got wrong and the level they reached. A returning player starts on their own
+level, their weak subtopics come back first, and the phone says "Welcome back". A player is
+known by a random id that their phone keeps; there are no accounts.
+
+The memory is kept in `data/memory.json` (Git ignores it). With `BACKBOARD_API_KEY=` and a key
+from https://app.backboard.io in `.env`, every race is also saved as a memory in Backboard, so it
+is still there when the game runs on another computer.
+
 ## Put it online
 
 The server is one Node.js process and reads its port from the `PORT` variable, so it runs on any
@@ -109,6 +129,9 @@ code uses the site's own address.
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
 | `public/teacher.html`, `public/teacher.js`, `public/teacher.css` | The teacher screen: Gemini's questions with answers, and the players' progress |
 | `gemini.js` | Asks Gemini for questions (from a topic or a PDF) and for the personal notes |
+| `commentary.js`, `voice.js` | What the commentator says, and the ElevenLabs voice that says it |
+| `public/commentator.js` | Plays the commentator on the big screen and shows the words |
+| `memory.js` | What the game remembers about each player (a file, and Backboard with a key) |
 | `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
 | `questions.db` | Where the backup questions were first written |
 | `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |

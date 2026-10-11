@@ -8,10 +8,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
+import { LINES } from './commentary.js';
 import { geminiModel, geminiReady, writeFeedback, writeQuestions } from './gemini.js';
+import { loadMemory, recall, remember } from './memory.js';
 import { carTuning, CAR_TYPES } from './shared/cars.js';
 import { buildProps, PROP_KINDS } from './shared/props.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
+import { clip, speak, voiceReady } from './voice.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 try {
@@ -182,6 +185,12 @@ function lanUrls() {
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
   if (url.pathname === '/pdf' && request.method === 'POST') return receivePdf(request, response);
+  if (url.pathname.startsWith('/voice/')) {
+    const sound = clip(url.pathname.slice(7).replace(/\.mp3$/, ''));
+    response.writeHead(sound ? 200 : 404, { 'Content-Type': sound ? 'audio/mpeg' : 'text/plain', 'Cache-Control': 'no-store' });
+    response.end(sound ?? 'Not found');
+    return;
+  }
   if (url.pathname === '/info') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ lan: lanUrls() }));
@@ -229,6 +238,7 @@ function createRoom() {
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
     topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false,
     lastWorld: null, props: [], watchers: new Set(), pdf: null, writingSince: 0, tick: 0, lastActive: Date.now(),
+    talkingUntil: 0, voiceLine: Promise.resolve(), saidLeader: null, leader: null, leaderSince: 0, saidLastLap: false, nextSmashLine: 0,
   };
   rooms.set(code, room);
   return room;
@@ -272,6 +282,11 @@ function stateMessage(room) {
     players: room.players.map((player) => ({
       id: player.id, name: player.name, color: player.color, type: player.type, bot: player.bot,
       connected: player.connected, correct: player.correct, level: player.level,
+      back: player.past && {
+        races: player.past.races, right: player.past.right, asked: player.past.asked,
+        last: { topic: player.past.last.topic, right: player.past.last.right, asked: player.past.last.asked },
+        weak: player.past.here?.weak ?? [], sameTopic: !!player.past.here,
+      },
       // Everyone has their own question. The right answer is only sent once time is up.
       q: showing && player.q ? { text: player.q.question, choices: player.q.choices, level: player.q.level, subtopic: player.q.subtopic } : null,
       answered: player.answer !== null,
@@ -326,14 +341,24 @@ function placeOnGrid(room) {
   if (!room.track) return;
   room.players.forEach((player, slot) => {
     const spot = gridSlot(room.track, slot);
-    Object.assign(player, { steer: 0, correct: 0, answer: null, q: null, botAnswer: null, boostUntil: 0, level: 2, history: [], weak: new Set() });
+    // Someone who has played this topic before starts on the level they reached, and the
+    // subtopics they got wrong come back first. Everyone else starts on medium.
+    player.past = player.device ? recall(player.device, room.bank.topic) : null;
+    const before = player.past?.here;
+    Object.assign(player, {
+      steer: 0, correct: 0, answer: null, q: null, botAnswer: null, boostUntil: 0,
+      level: before?.level ?? 2, history: [], weak: new Set(before?.weak ?? []),
+    });
     player.car = {
       x: spot.x, y: spot.y, a: spot.angle, v: 0, steer: 0,
       index: spot.index, progress: -spot.back, lap: 1, place: slot + 1,
       lost: 0, wrong: 0, done: false, finishTime: null,
     };
   });
-  Object.assign(room, { raceTime: 0, green: 0, question: null, reveal: null, questionCount: 0, firstFinish: null });
+  Object.assign(room, {
+    raceTime: 0, green: 0, question: null, reveal: null, questionCount: 0, firstFinish: null,
+    saidLeader: null, leader: null, leaderSince: 0, saidLastLap: false, nextSmashLine: 0,
+  });
   // Everything on the road is stood back up for the new race.
   room.props = buildProps(room.track).map((prop) => ({ ...prop, z: 0, vx: 0, vy: 0, vz: 0, spin: 0, gone: false, moving: false, settled: false }));
   broadcast(room, propsMessage(room));
@@ -346,7 +371,7 @@ function propsMessage(room) {
   return { t: 'props', props: room.props.map((prop) => [prop.id, Math.round(prop.x), Math.round(prop.y), Math.round(prop.a * 100) / 100, prop.gone ? 1 : 0]) };
 }
 
-function addPlayer(room, { name, bot = false, socket = null }) {
+function addPlayer(room, { name, bot = false, socket = null, device = null }) {
   const used = new Set(room.players.map((player) => player.color));
   const color = [0, 1, 2, 3, 4, 5].find((index) => !used.has(index));
   const player = {
@@ -354,6 +379,7 @@ function addPlayer(room, { name, bot = false, socket = null }) {
     connected: !bot && !!socket, leftAt: null, steer: 0, car: null,
     correct: 0, answer: null, q: null, botAnswer: null, boostUntil: 0,
     level: 2, history: [], weak: new Set(), seen: new Set(), // everyone starts on medium
+    device, past: null, // what is remembered about this player from earlier races
     pace: bot ? 0.84 + Math.random() * 0.1 : 1, lane: (Math.random() - 0.5) * 90,
   };
   room.players.push(player);
@@ -369,6 +395,47 @@ function playersChanged(room) {
 
 // Picks this player's next question: at their level, not one they have had, and from a
 // subtopic they got wrong before if there is one, so weak spots come round again.
+// ---------- Commentator ----------
+
+// The commentator says a line on the big screen. `kind` is one of the moments in commentary.js.
+// A line that is not `important` is dropped while another one is still being spoken, so the
+// commentary never runs behind the race.
+function say(room, kind, data, important = false) {
+  if (!room.host) return; // only the big screen has a voice
+  const now = performance.now();
+  if (!important && now < room.talkingUntil) return;
+  const text = LINES[kind](data);
+  room.talkingUntil = Math.max(now, room.talkingUntil) + 600 + text.length * 60; // about how long it takes to say
+  const { host } = room;
+  if (!voiceReady()) {
+    send(host, { t: 'say', text, audio: null });
+    return;
+  }
+  // ElevenLabs makes the sound. One line at a time, so they reach the screen in order; if it
+  // fails, the screen gets the words alone and reads them out with the browser's own voice.
+  room.voiceLine = room.voiceLine.then(() => speak(text)).then((id) => send(host, { t: 'say', text, audio: id && `/voice/${id}.mp3` }));
+}
+
+// Called on every step of a race: has the lead changed, has the last lap begun?
+function watchRace(room, order) {
+  if (order.length < 2 || room.firstFinish !== null) return;
+  const [first] = order;
+  if (room.leader !== first.id) {
+    room.leader = first.id;
+    room.leaderSince = room.raceTime;
+  }
+  // A new leader is only news once they have held the place for a moment, and not at the
+  // start, when the order is just the grid.
+  if (room.raceTime > 6000 && room.saidLeader !== first.id && room.raceTime - room.leaderSince > 1200) {
+    if (room.saidLeader !== null || room.raceTime > 9000) say(room, 'lead', { name: first.name });
+    room.saidLeader = first.id;
+  }
+  if (!room.saidLastLap && room.laps > 1 && first.car.lap === room.laps) {
+    room.saidLastLap = true;
+    say(room, 'lastLap', { name: first.name }, true);
+  }
+}
+
 function pickQuestion(room, player) {
   const { levels } = room.bank;
   let fresh = levels[player.level].filter((q) => !player.seen.has(q.id));
@@ -401,6 +468,7 @@ function askQuestion(room, now) {
       : null;
   }
   sendState(room);
+  say(room, 'question', { number: room.questionCount });
 }
 
 function stepQuestion(room, now) {
@@ -438,10 +506,15 @@ function stepQuestion(room, now) {
     // Right moves a player up a level for next time; wrong moves them down.
     player.level = clamp(player.level + (right ? 1 : -1), 1, 3);
   }
+  const greenBefore = room.green;
   room.green = Math.min(1, room.green + cleaned / Math.max(1, voters.length) / (room.expectedQuestions * GREEN_TARGET));
   room.reveal = { until: now + REVEAL_MS };
   room.phase = 'reveal';
   sendState(room);
+  say(room, 'reveal', {
+    right: voters.filter((player) => player.answer === player.q.correct).map((player) => player.name),
+    total: voters.length, green: room.green > greenBefore ? Math.round(room.green * 100) : null,
+  }, true);
 }
 
 function resumeRace(room) {
@@ -537,7 +610,10 @@ function stepCar(room, player, dt) {
   if (!car.done && car.progress >= room.laps * track.n) {
     car.done = true;
     car.finishTime = room.raceTime;
-    room.firstFinish ??= room.raceTime;
+    if (room.firstFinish === null) {
+      room.firstFinish = room.raceTime;
+      say(room, 'finish', { name: player.name }, true);
+    }
   }
 }
 
@@ -619,6 +695,11 @@ function stepProps(room, dt) {
         smash(room, prop);
       } else if (prop.kind === 'dummy' && closing > SMASH_SPEED) {
         smash(room, prop, { limb: true }); // a dummy hit this hard loses an arm, a leg or its head
+      }
+      // The commentator enjoys a good crash, but not every single one.
+      if ((prop.kind === 'dummy' || prop.kind === 'crate') && closing > SMASH_SPEED && room.raceTime > room.nextSmashLine) {
+        room.nextSmashLine = room.raceTime + 14000;
+        say(room, 'smash', { name: player.name, what: prop.kind });
       }
     }
   }
@@ -706,11 +787,30 @@ function finishRace(room) {
   room.summary = { green: room.green, questions: room.questionCount, realWinner: quiz[0]?.correct > 0 ? quiz[0].id : null, topic: room.bank.topic };
   broadcast(room, snapshotMessage(room));
   sendState(room);
+  say(room, 'results', { winner: room.summary.realWinner ? quiz[0].name : null, right: quiz[0]?.correct ?? 0, green: Math.round(room.green * 100) }, true);
+
+  // Remember this race for every person who answered, so their next race can build on it.
+  const at = Date.now();
+  for (const player of order) {
+    if (player.bot || !player.device || !player.history.length) continue;
+    const score = new Map();
+    for (const { subtopic, right } of player.history) score.set(subtopic, (score.get(subtopic) ?? 0) + (right ? 1 : -1));
+    remember({
+      student: player.device, name: player.name, topic: room.bank.topic, asked: player.history.length, right: player.correct, level: player.level,
+      weak: [...score].filter(([, points]) => points < 0).map(([subtopic]) => subtopic),
+      strong: [...score].filter(([, points]) => points > 0).map(([subtopic]) => subtopic),
+      at,
+    });
+  }
 
   // Ask Gemini for a personal sentence for each person. The results are already on screen;
   // this only improves the notes if the answer arrives while they are still showing.
   const { results } = room;
-  const asked = order.filter((player) => !player.bot && player.history.length).map(({ id, name, history }) => ({ id, name, answers: history }));
+  const asked = order.filter((player) => !player.bot && player.history.length).map(({ id, name, history, past }) => ({
+    id, name, answers: history,
+    // What they needed to review last time on this topic, so the note can speak about progress.
+    ...(past?.here ? { earlier: { right: past.here.right, asked: past.here.asked, neededReview: past.here.weak } } : {}),
+  }));
   if (!geminiReady() || !asked.length) return;
   writeFeedback(room.bank.topic, asked).then((notes) => {
     if (room.results !== results) return;
@@ -724,6 +824,7 @@ function stepRoom(room, now) {
     if (now >= room.startAt) {
       room.phase = 'race';
       sendState(room);
+      say(room, 'start', { count: room.players.length, laps: room.laps, world: room.track.world }, true);
     } else if (room.tick++ % 12 === 0) {
       broadcast(room, snapshotMessage(room));
     }
@@ -749,9 +850,11 @@ function stepRoom(room, now) {
   for (const player of room.players) stepCar(room, player, TICK);
   pushApart(room.players);
   stepProps(room, TICK);
-  ranked(room).forEach((player, index) => {
+  const order = ranked(room);
+  order.forEach((player, index) => {
     player.car.place = index + 1;
   });
+  watchRace(room, order);
   if (room.tick++ % 2 === 0) {
     // Only the road objects that are moving, or have just stopped, need to be sent.
     const moved = room.props.filter((prop) => !prop.gone && (prop.moving || prop.settled));
@@ -940,7 +1043,9 @@ function onJoin(socket, message) {
       send(socket, { t: 'error', reason: 'This game is full (6 players).' });
       return;
     }
-    player = addPlayer(room, { name: cleanName(message.name), socket });
+    // The phone's own id, so this player is recognised in later races. Anything odd is ignored.
+    const device = typeof message.device === 'string' && /^[A-Za-z0-9_-]{8,40}$/.test(message.device) ? message.device : null;
+    player = addPlayer(room, { name: cleanName(message.name), socket, device });
   }
   if (player.socket && player.socket !== socket) player.socket.close();
   player.socket = socket;
@@ -1029,6 +1134,12 @@ setInterval(() => {
   }
 }, 15000);
 
+loadMemory().then(({ store, players }) => {
+  console.log(store === 'backboard'
+    ? `Backboard key found: player memory is kept in Backboard (${players} players remembered).`
+    : `Player memory is kept in data/memory.json (${players} players remembered). Add a Backboard key to keep it online.`);
+});
+
 // Have the default questions ready before anyone joins, so the first race does not wait.
 if (geminiReady()) {
   writeBank(DEFAULT_TOPIC.toLowerCase(), DEFAULT_TOPIC, null)
@@ -1039,5 +1150,6 @@ if (geminiReady()) {
 server.listen(PORT, () => {
   console.log(`Race game running. Open the big screen at http://localhost:${PORT}/host`);
   console.log(geminiReady() ? 'Gemini key found: questions will be written by Gemini.' : `No Gemini key in .env: using the ${BACKUP.length} built-in questions.`);
+  console.log(voiceReady() ? 'ElevenLabs key found: the commentator speaks with an ElevenLabs voice.' : 'No ElevenLabs key in .env: the commentator uses the browser\'s own voice.');
   for (const url of lanUrls()) console.log(`Phones on the same Wi-Fi can reach it at ${url}`);
 });

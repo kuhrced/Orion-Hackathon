@@ -292,3 +292,17 @@ label.button.disabled { opacity: 0.45; cursor: default; pointer-events: none; }
   border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* What the commentator is saying, along the bottom of the map. */
+#caption {
+  position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 5;
+  max-width: min(86%, 900px); padding: 10px 20px; border-radius: 14px;
+  background: rgba(15, 17, 20, 0.86); border: 1px solid var(--line);
+  font-size: clamp(16px, 1.7vw, 26px); font-weight: 800; text-align: center; text-wrap: balance;
+  pointer-events: none;
+}
+#caption::before { content: "🎙 "; }
+#voiceToggle { padding: 8px 10px; font-size: 14px; }
+
+/* The phone's "welcome back" line, for a player the game remembers. */
+#welcome { color: var(--accent); font-weight: 700; font-size: 15px; text-wrap: balance; }
