@@ -114,7 +114,28 @@ is still there when the game runs on another computer.
 
 The server is one Node.js process and reads its port from the `PORT` variable, so it runs on any
 Node host with `npm install` and `npm start`. The host must allow WebSockets. Online, the QR
-code uses the site's own address.
+code uses the site's own address, so phones on any Wi-Fi or on mobile data can join.
+
+### On a Vultr server
+
+1. In Vultr, deploy a small **Shared CPU** instance with **Ubuntu 24.04** and a public IPv4
+   address, in the city nearest to you.
+2. Log in to it as root and run the set-up script. It installs Node.js, fetches the game, keeps
+   it running as a service on port 80 and opens the firewall for it:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/kuhrced/Orion-Hackathon/clark-fixes-on-0.05/deploy/setup.sh | bash
+   ```
+
+   (The same line also works as the instance's Cloud-Init user data, after a first line `#!/bin/bash`.)
+3. Copy your keys to the server. Run this on your own computer, in the project folder, with the
+   server's address in place of `SERVER`:
+
+   ```bash
+   ssh root@SERVER 'cat > /opt/know-and-go/.env && chmod 600 /opt/know-and-go/.env && systemctl restart know-and-go' < .env
+   ```
+
+4. Open `http://SERVER/host` for the big screen. Run the set-up script again to update the game.
 
 ## Files
 
@@ -139,6 +160,7 @@ code uses the site's own address.
 | `memory.js` | What the game remembers about each player (a file, and Backboard with a key) |
 | `data/questions.json` | 100 spare questions, only loaded with `BUILTIN_QUESTIONS=1` |
 | `ignore/` | Old copies kept by the team; the game does not use this folder |
+| `deploy/setup.sh` | Sets the game up on a fresh Ubuntu server (used for Vultr) |
 | `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |
 
 ## Things to tune
@@ -154,5 +176,5 @@ the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.jso
 
 ## Not built yet
 
-Music, sound effects, and putting the server online.
+Music and sound effects.
 figuring out who "json" is and why he sent me packages
