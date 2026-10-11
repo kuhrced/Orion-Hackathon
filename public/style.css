@@ -245,3 +245,27 @@ input {
 #score { font-size: 20px; color: var(--accent); }
 #myScore, #doneWinner { max-width: 22em; }
 #doneWinner { font-weight: 800; color: var(--accent); }
+
+/* ---------- Levels and personal questions ---------- */
+
+.level { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.72em; font-weight: 800; color: #14161a; vertical-align: middle; white-space: nowrap; }
+.level.l1 { background: #8fe0b0; }
+.level.l2 { background: #f6d55c; }
+.level.l3 { background: #f08a5d; }
+
+#quizRows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+#quizRows li { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; background: var(--panel-2); }
+#quizRows .ask { display: grid; min-width: 0; flex: 1; }
+#quizRows .name { font-weight: 800; font-size: 14px; color: var(--muted); }
+#quizRows .text { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#quizRows .answer { color: var(--accent); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#quizRows .mark { font-size: 22px; font-weight: 900; width: 1.2em; text-align: center; color: var(--muted); }
+#quizRows .mark.good { color: var(--accent); }
+#quizRows .mark.bad { color: var(--danger); }
+
+#topicRow input { width: 150px; padding: 6px 10px; font-size: 14px; }
+#bankNote { color: var(--muted); font-size: 13px; margin-top: -2px; }
+#results .who { display: grid; min-width: 0; }
+#results .note { font-size: 14px; font-weight: 400; color: var(--muted); }
+#results li { font-size: 20px; }
+#myNote { max-width: 22em; font-weight: 700; }

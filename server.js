@@ -8,12 +8,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
+import { geminiReady, writeFeedback, writeQuestions } from './gemini.js';
 import { carTuning, CAR_TYPES } from './shared/cars.js';
 import { buildProps, PROP_KINDS } from './shared/props.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
 
-const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
+try {
+  process.loadEnvFile(path.join(ROOT, '.env')); // where the Gemini key lives; fine if the file is not there
+} catch { /* no .env: the game runs on its backup questions */ }
+const PORT = Number(process.env.PORT) || 3000;
 
 const TICK = 1 / 60;
 const MAX_SPEED = 430;
@@ -41,7 +45,10 @@ const REVEAL_MS = 4500;
 const BOOST_MS = 4000;
 const BOOST_SPEED = 1.3;
 const GREEN_TARGET = 0.6; // share of right answers that makes the map fully clean by the end
-const BOT_RIGHT_CHANCE = 0.5;
+const DEFAULT_TOPIC = 'The environment';
+const LEVEL_NAMES = [null, 'Easy', 'Medium', 'Hard'];
+const LEVEL_WEIGHT = [0, 0.7, 1, 1.4]; // a harder question cleans more of the map and boosts for longer
+const BOT_RIGHT_CHANCE = [0, 0.75, 0.55, 0.35]; // by level
 
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
 const RACING = new Set(['countdown', 'race', 'question-countdown', 'question', 'reveal']);
@@ -55,23 +62,53 @@ const TUNING = CAR_TYPES.map((type) => carTuning(CARS.types[type].stats));
 
 // ---------- Questions ----------
 
-// Reads questions.db when this Node version has SQLite built in, and the JSON copy of it
-// otherwise. The file is only read, never changed.
-async function loadQuestions() {
-  let rows;
-  try {
-    const { DatabaseSync } = await import('node:sqlite');
-    const db = new DatabaseSync(path.join(ROOT, 'questions.db'), { readOnly: true });
-    rows = db.prepare('SELECT id, question, choice_a, choice_b, choice_c, choice_d, correct_index FROM questions').all()
-      .map((row) => ({ id: row.id, question: row.question, choices: [row.choice_a, row.choice_b, row.choice_c, row.choice_d], correct: row.correct_index }));
-    db.close();
-  } catch {
-    rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'));
-  }
-  return rows.filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct));
+// The backup questions: used when there is no Gemini key, or when Gemini cannot be reached.
+// Each has a level (1 easy, 2 medium, 3 hard) and a subtopic.
+const BACKUP = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'))
+  .filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct) && [1, 2, 3].includes(q.level));
+
+// A bank is a set of questions for one topic, sorted by level.
+const makeBank = (topic, source, questions) => ({
+  topic, source, count: questions.length,
+  levels: [null, 1, 2, 3].map((level) => (level ? questions.filter((q) => q.level === level) : null)),
+});
+const backupBank = makeBank(DEFAULT_TOPIC, 'backup', BACKUP);
+const banks = new Map(); // topic -> a bank Gemini has already written, so it is asked only once
+
+function useBank(room, bank) {
+  if (room.bank === bank) return;
+  room.bank = bank;
+  for (const player of room.players) player.seen = new Set(); // new questions: nobody has seen any
 }
 
-const QUESTIONS = await loadQuestions();
+// Gets the room a bank for its topic. Gemini writes it in the background; until it is ready,
+// and if it fails, the room plays with the backup questions. Safe to call again and again.
+function prepareBank(room) {
+  const topic = room.topic;
+  const cached = banks.get(topic.toLowerCase());
+  if (cached || !geminiReady()) {
+    useBank(room, cached ?? backupBank);
+    room.bankNote = cached ? '' : 'No Gemini key, so the built-in environment questions are used.';
+    room.writing = false;
+    return;
+  }
+  if (room.writing) return; // already asked; the answer is on its way
+  useBank(room, backupBank);
+  room.bankNote = '';
+  room.writing = true;
+  writeQuestions(topic).then((questions) => {
+    banks.set(topic.toLowerCase(), makeBank(topic, 'gemini', questions));
+    if (room.topic !== topic) return; // the host has moved on to another topic
+    room.writing = false;
+    if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
+    useBank(room, banks.get(topic.toLowerCase()));
+  }).catch((error) => {
+    console.log(`Gemini could not write questions: ${error.message}`);
+    if (room.topic !== topic) return;
+    room.writing = false;
+    room.bankNote = 'Gemini could not be reached, so the built-in environment questions are used.';
+  }).finally(() => sendState(room));
+}
 
 // ---------- HTTP ----------
 
@@ -131,7 +168,8 @@ function createRoom() {
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
     track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
-    question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6, asked: new Set(),
+    question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
+    topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false,
     lastWorld: null, props: [], tick: 0, lastActive: Date.now(),
   };
   rooms.set(code, room);
@@ -152,26 +190,32 @@ function broadcast(room, message) {
 function stateMessage(room) {
   const now = performance.now();
   const { question, reveal } = room;
+  const showing = room.phase === 'question' || room.phase === 'reveal';
   return {
     t: 'state',
     code: room.code,
     phase: room.phase,
     laps: room.laps,
     green: room.green,
+    topic: room.topic,
+    bank: { topic: room.bank.topic, source: room.bank.source, count: room.bank.count, writing: room.writing, note: room.bankNote, gemini: geminiReady() },
     countdown: room.phase === 'countdown' ? Math.max(0, room.startAt - now) : 0,
     players: room.players.map((player) => ({
       id: player.id, name: player.name, color: player.color, type: player.type, bot: player.bot,
-      connected: player.connected, correct: player.correct,
+      connected: player.connected, correct: player.correct, level: player.level,
+      // Everyone has their own question. The right answer is only sent once time is up.
+      q: showing && player.q ? { text: player.q.question, choices: player.q.choices, level: player.q.level, subtopic: player.q.subtopic } : null,
       answered: player.answer !== null,
-      answer: reveal ? player.answer : null, // what each player picked is only shown afterwards
+      answer: reveal ? player.answer : null,
+      right: reveal && player.q ? player.q.correct : null,
     })),
     question: question && {
-      number: question.number, text: question.text, choices: question.choices,
+      number: question.number,
       endsIn: Math.max(0, question.endsAt - now), seconds: ANSWER_MS / 1000,
       lockedFor: Math.max(0, question.askedAt + ANSWER_LOCK_MS - now),
       readyIn: room.phase === 'question-countdown' ? Math.max(0, question.readyAt - now) : 0,
     },
-    reveal: reveal && { correct: reveal.correct, counts: reveal.counts, endsIn: Math.max(0, reveal.until - now) },
+    reveal: reveal && { endsIn: Math.max(0, reveal.until - now) },
     results: room.results,
     summary: room.summary,
   };
@@ -205,7 +249,7 @@ function placeOnGrid(room) {
   if (!room.track) return;
   room.players.forEach((player, slot) => {
     const spot = gridSlot(room.track, slot);
-    Object.assign(player, { steer: 0, correct: 0, answer: null, botAnswer: null, boostUntil: 0 });
+    Object.assign(player, { steer: 0, correct: 0, answer: null, q: null, botAnswer: null, boostUntil: 0, level: 2, history: [], weak: new Set() });
     player.car = {
       x: spot.x, y: spot.y, a: spot.angle, v: 0, steer: 0,
       index: spot.index, progress: -spot.back, lap: 1, place: slot + 1,
@@ -231,7 +275,8 @@ function addPlayer(room, { name, bot = false, socket = null }) {
   const player = {
     id: room.nextId++, key: token(), name, color, type: crypto.randomInt(4), bot, socket,
     connected: !bot && !!socket, leftAt: null, steer: 0, car: null,
-    correct: 0, answer: null, botAnswer: null, boostUntil: 0,
+    correct: 0, answer: null, q: null, botAnswer: null, boostUntil: 0,
+    level: 2, history: [], weak: new Set(), seen: new Set(), // everyone starts on medium
     pace: bot ? 0.84 + Math.random() * 0.1 : 1, lane: (Math.random() - 0.5) * 90,
   };
   room.players.push(player);
@@ -245,26 +290,37 @@ function playersChanged(room) {
 
 // ---------- Questions during the race ----------
 
-function askQuestion(room, now) {
-  let pool = QUESTIONS.filter((q) => !room.asked.has(q.id));
-  if (!pool.length) {
-    room.asked.clear();
-    pool = QUESTIONS;
+// Picks this player's next question: at their level, not one they have had, and from a
+// subtopic they got wrong before if there is one, so weak spots come round again.
+function pickQuestion(room, player) {
+  const { levels } = room.bank;
+  let fresh = levels[player.level].filter((q) => !player.seen.has(q.id));
+  if (!fresh.length) fresh = [1, 2, 3].flatMap((level) => levels[level]).filter((q) => !player.seen.has(q.id));
+  if (!fresh.length) {
+    player.seen.clear();
+    fresh = levels[player.level];
   }
-  const picked = pool[crypto.randomInt(pool.length)];
-  room.asked.add(picked.id);
+  const weak = fresh.filter((q) => player.weak.has(q.subtopic));
+  const from = weak.length ? weak : fresh;
+  const picked = from[crypto.randomInt(from.length)];
+  player.seen.add(picked.id);
+  return picked;
+}
+
+function askQuestion(room, now) {
   room.questionCount++;
   room.phase = 'question-countdown';
   room.question = {
-    number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct,
-    // askedAt is the moment the question itself appears, after the "get ready" countdown.
+    number: room.questionCount,
+    // askedAt is the moment the questions themselves appear, after the "get ready" countdown.
     readyAt: now + QUESTION_READY_MS, askedAt: now + QUESTION_READY_MS, endsAt: now + QUESTION_READY_MS + ANSWER_MS, closeAt: null,
   };
   for (const player of room.players) {
     player.answer = null;
-    const right = Math.random() < BOT_RIGHT_CHANCE;
+    player.q = pickQuestion(room, player);
+    const right = Math.random() < BOT_RIGHT_CHANCE[player.q.level];
     player.botAnswer = player.bot
-      ? { at: room.question.readyAt + 1500 + Math.random() * 6000, choice: right ? picked.correct : (picked.correct + 1 + crypto.randomInt(3)) % 4 }
+      ? { at: room.question.readyAt + 1500 + Math.random() * 6000, choice: right ? player.q.correct : (player.q.correct + 1 + crypto.randomInt(3)) % 4 }
       : null;
   }
   sendState(room);
@@ -287,22 +343,26 @@ function stepQuestion(room, now) {
   if (!waiting.length) question.closeAt ??= now + 700;
   if (now < question.endsAt && !(question.closeAt && now >= question.closeAt)) return;
 
-  const counts = [0, 0, 0, 0];
-  let right = 0;
-  for (const player of room.players) {
-    if (player.answer !== null) counts[player.answer]++;
-    if (player.answer !== question.correct) continue;
-    right++;
-    player.correct++;
-    player.boostUntil = room.raceTime + BOOST_MS;
-  }
   // Only people count for the map: bots guess, and their guesses should not hold it back.
   // No answer counts as wrong, so everyone has to take part.
-  const people = room.players.filter((player) => !player.bot && player.connected);
-  const voters = people.length ? people : room.players;
-  const share = voters.filter((player) => player.answer === question.correct).length / Math.max(1, voters.length);
-  room.green = Math.min(1, room.green + share / (room.expectedQuestions * GREEN_TARGET));
-  room.reveal = { correct: question.correct, counts, until: now + REVEAL_MS };
+  const voters = humans.length ? humans : room.players;
+  let cleaned = 0;
+  for (const player of room.players) {
+    const right = player.answer === player.q.correct;
+    player.history.push({ subtopic: player.q.subtopic, level: player.q.level, right });
+    if (right) {
+      player.correct++;
+      player.boostUntil = room.raceTime + BOOST_MS * LEVEL_WEIGHT[player.q.level];
+      player.weak.delete(player.q.subtopic);
+      if (voters.includes(player)) cleaned += LEVEL_WEIGHT[player.q.level];
+    } else {
+      player.weak.add(player.q.subtopic);
+    }
+    // Right moves a player up a level for next time; wrong moves them down.
+    player.level = clamp(player.level + (right ? 1 : -1), 1, 3);
+  }
+  room.green = Math.min(1, room.green + cleaned / Math.max(1, voters.length) / (room.expectedQuestions * GREEN_TARGET));
+  room.reveal = { until: now + REVEAL_MS };
   room.phase = 'reveal';
   sendState(room);
 }
@@ -312,8 +372,25 @@ function resumeRace(room) {
   room.question = null;
   room.reveal = null;
   room.nextQuestionAt = room.raceTime + room.questionEvery;
-  for (const player of room.players) player.answer = null;
+  for (const player of room.players) {
+    player.answer = null;
+    player.q = null;
+  }
   sendState(room);
+}
+
+// One line for a player about what they know and what to review. Worked out here straight
+// away; Gemini replaces it with a better sentence a moment later if it can.
+function plainNote(history) {
+  const score = new Map();
+  for (const { subtopic, right } of history) score.set(subtopic, (score.get(subtopic) ?? 0) + (right ? 1 : -1));
+  const sorted = [...score.entries()].sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) return '';
+  const best = sorted[0];
+  const worst = sorted.at(-1);
+  if (best[1] > 0 && worst[1] < 0) return `Strong on ${best[0].toLowerCase()}. Review ${worst[0].toLowerCase()} next.`;
+  if (best[1] > 0) return `Strong on ${best[0].toLowerCase()}. Keep going!`;
+  return `Review ${worst[0].toLowerCase()} and try again.`;
 }
 
 // ---------- Race ----------
@@ -541,16 +618,28 @@ function finishRace(room) {
   room.phase = 'results';
   room.question = null;
   room.reveal = null;
-  room.results = order.map(({ id, name, color, type, bot, car, correct }, index) => ({
-    id, name, color, type, bot, correct, place: index + 1, time: car.done ? Math.round(car.finishTime) : null,
+  room.results = order.map(({ id, name, color, type, bot, car, correct, level, history }, index) => ({
+    id, name, color, type, bot, correct, level, place: index + 1, time: car.done ? Math.round(car.finishTime) : null,
+    note: bot ? '' : plainNote(history),
   }));
   // The real winner knows the most answers. People come before bots; a tie goes to the faster
   // car. Nobody wins it with zero right answers.
   const people = room.results.filter((result) => !result.bot);
   const quiz = [...(people.length ? people : room.results)].sort((a, b) => b.correct - a.correct || a.place - b.place);
-  room.summary = { green: room.green, questions: room.questionCount, realWinner: quiz[0]?.correct > 0 ? quiz[0].id : null };
+  room.summary = { green: room.green, questions: room.questionCount, realWinner: quiz[0]?.correct > 0 ? quiz[0].id : null, topic: room.bank.topic };
   broadcast(room, snapshotMessage(room));
   sendState(room);
+
+  // Ask Gemini for a personal sentence for each person. The results are already on screen;
+  // this only improves the notes if the answer arrives while they are still showing.
+  const { results } = room;
+  const asked = order.filter((player) => !player.bot && player.history.length).map(({ id, name, history }) => ({ id, name, answers: history }));
+  if (!geminiReady() || !asked.length) return;
+  writeFeedback(room.bank.topic, asked).then((notes) => {
+    if (room.results !== results) return;
+    for (const result of results) if (notes.has(result.id)) result.note = notes.get(result.id);
+    sendState(room);
+  }).catch((error) => console.log(`Gemini could not write the notes: ${error.message}`));
 }
 
 function stepRoom(room, now) {
@@ -595,7 +684,7 @@ function stepRoom(room, now) {
     || (room.firstFinish !== null && room.raceTime - room.firstFinish > FINISH_GRACE_MS)
     || room.raceTime > MAX_RACE_MS;
   if (over) finishRace(room);
-  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt && QUESTIONS.length) askQuestion(room, now);
+  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt) askQuestion(room, now);
 }
 
 let last = performance.now();
@@ -639,8 +728,17 @@ const hostActions = {
     }
     room.track = prepareTrack(built.track);
     room.phase = 'lobby';
+    prepareBank(room);
     sendTrack(room);
     placeOnGrid(room);
+    sendState(room);
+  },
+  // What the questions are about. Gemini writes a new set for any topic the host types.
+  topic(room, message) {
+    if (room.phase !== 'lobby' && room.phase !== 'draw') return;
+    room.topic = String(message.topic ?? '').replace(/[^\p{L}\p{N} ,.'&()-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULT_TOPIC;
+    room.writing = false;
+    prepareBank(room);
     sendState(room);
   },
   redraw(room) {
@@ -674,6 +772,7 @@ const hostActions = {
   },
   start(room) {
     if (room.phase !== 'lobby' || !room.players.length) return;
+    prepareBank(room); // picks up Gemini's questions if they arrived since the lobby opened
     placeOnGrid(room);
     // A question every 20 seconds of driving, or more often in a short race, so that every race
     // has enough questions for the map to become fully clean.
@@ -690,6 +789,7 @@ const hostActions = {
     room.phase = 'lobby';
     room.results = null;
     room.summary = null;
+    prepareBank(room);
     placeOnGrid(room);
     sendState(room);
   },
@@ -805,6 +905,7 @@ setInterval(() => {
 }, 15000);
 
 server.listen(PORT, () => {
-  console.log(`Race game running with ${QUESTIONS.length} questions. Open the big screen at http://localhost:${PORT}/host`);
+  console.log(`Race game running. Open the big screen at http://localhost:${PORT}/host`);
+  console.log(geminiReady() ? 'Gemini key found: questions will be written by Gemini.' : `No Gemini key in .env: using the ${BACKUP.length} built-in questions.`);
   for (const url of lanUrls()) console.log(`Phones on the same Wi-Fi can reach it at ${url}`);
 });

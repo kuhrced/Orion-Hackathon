@@ -169,7 +169,7 @@ function paintPlayers() {
       .map((player) => {
         const car = cars.get(player.id);
         const lap = car?.done ? 'Finished' : `Lap ${car?.lap ?? 1}/${state.laps}`;
-        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${lap}` });
+        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${LEVELS[player.level]} · ${lap}` });
       });
   } else {
     rows = state.players.map((player) => playerRow(player));
@@ -179,20 +179,27 @@ function paintPlayers() {
   $('listTitle').textContent = racing ? 'Ranking' : `Players (${state.players.length}/${MAX_PLAYERS})`;
 }
 
+const LEVELS = [null, 'Easy', 'Medium', 'Hard'];
+const levelBadge = (level) => element('span', `level l${level}`, LEVELS[level]);
+
 function paintResults() {
   const { results, summary } = state;
   const winner = results.find((result) => result.id === summary?.realWinner);
   $('realWinner').textContent = winner
     ? `Real winner: ${winner.name}, with ${winner.correct} right ${winner.correct === 1 ? 'answer' : 'answers'}`
     : summary?.questions ? 'No real winner this time: nobody got a question right.' : '';
-  $('greenResult').textContent = summary ? `Together you made the map ${Math.round(summary.green * 100)}% green.` : '';
+  $('greenResult').textContent = summary ? `Together you made the map ${Math.round(summary.green * 100)}% clean. Topic: ${summary.topic}.` : '';
   $('resultList').replaceChildren(...results.map((result) => {
     const row = element('li');
     if (result.id === summary?.realWinner) row.classList.add('real');
+    const who = element('span', 'who');
+    who.append(element('span', 'name', result.name));
+    if (result.note) who.append(element('span', 'note', result.note)); // what this player should review
     row.append(
       element('span', 'place', ordinal(result.place)),
       carIcon(result.color, result.type, 44),
-      element('span', 'name', result.name),
+      who,
+      levelBadge(result.level),
       element('span', 'score', `✓ ${result.correct}`),
       element('span', 'time', result.time === null ? 'Did not finish' : formatTime(result.time)),
     );
@@ -200,19 +207,23 @@ function paintResults() {
   }));
 }
 
+// Every player has a different question, so the big screen shows one row per player.
 function paintQuiz() {
   const { question, reveal, players } = state;
   if (!question) return;
   $('quizNumber').textContent = `Question ${question.number}`;
   $('quizCount').textContent = reveal
-    ? `${players.filter((player) => player.answer === reveal.correct).length} of ${players.length} got it right`
+    ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
     : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
-  $('quizText').textContent = question.text;
-  $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
-    const row = element('li', `choice c${index}`);
-    if (reveal) row.classList.add(index === reveal.correct ? 'right' : 'dim');
-    row.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
-    if (reveal) row.append(element('span', 'votes', String(reveal.counts[index])));
+  $('quizText').textContent = reveal ? 'Time is up!' : 'Everyone gets their own question';
+  $('quizRows').replaceChildren(...players.filter((player) => player.q).map((player) => {
+    const row = element('li');
+    const text = element('span', 'ask');
+    text.append(element('span', 'name', player.name), element('span', 'text', player.q.text));
+    if (reveal) text.append(element('span', 'answer', `Answer: ${player.q.choices[player.right]}`));
+    const correct = reveal && player.answer !== null && player.answer === player.right;
+    const mark = element('span', reveal ? (correct ? 'mark good' : 'mark bad') : 'mark', reveal ? (correct ? '✓' : '✗') : player.answered ? '●' : '…');
+    row.append(carIcon(player.color, player.type, 40), levelBadge(player.q.level), text, mark);
     return row;
   }));
 }
@@ -237,7 +248,16 @@ function updateUI() {
   mainButton.textContent = mainLabel ?? '';
   secondButton.textContent = secondLabel ?? '';
   mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && !state.players.length);
-  $('lapsRow').hidden = $('worldRow').hidden = phase !== 'lobby';
+  $('lapsRow').hidden = $('worldRow').hidden = $('topicRow').hidden = phase !== 'lobby';
+  if (document.activeElement !== $('topic')) $('topic').value = state.topic ?? '';
+  const { bank } = state;
+  $('bankNote').hidden = phase !== 'lobby' || !bank;
+  if (bank) {
+    $('bankNote').textContent = bank.writing
+      ? `Gemini is writing questions about "${state.topic}"…`
+      : bank.source === 'gemini' ? `Gemini wrote ${bank.count} questions about "${bank.topic}", in three levels.`
+        : bank.note || `Using the ${bank.count} built-in environment questions.`;
+  }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
   $('botRow').hidden = phase !== 'draw' && phase !== 'lobby';
@@ -420,6 +440,11 @@ secondButton.addEventListener('click', () => {
 $('lapsDown').addEventListener('click', () => send({ t: 'laps', laps: Math.max(1, state.laps - 1) }));
 $('lapsUp').addEventListener('click', () => send({ t: 'laps', laps: Math.min(5, state.laps + 1) }));
 $('worldNext').addEventListener('click', () => send({ t: 'world' }));
+$('topicRow').addEventListener('submit', (event) => {
+  event.preventDefault();
+  $('topic').blur();
+  send({ t: 'topic', topic: $('topic').value });
+});
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
 

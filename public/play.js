@@ -110,9 +110,12 @@ function showCarCard(type) {
   }));
 }
 
+const LEVELS = [null, 'Easy', 'Medium', 'Hard'];
+
+// Every player has their own question, at their own level.
 function showQuiz(mine) {
   const { question, reveal, phase } = state;
-  const asking = phase === 'question' || phase === 'reveal';
+  const asking = (phase === 'question' || phase === 'reveal') && !!mine.q;
   $('quiz').hidden = !asking;
   if (!asking || !question) return;
   if (choiceFor !== question.number) {
@@ -122,19 +125,21 @@ function showQuiz(mine) {
   }
   const picked = reveal ? mine.answer ?? myChoice : myChoice;
   const locked = !reveal && performance.now() < answersOpenAt;
-  $('quizNumber').textContent = `Question ${question.number}`;
-  $('quizText').textContent = question.text;
+  const correct = reveal && picked !== null && picked === mine.right;
+  $('quizNumber').replaceChildren(`Question ${question.number} `, element('span', `level l${mine.q.level}`, LEVELS[mine.q.level]));
+  $('quizText').textContent = mine.q.text;
   let note = picked !== null ? 'Answer sent' : locked ? 'Read the question…' : 'Pick one';
-  if (reveal) note = picked === null ? 'Too slow!' : picked === reveal.correct ? 'Right! Speed boost' : 'Wrong';
+  // After the answer, say which level the next question will be: up after a right one.
+  if (reveal) note = `${picked === null ? 'Too slow!' : correct ? 'Right! Speed boost.' : 'Wrong.'} Next: ${LEVELS[mine.level].toLowerCase()}`;
   $('quizNote').textContent = note;
-  $('quizNote').className = reveal ? (picked === reveal.correct ? 'good' : 'bad') : '';
-  $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
+  $('quizNote').className = reveal ? (correct ? 'good' : 'bad') : '';
+  $('quizChoices').replaceChildren(...mine.q.choices.map((choice, index) => {
     const button = element('button', `choice c${index}`);
     button.type = 'button';
     button.disabled = picked !== null || !!reveal || locked;
     if (locked) button.classList.add('locked');
     if (picked === index) button.classList.add('picked');
-    if (reveal) button.classList.add(index === reveal.correct ? 'right' : 'dim');
+    if (reveal) button.classList.add(index === mine.right ? 'right' : 'dim');
     button.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
     // pointerdown, not click: the buttons are rebuilt whenever someone else answers.
     button.addEventListener('pointerdown', () => {
@@ -152,7 +157,8 @@ function showResults() {
   const result = results.find((entry) => entry.id === me.id);
   const winner = results.find((entry) => entry.id === summary?.realWinner);
   $('myPlace').textContent = ordinal(result.place);
-  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right. The map is ${Math.round(summary.green * 100)}% green.`;
+  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right and finished on ${LEVELS[result.level].toLowerCase()}. The map is ${Math.round(summary.green * 100)}% clean.`;
+  $('myNote').textContent = result.note ?? '';
   $('doneWinner').textContent = winner ? (winner.id === me.id ? 'You are the real winner!' : `Real winner: ${winner.name}`) : '';
   $('doneList').replaceChildren(...results.map((entry) => {
     const row = element('li', entry.id === me.id ? 'me' : '');

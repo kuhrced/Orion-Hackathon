@@ -16,7 +16,7 @@
     <div id="quiz" class="quiz" hidden>
       <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
       <h2 id="quizText"></h2>
-      <ol id="quizChoices" class="choices"></ol>
+      <ol id="quizRows"></ol>
       <div class="timer"><div id="quizTimer"></div></div>
     </div>
     <div id="results" hidden>
@@ -45,6 +45,11 @@
   </section>
   <section id="actions">
     <div id="clock" hidden></div>
+    <form id="topicRow" class="option" hidden>
+      <span class="label">Topic</span>
+      <div><input id="topic" maxlength="60" autocomplete="off" aria-label="What the questions are about"><button type="submit">Set</button></div>
+    </form>
+    <p id="bankNote" hidden></p>
     <div id="worldRow" class="option" hidden>
       <span class="label">World</span>
       <div><span id="worldName"></span><button id="worldNext" type="button">Change</button></div>
