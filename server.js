@@ -75,12 +75,17 @@ const makeBank = (topic, source, questions, made = {}) => ({
   topic, source, count: questions.length, made, questions,
   levels: [null, 1, 2, 3].map((level) => (level ? questions.filter((q) => q.level === level) : null)),
 });
-// The built-in questions are the safety net: they are used when there is no Gemini key, when
-// Gemini cannot be reached, or when it is too slow, so a race can always start. A teacher can
-// change them or add their own on the teacher screen.
-const BACKUP = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'))
-  .filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct) && [1, 2, 3].includes(q.level));
-const backupBank = makeBank('The environment', 'backup', BACKUP);
+// There are no built-in questions: every question is written by Gemini or added on the teacher
+// screen. Until there are questions, a race cannot start.
+// For tests, and as a last resort if Gemini is down on the day, starting the server with
+// BUILTIN_QUESTIONS=1 loads the old set from data/questions.json as spare questions.
+const SPARE = process.env.BUILTIN_QUESTIONS === '1'
+  ? JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'))
+    .filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct) && [1, 2, 3].includes(q.level))
+  : [];
+const spareBank = SPARE.length ? makeBank('Spare questions', 'backup', SPARE) : null;
+// What a room has while it has no questions of its own.
+const noBank = (topic) => spareBank ?? makeBank(topic, 'empty', []);
 const banks = new Map(); // key -> a bank Gemini has already written, so it is asked only once
 const writing = new Map(); // key -> the request that is writing it right now, shared by every room that wants it
 
@@ -112,7 +117,7 @@ function useBank(room, bank) {
 function prepareBank(room) {
   const topic = room.topic;
   // Keep questions edited or added by the teacher for the rest of this room.
-  if (room.bank !== backupBank && room.bank.topic === topic && room.bank.questions.length) {
+  if (room.bank !== spareBank && room.bank.topic === topic && room.bank.questions.length) {
     room.bankNote = '';
     room.writing = false;
     return;
@@ -126,27 +131,29 @@ function prepareBank(room) {
     return;
   }
   if (!geminiReady()) {
-    useBank(room, backupBank);
-    room.bankNote = 'No Gemini key, so the built-in questions are used. You can add your own on the teacher screen.';
+    useBank(room, noBank(topic));
+    room.bankNote = spareBank ? 'No Gemini key: the spare questions are used.' : 'No generated questions are available. Add questions on the teacher screen.';
     room.writing = false;
     room.pending = null; // an answer that is still on its way is for another topic
     return;
   }
   if (room.pending === key) return; // already asked; the answer is on its way
-  // Gemini has already failed on this topic: ask again, but do not make the host wait again.
+  // Gemini has already failed on this topic: ask again, but do not show "writing" again.
   const letDown = room.letDown === key;
-  useBank(room, backupBank);
-  room.bankNote = letDown ? 'Gemini is slow right now. You can start with the built-in questions, or wait for Gemini.' : '';
+  const failed = spareBank ? 'Gemini could not write the questions, so the spare questions are used.' : 'Gemini could not write the questions. Add questions on the teacher screen or try again.';
+  const slow = spareBank ? 'Gemini is slow right now. You can start with the spare questions, or wait for Gemini.' : 'Gemini is slow right now. Wait a little longer, or add questions on the teacher screen.';
+  useBank(room, noBank(topic));
+  room.bankNote = letDown ? failed : '';
   room.writing = !letDown;
   room.pending = key;
   room.writingSince = Date.now();
   const pdf = key === room.pdf?.key ? room.pdf.data : null;
-  // The host must never be stuck on the Start button. If Gemini is slow, the race may start
-  // with the built-in questions; if Gemini answers before the start, its questions are used.
+  // If Gemini is slow, say so instead of showing "writing" for ever. Its questions are still
+  // used when they arrive; until then the teacher can add questions by hand.
   const giveUp = setTimeout(() => {
     if (room.pending !== key || !room.writing) return;
     room.writing = false;
-    room.bankNote = 'Gemini is slow right now. You can start with the built-in questions, or wait for Gemini.';
+    room.bankNote = slow;
     sendState(room);
   }, pdf ? GEMINI_WAIT_PDF_MS : GEMINI_WAIT_MS);
   writeBank(key, topic, pdf).then(() => {
@@ -160,7 +167,7 @@ function prepareBank(room) {
     if (room.pending !== key) return;
     room.writing = false;
     room.letDown = key;
-    room.bankNote = 'Gemini could not write the questions, so the built-in questions are used. You can also add your own on the teacher screen.';
+    room.bankNote = failed;
   }).finally(() => {
     clearTimeout(giveUp);
     if (room.pending === key) room.pending = null;
@@ -282,7 +289,7 @@ function createRoom() {
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
     track: null, laps: 1, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
-    topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false, pending: null, letDown: null,
+    topic: DEFAULT_TOPIC, bank: noBank(DEFAULT_TOPIC), bankNote: '', writing: false, pending: null, letDown: null,
     // 'solo': each player gets their own question at their own level.
     // 'team': everyone gets the same question, and the level follows the group as a whole.
     mode: 'team', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
@@ -397,9 +404,11 @@ function editBank(room, message) {
     questions.splice(index, 1);
   } else if (index >= 0) questions[index] = updated;
   else questions.unshift(updated);
-  // Edited built-in questions become this room's own set, so they are kept (see prepareBank).
-  const own = room.bank === backupBank || room.bank.source === 'teacher';
+  // Questions the teacher adds to an empty set (or to the spare one) become this room's own
+  // set, so they are kept (see prepareBank).
+  const own = room.bank === spareBank || room.bank.source === 'empty' || room.bank.source === 'teacher';
   useBank(room, makeBank(own ? room.topic : room.bank.topic, own ? 'teacher' : room.bank.source, questions, room.bank.made));
+  room.bankNote = ''; // the note about having no questions is no longer true
   sendBank(room, room.host);
   for (const socket of room.watchers) sendBank(room, socket);
   sendState(room);
@@ -496,7 +505,8 @@ function pickFrom(bank, level, seen, weak) {
   if (!fresh.length) fresh = [1, 2, 3].flatMap((other) => levels[other]).filter((q) => !seen.has(q.id));
   if (!fresh.length) {
     seen.clear();
-    fresh = levels[level];
+    // A small set made by a teacher may have nothing at this level: then any question will do.
+    fresh = levels[level].length ? levels[level] : bank.questions;
   }
   const again = fresh.filter((q) => weak.has(q.subtopic));
   const from = again.length ? again : fresh;
@@ -1088,7 +1098,10 @@ const hostActions = {
 
 function onHost(socket, message) {
   let room = rooms.get(String(message.code ?? ''));
-  if (!room || room.hostKey !== message.key) room = createRoom();
+  if (!room || room.hostKey !== message.key) {
+    room = createRoom();
+    prepareBank(room); // so the first screen already says whether the questions are ready
+  }
   if (room.host && room.host !== socket) room.host.close();
   room.host = socket;
   socket.room = room;
@@ -1164,6 +1177,24 @@ function onPlayer(room, player, message) {
     sendState(room);
   }
 }
+
+// A phone that "cannot get in" either never reaches this computer, or reaches it and asks in a
+// way the server cannot read (most often its browser tries https). These two lines in the
+// server's output tell the three cases apart.
+const knocked = new Map(); // address -> when it was last printed
+const addressOf = (socket) => (socket.remoteAddress ?? '?').replace(/^::ffff:/, '');
+server.on('connection', (socket) => {
+  const address = addressOf(socket);
+  if (address === '::1' || address === '127.0.0.1') return;
+  if (Date.now() - (knocked.get(address) ?? 0) < 60000) return;
+  knocked.set(address, Date.now());
+  console.log(`${new Date().toLocaleTimeString()}  a device at ${address} connected`);
+});
+server.on('clientError', (error, socket) => {
+  console.log(`${new Date().toLocaleTimeString()}  the device at ${addressOf(socket)} sent something that is not plain http (${error.code}). Its browser is probably trying https: type http:// in front of the address.`);
+  if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  else socket.destroy();
+});
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
 
@@ -1243,7 +1274,8 @@ if (geminiReady()) {
 
 server.listen(PORT, () => {
   console.log(`Race game running. Open the big screen at http://localhost:${PORT}/host`);
-  console.log(geminiReady() ? 'Gemini key found: questions will be written by Gemini.' : `No Gemini key in .env: using the ${BACKUP.length} built-in questions. More can be added on the teacher screen.`);
+  console.log(geminiReady() ? 'Gemini key found: questions will be written by Gemini.' : 'No Gemini key in .env: add questions from the teacher screen.');
+  if (spareBank) console.log(`BUILTIN_QUESTIONS=1: ${SPARE.length} spare questions are loaded for when Gemini has none.`);
   console.log(voiceReady() ? 'ElevenLabs key found: the commentator speaks with an ElevenLabs voice.' : 'No ElevenLabs key in .env: the commentator uses the browser\'s own voice.');
   for (const url of lanUrls()) console.log(`Phones on the same Wi-Fi can reach it at ${url}`);
 });

@@ -82,17 +82,11 @@ Press **Teacher screen** on the big screen to open a second page, `/teacher`. It
 working, every question with its right answer, and how each player is doing during the race.
 It needs the host's key, so players cannot open it.
 
-### Backup questions
+### No built-in questions
 
-Without a key, or if Gemini cannot be reached, the game uses the built-in questions below.
-
-The 100 built-in questions are in `data/questions.json`, each with a level and a subtopic. They
-were exported from `questions.db`. After changing the database, refresh the copy (this needs
-Node.js 22.13 or newer); levels and subtopics already set are kept:
-
-```bash
-npm run export-questions
-```
+Every question is written by Gemini or added on the teacher screen. Without questions a race
+cannot start. As a last resort (Gemini is down on the day), start the server with
+`BUILTIN_QUESTIONS=1 npm start`: it loads the old set of 100 from `data/questions.json`.
 
 ## Voice
 
