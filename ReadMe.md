@@ -1,14 +1,15 @@
-# QR Racer
+# Know & Go
 
-A 2D party racing game with an environment theme. The host draws a track on the big screen, up
-to 6 players join on their phones with a QR code, and everyone races. The map starts grey and
-polluted. Every 20 seconds the race stops for a question. Right answers give a speed boost and
-heal the map. The first car home wins the race, but the real winner is the player with
-the most right answers.
+A 2D racing quiz game for a class or a party. The host draws a track on the big screen, up to 6
+players join on their phones with a QR code, and everyone races. Every 10 to 20 seconds the race
+stops for a question. Gemini writes the questions for any topic, or from a PDF the teacher
+uploads. A fast right answer earns up to 1000 points and a speed boost. The first car home wins
+the race, but the real winner is the player with the most right answers.
 
 ## Run it
 
-You need Node.js 20 or newer.
+You need Node.js 20.12 or newer, and a Gemini API key for the questions (see "Questions" below:
+without a key there are no questions until someone adds them on the teacher screen).
 
 ```bash
 npm install
@@ -18,8 +19,9 @@ npm install
 npm start
 ```
 
-Open `http://localhost:3000` on the laptop for the landing page, then press **Host a race** to open
-the big screen (`/host`).
+Open `http://localhost:3000` on the laptop for the front page, then press the **Host** button to
+open the big screen (`/host`). The server prints one line for every device that opens a page or
+joins, which helps when a phone "cannot get in".
 
 ## Play
 
@@ -35,30 +37,30 @@ the big screen (`/host`).
    Cones, tyres, crates, barrels and crash-test dummies stand on the road. Hitting them sends
    them flying and tumbling; crates smash and dummies lose parts. The car keeps its speed.
 6. Before each question there is a 3-second "get ready" countdown. Then everyone picks an
-   answer on their phone. A right answer gives a
-   speed boost, and every right answer makes the shared map greener.
+   answer on their phone. A right answer gives a speed boost and points: the faster, the more
+   (up to 1000). The big screen and the phones show the top 3.
 7. After the race, press **Race again** or **New track**.
 
 A lap takes 30 to 50 seconds of driving. One lap is the default, so a race with its questions is
 about a minute and a half; the host can change it before the start. The host can press
 **End race** at any time to go straight to the results.
-A short race asks questions more often, so the map can always become fully clean.
+A short race asks questions more often, so every race has a few.
 
 If a phone cannot open the page, check that it is on the same Wi-Fi, and allow Node.js in the
-laptop's firewall when it asks. Some event Wi-Fi blocks phones from reaching laptops; a phone
-hotspot fixes that.
+laptop's firewall when it asks. Some event Wi-Fi blocks phones from reaching laptops (guest
+networks often do); a phone hotspot, or putting the game online, fixes that.
 
 ## Questions
 
-The host picks one of two modes before the race, with **Questions > Change**:
+The host picks one of two modes before the race, with the **Mode** buttons:
 
-- **Personal** (the default): every player gets their own question, at their own level: easy,
-  medium or hard. A right answer moves a player up a level and a wrong one moves them down.
-  Subtopics a player gets wrong come back later.
-- **Class**: everyone gets the same question, shown big on the screen with its four answers.
-  The level follows the class: up when most players are right, down when most are wrong.
+- **Team** (the default): everyone gets the same question, shown big on the screen with its four
+  answers. The level follows the group: up when most players are right, down when most are wrong.
+- **Solo**: every player gets their own question, at their own level: easy, medium or hard. A
+  right answer moves a player up a level and a wrong one moves them down. Subtopics a player
+  gets wrong come back later.
 
-Harder questions give a longer boost and clean more of the map.
+Harder questions give a longer boost.
 
 ### Gemini writes the questions
 
@@ -69,8 +71,8 @@ https://aistudio.google.com/apikey). Git ignores `.env`; never put the key anywh
 npm run try-gemini
 ```
 
-With a key, Gemini writes a fresh set of questions in three levels for the topic the host types in
-(the environment by default), and a personal note for each player after the race.
+With a key, Gemini writes a fresh set of 30 questions in three levels for the topic the host types
+in ("Random" by default: general knowledge), and a personal note for each player after the race.
 
 The host can also press **Upload a PDF** (up to 12 MB). Gemini reads it and writes the questions
 from what the document says. **Start race** waits until Gemini has finished, so the questions
@@ -80,7 +82,8 @@ the host asked for are the ones that get played.
 
 Press **Teacher screen** on the big screen to open a second page, `/teacher`. It shows Gemini
 working, every question with its right answer, and how each player is doing during the race.
-It needs the host's key, so players cannot open it.
+The teacher can change or remove any question and press **Add question** to write their own
+(not while a race is running). It needs the host's key, so players cannot open it.
 
 ### No built-in questions
 
@@ -119,14 +122,14 @@ code uses the site's own address.
 | --- | --- |
 | `server.js` | Serves the pages, keeps the rooms, moves the cars and asks the questions |
 | `shared/track.js` | Turns the drawn line into a track (used by the server and the browser) |
-| `public/index.html`, `public/landing.css`, `public/landing.js` | The landing page at `/`: Host a race, or join with a code |
+| `public/index.html`, `public/landing.css`, `public/landing.js` | The front page at `/`: host a race, or join with a code |
 | `public/cars/` | The four cars that drive across the landing page |
 | `shared/cars.json` | Car stats from `docs/car-stats.pdf`: top speed, acceleration, handling and weight for each car type |
 | `shared/props.js` | The cones, tyres, crates, barrels and dummies on the road: what they are and where they start |
 | `shared/cars.js` | Turns those stats into what the race uses, and says which row of `cars.png` is which car type |
 | `public/host.html`, `public/host.js` | The big screen at `/host`: drawing, lobby, race view, questions, results |
 | `public/play.html`, `public/play.js` | The phone: join, close-up view, steering buttons, answers |
-| `public/worlds.js` | The five worlds: how each one looks polluted and clean, and everything that moves on the map |
+| `public/worlds.js` | The five worlds: how each one looks, and everything that moves on the map |
 | `public/render.js` | Draws the cars and what they leave behind, and keeps the map picture ready |
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
 | `public/teacher.html`, `public/teacher.js`, `public/teacher.css` | The teacher screen: Gemini's questions with answers, and the players' progress |
@@ -134,8 +137,8 @@ code uses the site's own address.
 | `voice.js` | The ElevenLabs voice that reads the question and the answer |
 | `public/commentator.js` | Plays that voice on the big screen |
 | `memory.js` | What the game remembers about each player (a file, and Backboard with a key) |
-| `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
-| `questions.db` | Where the backup questions were first written |
+| `data/questions.json` | 100 spare questions, only loaded with `BUILTIN_QUESTIONS=1` |
+| `ignore/` | Old copies kept by the team; the game does not use this folder |
 | `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |
 
 ## Things to tune
@@ -144,7 +147,7 @@ All of these are constants at the top of `server.js`:
 
 - Car speed and steering.
 - How often a question comes, how long players have to answer, and how strong the boost is.
-- `GREEN_TARGET`: the share of right answers that makes the map fully green by the end.
+- `DEFAULT_TOPIC`: the topic a new game starts with.
 
 World size and road width are at the top of `shared/track.js`. How much each car stat changes
 the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.json`.
