@@ -211,14 +211,43 @@ function paintResults() {
   }));
 }
 
-// Every player has a different question, so the big screen shows one row per player.
+// Class mode: everyone has the same question, so it is shown big, with its four answers, and
+// each player is a small tag underneath.
+function paintClassQuiz(shared) {
+  const { reveal, players } = state;
+  const asked = players.filter((player) => player.q);
+  const right = reveal ? asked[0].right : null;
+  $('quizNumber').replaceChildren(`Question ${state.question.number} `, levelBadge(shared.level));
+  $('quizText').textContent = shared.text;
+  $('quizChoices').replaceChildren(...shared.choices.map((choice, index) => {
+    const row = element('li', `choice c${index}`);
+    row.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
+    if (reveal) {
+      row.classList.add(index === right ? 'right' : 'dim');
+      row.append(element('span', 'votes', String(asked.filter((player) => player.answer === index).length))); // how many picked it
+    }
+    return row;
+  }));
+  $('quizWho').replaceChildren(...asked.map((player) => {
+    const correct = reveal && player.answer !== null && player.answer === right;
+    const tag = element('li', reveal ? (correct ? 'good' : 'bad') : player.answered ? 'in' : '');
+    tag.append(carIcon(player.color, player.type, 26), element('span', 'name', player.name), element('span', 'mark', reveal ? (correct ? '✓' : '✗') : player.answered ? '●' : '…'));
+    return tag;
+  }));
+}
+
+// Personal mode: every player has a different question, so the big screen shows one row per player.
 function paintQuiz() {
   const { question, reveal, players } = state;
   if (!question) return;
-  $('quizNumber').textContent = `Question ${question.number}`;
   $('quizCount').textContent = reveal
     ? `${players.filter((player) => player.answer !== null && player.answer === player.right).length} of ${players.length} got it right`
     : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
+  const shared = state.mode === 'class' ? players.find((player) => player.q)?.q : null;
+  $('quizChoices').hidden = $('quizWho').hidden = !shared;
+  $('quizRows').hidden = !!shared;
+  if (shared) return paintClassQuiz(shared);
+  $('quizNumber').textContent = `Question ${question.number}`;
   $('quizText').textContent = reveal ? 'Time is up!' : 'Everyone gets their own question';
   $('quizRows').replaceChildren(...players.filter((player) => player.q).map((player) => {
     const row = element('li');
@@ -230,12 +259,6 @@ function paintQuiz() {
     row.append(carIcon(player.color, player.type, 40), levelBadge(player.q.level), text, mark);
     return row;
   }));
-}
-
-function paintGreen() {
-  const percent = Math.round(shownGreen * 100);
-  $('greenValue').textContent = `${percent}%`;
-  $('greenBar').style.width = `${percent}%`;
 }
 
 function updateUI() {
@@ -258,7 +281,12 @@ function updateUI() {
   $('lapsRow').hidden = $('worldRow').hidden = phase !== 'lobby';
   // The topic can be set while the track is still being drawn, so Gemini works in the meantime.
   const choosing = phase === 'draw' || phase === 'lobby';
-  $('topicRow').hidden = $('sourceRow').hidden = !choosing;
+  $('topicRow').hidden = $('sourceRow').hidden = $('modeRow').hidden = !choosing;
+  const classMode = state.mode === 'class';
+  $('modeName').textContent = classMode ? 'Class' : 'Personal';
+  $('modeRow').title = classMode
+    ? 'Everyone gets the same question, on the big screen. The level follows the class.'
+    : 'Each player gets their own question, at their own level.';
   if (document.activeElement !== $('topic')) $('topic').value = state.topic?.startsWith('PDF: ') ? '' : state.topic ?? '';
   $('pdfButton').classList.toggle('disabled', writing || !bank?.gemini);
   $('pdf').disabled = writing || !bank?.gemini;
@@ -275,11 +303,11 @@ function updateUI() {
   }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
-  $('botRow').hidden = phase !== 'draw' && phase !== 'lobby';
+  // The commentator's switch stays in reach all the time; the bot buttons only before a race.
+  $('addBot').hidden = $('removeBot').hidden = phase !== 'draw' && phase !== 'lobby';
   $('addBot').disabled = state.players.length >= MAX_PLAYERS;
   $('removeBot').disabled = !state.players.some((player) => player.bot);
   $('clock').hidden = !racing;
-  $('greenBox').hidden = !racing && phase !== 'results';
   $('joinBox').classList.toggle('small', racing || phase === 'results');
   $('results').hidden = phase !== 'results';
   if (phase === 'results') paintResults();
@@ -327,7 +355,6 @@ function frame(now) {
     map = null;
     shownGreen = state.green;
     fadeStart = now;
-    paintGreen();
   }
   map ??= renderMap(scene, view.scale * view.dpr, shownGreen);
   const fade = oldMap ? Math.min(1, (now - fadeStart) / MAP_FADE) : 1;
@@ -391,7 +418,9 @@ async function showJoin(code) {
   }
   const url = `${base}/play?room=${code}`;
   $('qr').src = `/qr.svg?d=${encodeURIComponent(url)}`;
-  $('joinUrl').textContent = `${base.replace(/^https?:\/\//, '')}/play`;
+  // No address to type: the QR code goes straight into this game. The code is for anyone
+  // whose camera will not scan; the front page has a box for it.
+  $('joinUrl').textContent = `No camera? Open ${base.replace(/^https?:\/\//, '')} and type the code.`;
   $('code').textContent = code;
 }
 
@@ -457,6 +486,7 @@ secondButton.addEventListener('click', () => {
 $('lapsDown').addEventListener('click', () => send({ t: 'laps', laps: Math.max(1, state.laps - 1) }));
 $('lapsUp').addEventListener('click', () => send({ t: 'laps', laps: Math.min(5, state.laps + 1) }));
 $('worldNext').addEventListener('click', () => send({ t: 'world' }));
+$('modeNext').addEventListener('click', () => send({ t: 'mode', mode: state.mode === 'class' ? 'personal' : 'class' }));
 $('topicRow').addEventListener('submit', (event) => {
   event.preventDefault();
   $('topic').blur();
@@ -493,7 +523,8 @@ $('teacher').addEventListener('click', () => {
   if (code) window.open(`/teacher#${code}.${key}`, 'teacher');
 });
 const showVoice = () => {
-  $('voiceToggle').textContent = `Commentator: ${commentator.muted ? 'off' : 'on'}`;
+  $('voiceToggle').textContent = `Voice: ${commentator.muted ? 'off' : 'on'}`;
+  $('voiceToggle').title = 'The commentator. The words stay on the screen when the voice is off.';
 };
 $('voiceToggle').addEventListener('click', () => {
   commentator.toggle();

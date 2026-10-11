@@ -25,10 +25,11 @@ the big screen (`/host`).
 
 1. On the big screen, draw a loop and press **Make track**. The game adds bends and scenery, and
    picks one of five worlds: forest, ocean, swamp, desert or ice. Press **Change** to try another.
-2. Players scan the QR code with their phone camera. The phone must be on the same Wi-Fi as the
-   laptop. They type a name and press **Join**.
-3. Players can press **Change car** on their phone. Each car type drives differently, and the
-   phone shows its stats.
+2. Players scan the QR code with their phone camera. That is all: the phone joins the game
+   straight away, with a made-up name. The phone must be on the same Wi-Fi as the laptop.
+   (If a camera will not scan, open the address under the game code and type the code.)
+3. On the phone, players can change their name and press **Change car**. Each car type drives
+   differently, and the phone shows its stats.
 4. Press **Add bot** if you want computer cars too. Bots also answer questions.
 5. Press **Start race**. Cars drive forward by themselves; players steer with the two buttons.
    Cones, tyres, crates, barrels and crash-test dummies stand on the road. Hitting them sends
@@ -47,9 +48,15 @@ hotspot fixes that.
 
 ## Questions
 
-Every player gets their own question, at their own level: easy, medium or hard. A right answer
-moves a player up a level and a wrong one moves them down. Harder questions give a longer boost
-and clean more of the map. Subtopics a player gets wrong come back later.
+The host picks one of two modes before the race, with **Questions > Change**:
+
+- **Personal** (the default): every player gets their own question, at their own level: easy,
+  medium or hard. A right answer moves a player up a level and a wrong one moves them down.
+  Subtopics a player gets wrong come back later.
+- **Class**: everyone gets the same question, shown big on the screen with its four answers.
+  The level follows the class: up when most players are right, down when most are wrong.
+
+Harder questions give a longer boost and clean more of the map.
 
 ### Gemini writes the questions
 

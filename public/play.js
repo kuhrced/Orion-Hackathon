@@ -58,7 +58,6 @@ const snapshots = createSnapshots(100); // a little more patience than the big s
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
-$('codeInput').value = roomInUrl;
 // A random id that this phone keeps, so the game can remember the player between races.
 // It is not tied to a name or an account.
 function deviceId() {
@@ -70,7 +69,13 @@ function deviceId() {
   return id;
 }
 
-$('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
+// Scanning the QR code is all it takes to join: the link carries the game code, and the name is
+// the one this phone used last time, or a made-up one. The name can be changed in the lobby.
+if (!me && roomInUrl) {
+  pending = { code: roomInUrl, name: store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`, device: deviceId() };
+} else if (!me) {
+  location.replace('/'); // no game code: the front page is where a code can be typed
+}
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -93,11 +98,16 @@ function showScreen() {
   const mine = state.players.find((player) => player.id === me.id);
   if (!mine) return;
   $('hello').textContent = `You are in, ${mine.name}!`;
+  if (document.activeElement !== $('nameInput')) $('nameInput').value = mine.name;
+  if (me.name !== mine.name) {
+    me.name = mine.name; // so a reconnect comes back under the new name
+    store.set('sessionStorage', 'race-player', me);
+  }
   // The game remembers players between races: say so, and say what it will do with it.
   const { back } = mine;
   $('welcome').hidden = !back;
   if (back) {
-    const review = back.weak.slice(0, 2).join(' and ').toLowerCase();
+    const review = state.mode === 'class' ? '' : back.weak.slice(0, 2).join(' and ').toLowerCase(); // class questions are not personal
     $('welcome').textContent = back.sameTopic
       ? `Welcome back! You start on ${LEVELS[mine.level].toLowerCase()}${review ? `, and ${review} will come back first` : ''}.`
       : `Welcome back! Last time you got ${back.last.right} of ${back.last.asked} right on ${back.last.topic}.`;
@@ -339,7 +349,7 @@ function join(request) {
 
 const send = connect({
   onOpen() {
-    if (me) join({ code: me.code, key: me.key, name: me.name });
+    if (me) join({ code: me.code, key: me.key, name: me.name, device: deviceId() });
     else if (pending) join(pending);
   },
   onMessage(message) {
@@ -347,18 +357,23 @@ const send = connect({
       me = { id: message.id, key: message.key, code: message.code, name: pending?.name ?? me?.name };
       pending = null;
       store.set('sessionStorage', 'race-player', me);
+      if (me.name) store.set('localStorage', 'race-name', me.name); // the same name next time
       $('joinError').textContent = '';
       steer = 0;
       sendSteer();
       showScreen();
     } else if (message.t === 'error') {
-      // A saved seat that no longer exists: go back to the join form.
+      // The seat is gone, the game is full, or a race is running. Say why. A running race
+      // ends soon, so keep asking; anything else needs a new code.
       me = null;
       store.set('sessionStorage', 'race-player', null);
-      $('joinError').textContent = message.reason;
       clearTimeout(retryTimer);
-      if (message.retry && pending) retryTimer = setTimeout(() => pending && join(pending), 2000);
+      const waiting = !!(message.retry && pending);
+      if (waiting) retryTimer = setTimeout(() => pending && join(pending), 2000);
       else pending = null;
+      $('joinTitle').textContent = waiting ? 'Almost there…' : 'Could not join';
+      $('joinError').textContent = message.reason;
+      $('joinHome').hidden = waiting;
       showScreen();
     } else if (message.t === 'state') {
       const now = performance.now();
@@ -398,13 +413,16 @@ const send = connect({
   },
 });
 
-$('join').addEventListener('submit', (event) => {
+$('rename').addEventListener('submit', (event) => {
   event.preventDefault();
   const name = $('nameInput').value.trim();
-  store.set('localStorage', 'race-name', name);
-  navigator.wakeLock?.request('screen').catch(() => {}); // keep the phone awake where allowed
-  join({ code: $('codeInput').value.trim().toUpperCase(), name, device: deviceId() });
+  $('nameInput').blur();
+  if (!name) return;
+  store.set('localStorage', 'race-name', name); // this phone uses it again next time
+  send({ t: 'name', name });
 });
+// Keep the phone awake where that is allowed. Browsers only allow it after a touch.
+addEventListener('pointerdown', () => navigator.wakeLock?.request('screen').catch(() => {}), { once: true });
 
 $('changeCar').addEventListener('click', () => {
   const mine = state?.players.find((player) => player.id === me?.id);

@@ -41,9 +41,11 @@ questions right.
   the server sends a `break` message and each screen throws its own pieces. A dummy is a rag
   doll: the server moves the body, and each screen makes the limbs flop (`flopDoll` in
   `public/render.js`).
-- `public/host.js` is the big screen. `public/play.js` is the phone.
-- Questions are personal: each player has a level (1 easy, 2 medium, 3 hard) and gets their own
-  question each time. `gemini.js` asks Gemini to write a bank of questions for the room's topic;
+- `public/host.js` is the big screen. `public/play.js` is the phone. A phone joins by opening
+  `/play?room=CODE` (the QR code); there is no join form. `/play` without a code goes to `/`.
+- Questions have two modes, `room.mode`. In `personal`, each player has a level (1 easy, 2 medium,
+  3 hard) and gets their own question each time. In `class`, everyone gets the same question
+  and `room.classLevel` follows the class as a whole. `pickFrom` in `server.js` picks for both. `gemini.js` asks Gemini to write a bank of questions for the room's topic;
   `prepareBank` in `server.js` falls back to `data/questions.json` when there is no key or the
   call fails. Everything Gemini returns is checked before it is used. Never call Gemini in the
   middle of a race: banks are written in the lobby and reused.

@@ -101,6 +101,7 @@ function writeBank(key, topic, pdf) {
 function useBank(room, bank) {
   if (room.bank === bank) return;
   room.bank = bank;
+  room.classSeen = new Set();
   for (const player of room.players) player.seen = new Set(); // new questions: nobody has seen any
 }
 
@@ -237,6 +238,9 @@ function createRoom() {
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
     topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false,
+    // 'personal': each player gets their own question at their own level.
+    // 'class': everyone gets the same question, and the level follows the class as a whole.
+    mode: 'personal', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
     lastWorld: null, props: [], watchers: new Set(), pdf: null, writingSince: 0, tick: 0, lastActive: Date.now(),
     talkingUntil: 0, voiceLine: Promise.resolve(), saidLeader: null, leader: null, leaderSince: 0, saidLastLap: false, nextSmashLine: 0,
   };
@@ -277,6 +281,7 @@ function stateMessage(room) {
     laps: room.laps,
     green: room.green,
     topic: room.topic,
+    mode: room.mode,
     bank: { topic: room.bank.topic, source: room.bank.source, count: room.bank.count, writing: room.writing, note: room.bankNote, gemini: geminiReady() },
     countdown: room.phase === 'countdown' ? Math.max(0, room.startAt - now) : 0,
     players: room.players.map((player) => ({
@@ -343,8 +348,9 @@ function placeOnGrid(room) {
     const spot = gridSlot(room.track, slot);
     // Someone who has played this topic before starts on the level they reached, and the
     // subtopics they got wrong come back first. Everyone else starts on medium.
+    // In class mode everyone shares one level, so nobody brings their own.
     player.past = player.device ? recall(player.device, room.bank.topic) : null;
-    const before = player.past?.here;
+    const before = room.mode === 'class' ? null : player.past?.here;
     Object.assign(player, {
       steer: 0, correct: 0, answer: null, q: null, botAnswer: null, boostUntil: 0,
       level: before?.level ?? 2, history: [], weak: new Set(before?.weak ?? []),
@@ -358,6 +364,7 @@ function placeOnGrid(room) {
   Object.assign(room, {
     raceTime: 0, green: 0, question: null, reveal: null, questionCount: 0, firstFinish: null,
     saidLeader: null, leader: null, leaderSince: 0, saidLastLap: false, nextSmashLine: 0,
+    classLevel: 2, classWeak: new Set(),
   });
   // Everything on the road is stood back up for the new race.
   room.props = buildProps(room.track).map((prop) => ({ ...prop, z: 0, vx: 0, vy: 0, vz: 0, spin: 0, gone: false, moving: false, settled: false }));
@@ -436,18 +443,20 @@ function watchRace(room, order) {
   }
 }
 
-function pickQuestion(room, player) {
-  const { levels } = room.bank;
-  let fresh = levels[player.level].filter((q) => !player.seen.has(q.id));
-  if (!fresh.length) fresh = [1, 2, 3].flatMap((level) => levels[level]).filter((q) => !player.seen.has(q.id));
+// Picks a question at `level` that has not been `seen`, from a `weak` subtopic if there is one.
+// It is used for one player (personal mode) and for the whole room (class mode).
+function pickFrom(bank, level, seen, weak) {
+  const { levels } = bank;
+  let fresh = levels[level].filter((q) => !seen.has(q.id));
+  if (!fresh.length) fresh = [1, 2, 3].flatMap((other) => levels[other]).filter((q) => !seen.has(q.id));
   if (!fresh.length) {
-    player.seen.clear();
-    fresh = levels[player.level];
+    seen.clear();
+    fresh = levels[level];
   }
-  const weak = fresh.filter((q) => player.weak.has(q.subtopic));
-  const from = weak.length ? weak : fresh;
+  const again = fresh.filter((q) => weak.has(q.subtopic));
+  const from = again.length ? again : fresh;
   const picked = from[crypto.randomInt(from.length)];
-  player.seen.add(picked.id);
+  seen.add(picked.id);
   return picked;
 }
 
@@ -459,9 +468,14 @@ function askQuestion(room, now) {
     // askedAt is the moment the questions themselves appear, after the "get ready" countdown.
     readyAt: now + QUESTION_READY_MS, askedAt: now + QUESTION_READY_MS, endsAt: now + QUESTION_READY_MS + ANSWER_MS, closeAt: null,
   };
+  // Class mode: one question for everybody. Personal mode: one each.
+  const shared = room.mode === 'class' ? pickFrom(room.bank, room.classLevel, room.classSeen, room.classWeak) : null;
   for (const player of room.players) {
     player.answer = null;
-    player.q = pickQuestion(room, player);
+    player.q = shared ?? pickFrom(room.bank, player.level, player.seen, player.weak);
+    // Each mode remembers what the other one asked, so changing mode does not repeat a question.
+    if (shared) player.seen.add(shared.id);
+    else room.classSeen.add(player.q.id);
     const right = Math.random() < BOT_RIGHT_CHANCE[player.q.level];
     player.botAnswer = player.bot
       ? { at: room.question.readyAt + 1500 + Math.random() * 6000, choice: right ? player.q.correct : (player.q.correct + 1 + crypto.randomInt(3)) % 4 }
@@ -505,6 +519,20 @@ function stepQuestion(room, now) {
     }
     // Right moves a player up a level for next time; wrong moves them down.
     player.level = clamp(player.level + (right ? 1 : -1), 1, 3);
+  }
+  if (room.mode === 'class') {
+    // The class moves as one: up a level when most people were right, down when most were
+    // wrong, and a subtopic most people missed comes back.
+    const { subtopic } = room.players[0].q;
+    const share = voters.filter((player) => player.answer === player.q.correct).length / Math.max(1, voters.length);
+    if (share >= 0.6) {
+      room.classLevel = Math.min(3, room.classLevel + 1);
+      room.classWeak.delete(subtopic);
+    } else if (share <= 0.4) {
+      room.classLevel = Math.max(1, room.classLevel - 1);
+      room.classWeak.add(subtopic);
+    }
+    for (const player of room.players) player.level = room.classLevel;
   }
   const greenBefore = room.green;
   room.green = Math.min(1, room.green + cleaned / Math.max(1, voters.length) / (room.expectedQuestions * GREEN_TARGET));
@@ -796,7 +824,10 @@ function finishRace(room) {
     const score = new Map();
     for (const { subtopic, right } of player.history) score.set(subtopic, (score.get(subtopic) ?? 0) + (right ? 1 : -1));
     remember({
-      student: player.device, name: player.name, topic: room.bank.topic, asked: player.history.length, right: player.correct, level: player.level,
+      student: player.device, name: player.name, topic: room.bank.topic, asked: player.history.length, right: player.correct,
+      // In class mode player.level is the level of the whole class. That says nothing about
+      // this player, so they keep the level they had before.
+      level: room.mode === 'class' ? (player.past?.here?.level ?? 2) : player.level,
       weak: [...score].filter(([, points]) => points < 0).map(([subtopic]) => subtopic),
       strong: [...score].filter(([, points]) => points > 0).map(([subtopic]) => subtopic),
       at,
@@ -945,6 +976,12 @@ const hostActions = {
     prepareBank(room);
     sendState(room);
   },
+  mode(room, message) {
+    if (room.phase !== 'lobby' && room.phase !== 'draw') return;
+    room.mode = message.mode === 'class' ? 'class' : 'personal';
+    if (room.phase === 'lobby') placeOnGrid(room); // starting levels depend on the mode
+    sendState(room);
+  },
   redraw(room) {
     if (room.phase !== 'lobby' && room.phase !== 'results') return;
     Object.assign(room, { phase: 'draw', track: null, results: null, summary: null, green: 0 });
@@ -1062,6 +1099,9 @@ function onJoin(socket, message) {
 function onPlayer(room, player, message) {
   if (message.t === 'input') {
     player.steer = clamp(Number(message.steer) || 0, -1, 1);
+  } else if (message.t === 'name' && !RACING.has(room.phase)) {
+    player.name = cleanName(message.name);
+    sendState(room);
   } else if (message.t === 'car' && !RACING.has(room.phase)) {
     player.type = mod(Math.round(Number(message.type)) || 0, 4);
     sendState(room);

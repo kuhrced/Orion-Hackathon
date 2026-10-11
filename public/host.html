@@ -17,6 +17,8 @@
     <div id="quiz" class="quiz" hidden>
       <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
       <h2 id="quizText"></h2>
+      <ol id="quizChoices" class="choices" hidden></ol>
+      <ol id="quizWho" hidden></ol>
       <ol id="quizRows"></ol>
       <div class="timer"><div id="quizTimer"></div></div>
     </div>
@@ -31,16 +33,11 @@
 <aside id="side">
   <section id="joinBox">
     <img id="qr" alt="QR code to join the game">
-    <div class="label">Join at</div>
-    <div id="joinUrl"></div>
-    <div class="label">Game code</div>
+    <div class="label" id="scanLabel">Scan to join</div>
     <div id="code">····</div>
+    <div id="joinUrl"></div>
   </section>
-  <section id="greenBox" hidden>
-    <div class="label">How healthy is the map <span id="greenValue">0%</span></div>
-    <div class="meter"><div id="greenBar"></div></div>
-  </section>
-  <section>
+  <section class="list">
     <div class="label" id="listTitle">Players</div>
     <ol id="players"></ol>
   </section>
@@ -55,6 +52,10 @@
       <button id="teacher" type="button">Teacher screen</button>
     </div>
     <p id="bankNote" hidden></p>
+    <div id="modeRow" class="option" hidden>
+      <span class="label">Questions</span>
+      <div><span id="modeName"></span><button id="modeNext" type="button">Change</button></div>
+    </div>
     <div id="worldRow" class="option" hidden>
       <span class="label">World</span>
       <div><span id="worldName"></span><button id="worldNext" type="button">Change</button></div>
@@ -65,8 +66,8 @@
     </div>
     <button id="main" class="primary" type="button"></button>
     <button id="second" type="button"></button>
-    <button id="voiceToggle" type="button"></button>
     <div class="row" id="botRow">
+      <button id="voiceToggle" type="button"></button>
       <button id="addBot" type="button">Add bot</button>
       <button id="removeBot" type="button">Remove bot</button>
     </div>

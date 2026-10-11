@@ -14,7 +14,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'memory.json');
+// MEMORY_FILE lets a test keep its pretend players away from the real ones.
+const FILE = () => process.env.MEMORY_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'memory.json');
 const BASE = () => process.env.BACKBOARD_URL || 'https://app.backboard.io/api';
 const ASSISTANT_NAME = 'QR Racer coach';
 const KEEP = 30; // records kept for each player
@@ -34,8 +35,12 @@ function keep(record) {
   return true;
 }
 
+// Saves run one after another. A race ends with one record per player, and several writes to
+// the same file at the same moment can land on top of each other and leave it unreadable.
+let saving = Promise.resolve();
 function saveFile() {
-  fs.promises.writeFile(FILE, JSON.stringify([...records.values()].flat()))
+  saving = saving
+    .then(() => fs.promises.writeFile(FILE(), JSON.stringify([...records.values()].flat())))
     .catch((error) => console.log(`The player memory could not be saved: ${error.message}`));
 }
 
@@ -68,7 +73,7 @@ async function findAssistant() {
 // Reads everything that is remembered. Called once when the server starts.
 export async function loadMemory() {
   try {
-    for (const record of JSON.parse(fs.readFileSync(FILE, 'utf8'))) keep(record);
+    for (const record of JSON.parse(fs.readFileSync(FILE(), 'utf8'))) keep(record);
   } catch { /* no file yet: nothing is remembered */ }
   if (!backboardReady()) return { store: 'file', players: records.size };
   try {

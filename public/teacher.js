@@ -117,7 +117,7 @@ function paintClass() {
   if (!state) return;
   const asking = state.phase === 'question' || state.phase === 'reveal';
   $('room').textContent = `Game ${state.code}`;
-  $('phase').textContent = state.question ? `Question ${state.question.number}` : PHASES[state.phase] ?? '';
+  $('phase').textContent = `${state.question ? `Question ${state.question.number}` : PHASES[state.phase] ?? ''} · ${state.mode === 'class' ? 'Class mode: same question for everyone' : 'Personal mode: a question each'}`;
   // The state hides the right answer until time is up. This screen may know it sooner.
   const answers = new Map((bank?.questions ?? []).map((q) => [q.question, q.choices[q.correct]]));
   const rows = state.players.map((player) => {

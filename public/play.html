@@ -9,20 +9,18 @@
 </head>
 <body class="phone" data-screen="join">
 
-<form class="screen card" id="join">
-  <h1>Join the race</h1>
-  <label>Game code
-    <input id="codeInput" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
-  </label>
-  <label>Your name
-    <input id="nameInput" maxlength="14" autocomplete="off" required>
-  </label>
-  <button class="primary" type="submit">Join</button>
+<section class="screen card" id="join">
+  <h1 id="joinTitle">Joining the race…</h1>
   <p id="joinError" role="alert"></p>
-</form>
+  <a id="joinHome" class="button" href="/" hidden>Type a game code</a>
+</section>
 
 <section class="screen card" id="lobby">
   <h1 id="hello"></h1>
+  <form id="rename">
+    <input id="nameInput" maxlength="14" autocomplete="off" aria-label="Your name">
+    <button type="submit">Change name</button>
+  </form>
   <p id="welcome" hidden></p>
   <div id="myCar"></div>
   <div id="carCard" hidden>
