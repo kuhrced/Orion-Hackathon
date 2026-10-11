@@ -1,0 +1,2465 @@
+diff --git a/data/questions.json b/data/questions.json
+index de277ea..8216fa0 100644
+--- a/data/questions.json
++++ b/data/questions.json
+@@ -8,7 +8,13 @@
+    "Air pollution decreases",
+    "More soil is created"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Leaving the tap on doesn't feed wildlife. It just sends clean, treated water down the drain.",
++   "A running tap can pour out about 2 gallons of clean, treated water every minute. Turning it off while you brush saves that water and the energy used to clean and pump it.",
++   "Running water doesn't lower air pollution. Treating and pumping extra water actually uses more energy.",
++   "Soil forms over hundreds of years from rock and decaying plants. Water going down the drain doesn't create it."
++  ]
+  },
+  {
+   "id": 2,
+@@ -19,7 +25,13 @@
+    "A used tissue",
+    "A clean aluminum can"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Grease and food soak into cardboard fibers and can spoil a whole batch of paper recycling. Many programs say to compost or trash the greasy parts.",
++   "Ceramics melt at a different temperature than glass, so a broken mug can ruin a load of glass recycling. It goes in the trash.",
++   "Used tissues are dirty and their fibers are too short to recycle. They go in the trash, or compost where allowed.",
++   "Clean aluminum cans are accepted almost everywhere and can be recycled again and again. Recycling one saves about 95% of the energy needed to make a new can from raw materials."
++  ]
+  },
+  {
+   "id": 3,
+@@ -30,7 +42,13 @@
+    "It will make the river colder",
+    "It will quickly turn into drinking water"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Plastic has no nutrition. Animals that swallow it can feel full while actually starving.",
++   "Turtles, fish and birds can mistake plastic bags for food like jellyfish. Swallowed plastic can block their stomachs, and bags can also tangle them.",
++   "A bag doesn't change a river's temperature. The real danger is animals eating it or getting tangled.",
++   "Plastic never turns into water. It breaks into smaller and smaller pieces called microplastics that stay in the environment."
++  ]
+  },
+  {
+   "id": 4,
+@@ -41,7 +59,13 @@
+    "Running half-empty laundry loads",
+    "Switching off lights when they aren’t needed"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "An open fridge door lets the cold air out, so the fridge works harder and uses more electricity.",
++   "Lights in empty rooms use electricity for nothing.",
++   "Half-empty loads use almost as much energy and water as full ones, so you end up running more loads overall.",
++   "Switching off lights you aren't using is one of the simplest ways to cut electricity use, along with the power plant emissions that come with it."
++  ]
+  },
+  {
+   "id": 5,
+@@ -52,7 +76,13 @@
+    "Burying batteries in a garden",
+    "Washing plastic in a river"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Composting lets tiny living things like bacteria and worms break food scraps and yard waste down into a dark, crumbly material that feeds soil.",
++   "Burning rubbish releases smoke and pollution. Composting is natural decay, not burning.",
++   "Batteries contain metals and chemicals that can leak into soil. They need special recycling and never belong in a garden.",
++   "Washing plastic in a river pollutes the water. Composting is only for natural materials like food scraps and leaves."
++  ]
+  },
+  {
+   "id": 6,
+@@ -63,7 +93,13 @@
+    "The number of plants",
+    "Food waste sent to landfill"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Composting happens on the ground. It has no effect on how much sunlight reaches Earth.",
++   "Rainfall depends on the weather, not on what a family does with its scraps.",
++   "Compost actually helps plants grow by putting nutrients back into the soil.",
++   "Scraps that would have gone to the landfill become compost instead. In landfills, food rots without air and gives off methane, a powerful greenhouse gas."
++  ]
+  },
+  {
+   "id": 7,
+@@ -74,7 +110,13 @@
+    "Coal",
+    "Wind"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Natural gas is a fossil fuel that took millions of years to form. Once it's burned, it's gone.",
++   "Oil is a fossil fuel. We use it far faster than nature can make more.",
++   "Coal formed from ancient plants over millions of years, so it can't be replaced on a human time scale.",
++   "Wind keeps blowing because the sun heats Earth unevenly. Wind turbines can use it over and over without it running out."
++  ]
+  },
+  {
+   "id": 8,
+@@ -85,7 +127,13 @@
+    "The town uses more gasoline per person",
+    "Every road disappears"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "A bus carries many people at once, so its fuel and emissions are shared. Per passenger, that's usually less than everyone driving alone.",
++   "Buses still make some emissions and other pollution sources remain, so the air improves but doesn't become completely clean.",
++   "Sharing a bus usually means less gasoline per person, not more.",
++   "Buses, bikes and delivery trucks still need roads. Fewer car trips don't make roads disappear."
++  ]
+  },
+  {
+   "id": 9,
+@@ -96,7 +144,13 @@
+    "Neon",
+    "Argon"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Burning coal, oil and gas releases carbon dioxide, which traps heat in the atmosphere. It's the biggest driver of human-caused climate change.",
++   "Helium is a light gas used in balloons. It doesn't trap heat in the atmosphere.",
++   "Neon is used in glowing signs. It doesn't trap heat, so it isn't a greenhouse gas.",
++   "Argon makes up about 1% of the air, but it doesn't absorb heat, so it isn't a greenhouse gas."
++  ]
+  },
+  {
+   "id": 10,
+@@ -107,7 +161,13 @@
+    "More nesting places for all forest animals",
+    "Habitat loss"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Clearing forests means fewer trees, not more. Regrowing a forest takes decades.",
++   "Tree roots hold soil in place. Without them, erosion usually gets worse.",
++   "Animals lose the trees they nest in, so there are fewer nesting places, not more.",
++   "Forests are home to countless plants and animals. When they're cleared faster than they regrow, those species lose the habitat they need to survive."
++  ]
+  },
+  {
+   "id": 11,
+@@ -118,7 +178,13 @@
+    "Leaving a hose running",
+    "Washing a car every day with a running hose"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "In the cool morning, less water evaporates before it soaks into the soil, so plants get more of it.",
++   "Pavement doesn't need water, and at midday much of it just evaporates in the heat.",
++   "A running hose wastes water when nothing needs it.",
++   "A running hose can use far more water than a bucket or a car wash that recycles its water."
++  ]
+  },
+  {
+   "id": 12,
+@@ -129,7 +195,13 @@
+    "The lake turns into a forest",
+    "The water becomes salt-free"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Fertilizer feeds algae too. Too much can cause algal blooms that block sunlight and use up oxygen when they die and rot, which can harm fish.",
++   "It's the opposite: when the extra algae die and decay, they use up oxygen in the water, which can suffocate fish.",
++   "Fertilizer can't turn a lake into a forest. The real risk is algae growing out of control.",
++   "Fertilizer doesn't change how salty water is. It adds nutrients like nitrogen and phosphorus that fuel algae."
++  ]
+  },
+  {
+   "id": 13,
+@@ -140,7 +212,13 @@
+    "A clean cardboard box",
+    "An empty metal food can"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Clean glass jars are accepted by most recycling programs.",
++   "Batteries can spark fires in recycling trucks and sorting plants, and they contain metals that need special handling. Take them to a battery drop-off instead.",
++   "Clean cardboard is one of the most commonly recycled materials.",
++   "Empty metal food cans are widely accepted in curbside recycling."
++  ]
+  },
+  {
+   "id": 14,
+@@ -151,7 +229,13 @@
+    "No insects",
+    "Local pollinators"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Deep-sea animals live far from any garden and never visit flowers.",
++   "Pets don't depend on flowers for food. Wild pollinators do.",
++   "Native flowers attract insects. That's one of their biggest benefits.",
++   "Native bees, butterflies and other pollinators evolved alongside native plants, so these flowers give them the nectar, pollen and shelter they need."
++  ]
+  },
+  {
+   "id": 15,
+@@ -162,7 +246,13 @@
+    "The variety of living things in an area",
+    "The amount of plastic in a shop"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "A building's temperature is about heating and cooling, not living things.",
++   "Biodiversity isn't a fuel. It describes life itself.",
++   "Biodiversity means the variety of life in an area: all the different plants, animals, fungi and microbes living there. More variety usually means a healthier, stronger ecosystem.",
++   "Plastic in a shop isn't alive. Biodiversity is about the variety of living things."
++  ]
+  },
+  {
+   "id": 16,
+@@ -173,7 +263,13 @@
+    "All wind",
+    "The water cycle"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Wetlands are home to birds, fish and frogs, and they soak up floodwater like a sponge. Building over them removes both the habitat and the flood protection.",
++   "Draining one wetland doesn't remove every type of soil on Earth.",
++   "Wind comes from the sun heating the air unevenly, not from wetlands.",
++   "The water cycle keeps going around the planet, even though water flow in that one area changes."
++  ]
+  },
+  {
+   "id": 17,
+@@ -184,7 +280,13 @@
+    "Removing every flowering plant",
+    "Covering gardens with plastic"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Different flowers bloom at different times, so a variety feeds pollinators across the seasons. Skipping pesticides keeps them from being poisoned.",
++   "Insecticides kill insects, including bees and butterflies.",
++   "Removing flowers takes away pollinators' food.",
++   "Plastic covers stop plants from growing and leave pollinators nothing to feed on."
++  ]
+  },
+  {
+   "id": 18,
+@@ -195,7 +297,13 @@
+    "Into waterways",
+    "Into a solar panel"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Oil doesn't turn into clean rain. It stays in the water and coats it.",
++   "Storm drains don't lead to compost bins.",
++   "Most storm drains flow straight into creeks, rivers and the ocean without any treatment. Even a small amount of oil can pollute a lot of water and poison fish and wildlife.",
++   "Storm drains carry water to rivers and lakes, not to solar panels."
++  ]
+  },
+  {
+   "id": 19,
+@@ -206,7 +314,13 @@
+    "Using a new plastic bag for every item",
+    "Buying a refill for a reusable container"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Individually wrapped servings add packaging to every single portion.",
++   "Throwing away reusable containers turns something useful into waste.",
++   "A new plastic bag for every item creates more waste, not less.",
++   "Refilling a container you already have reuses the packaging, so only the product inside is new."
++  ]
+  },
+  {
+   "id": 20,
+@@ -217,7 +331,13 @@
+    "You increase road traffic automatically",
+    "You increase tailpipe emissions"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Walking or cycling uses no gasoline at all.",
++   "Short car trips burn fuel inefficiently. Walking or biking uses no fuel and makes no exhaust, which is also better for the air everyone breathes.",
++   "One less car on the road means less traffic, not more.",
++   "Bikes and feet don't have tailpipes, so emissions go down."
++  ]
+  },
+  {
+   "id": 21,
+@@ -228,7 +348,13 @@
+    "Broken glass",
+    "A used light bulb"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Clean, dry paper has fibers that can be pulped and made into new paper products.",
++   "Food on napkins contaminates paper recycling, and napkin fibers are too short to recycle.",
++   "Broken glass can't become paper, and it's dangerous in paper recycling.",
++   "Light bulbs aren't paper, and some types need special disposal."
++  ]
+  },
+  {
+   "id": 22,
+@@ -239,7 +365,13 @@
+    "Wildlife may become tangled in it",
+    "It helps birds build every nest safely"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Fishing line is litter. It makes beaches dirtier and more dangerous.",
++   "Nylon fishing line can last for hundreds of years in the ocean. It doesn't dissolve.",
++   "Birds, turtles and seals can get tangled in fishing line, which can injure them or stop them from moving, eating or swimming.",
++   "Birds that weave fishing line into their nests can get tangled, so it isn't safe."
++  ]
+  },
+  {
+   "id": 23,
+@@ -250,7 +382,13 @@
+    "Use fewer resources and create less waste",
+    "Throw everything away"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Buying more disposable items creates more waste, the opposite of reducing.",
++   "More packaging means more waste.",
++   "Reduce comes first because the best waste is the waste you never create. Using less saves the materials and energy needed to make things in the first place.",
++   "Throwing everything away adds waste instead of reducing it."
++  ]
+  },
+  {
+   "id": 24,
+@@ -261,7 +399,13 @@
+    "It makes the chair disposable",
+    "It uses more new furniture"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Repairing reuses what you already have, so less new material needs to be mined or cut down.",
++   "Fixing the chair keeps its wood or metal in use, instead of sending it to the landfill and making a new one.",
++   "A repaired chair lasts longer. That's the opposite of disposable.",
++   "Repairing means you don't need new furniture at all."
++  ]
+  },
+  {
+   "id": 25,
+@@ -272,7 +416,13 @@
+    "Providing habitat and taking in carbon dioxide as they grow",
+    "Removing every pollutant from the air"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Trees don't produce plastic. Most plastic is made from oil and gas.",
++   "Trees can soften wind and reduce flooding, but they can't prevent storms.",
++   "Trees give homes to birds, insects and other animals. As they grow, they absorb carbon dioxide and store the carbon in their wood.",
++   "Trees help clean the air, but they can't remove every pollutant."
++  ]
+  },
+  {
+   "id": 26,
+@@ -283,7 +433,13 @@
+    "Turn into a native plant immediately",
+    "Make every species thrive equally"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Invasive plants usually grow very well. The problem is that they crowd out other plants.",
++   "Invasive plants often spread fast with no natural enemies to keep them in check, taking light, water and space from native plants and the animals that rely on them.",
++   "A species is native only if it naturally evolved there. Invasive plants don't become native just by spreading.",
++   "Invasive species usually lower biodiversity by crowding out native species."
++  ]
+  },
+  {
+   "id": 27,
+@@ -294,7 +450,13 @@
+    "Throwing away food without checking it",
+    "Leaving groceries unrefrigerated when they need chilling"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Planning meals means you only buy what you'll eat, and using leftovers keeps good food out of the trash.",
++   "Buying more than you can eat often means it spoils and gets thrown out.",
++   "A lot of food that gets thrown away is still safe to eat. Check it first.",
++   "Food that needs chilling spoils faster at room temperature, which creates waste."
++  ]
+  },
+  {
+   "id": 28,
+@@ -305,7 +467,13 @@
+    "Helium",
+    "Methane"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Rotting without air doesn't make oxygen. The microbes that work without air give off methane.",
++   "Hydrogen isn't the main gas made by food rotting in a landfill.",
++   "Helium comes from deep underground, not from rotting food.",
++   "With little oxygen, microbes break down food and give off methane. Methane traps about 80 times more heat than carbon dioxide over 20 years."
++  ]
+  },
+  {
+   "id": 29,
+@@ -316,7 +484,13 @@
+    "Leaving bare soil exposed on steep slopes",
+    "Planting cover crops"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Overgrazing strips plants away, leaving bare soil that washes or blows away easily.",
++   "Plants beside streams hold the banks together and filter runoff. Removing them causes erosion.",
++   "Bare soil on steep slopes washes away quickly when it rains.",
++   "Cover crops are planted between main crops to keep soil covered. Their roots hold the soil in place and add nutrients back."
++  ]
+  },
+  {
+   "id": 30,
+@@ -327,7 +501,13 @@
+    "The water becomes clean automatically",
+    "Fish no longer need oxygen"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "One storm can't turn a stream into a desert.",
++   "Too much soil clouds the water, blocking sunlight for underwater plants and smothering the gravel where fish lay their eggs.",
++   "Extra soil makes water dirtier, not cleaner.",
++   "Fish always need oxygen. Murky water can actually make it harder for them to get it."
++  ]
+  },
+  {
+   "id": 31,
+@@ -338,7 +518,13 @@
+    "A shaded garden",
+    "Exhaust from burning fuel"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "A closed book doesn't release anything into the air.",
++   "A glass of clean water doesn't pollute the air.",
++   "Shaded gardens help clean the air rather than polluting it.",
++   "Burning gasoline, diesel and other fuels releases pollutants like nitrogen oxides, carbon monoxide and tiny soot particles that harm our lungs and warm the climate."
++  ]
+  },
+  {
+   "id": 32,
+@@ -349,7 +535,13 @@
+    "Less oxygen everywhere",
+    "Cooler local spaces and more habitat"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Trees don't make exhaust. They take in carbon dioxide.",
++   "People always need clean water. Trees don't change that.",
++   "Trees make oxygen, so more trees don't mean less oxygen.",
++   "Tree shade and water evaporating from leaves can make streets and parks noticeably cooler, and trees give birds and insects places to live."
++  ]
+  },
+  {
+   "id": 33,
+@@ -360,7 +552,13 @@
+    "A plain cardboard box",
+    "A clean paper bag"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Banana peels are food waste that can be composted.",
++   "Fluorescent bulbs contain a small amount of mercury, which is toxic. Many communities have special drop-off spots for them.",
++   "Plain cardboard can go in regular recycling.",
++   "Clean paper bags can be recycled or reused."
++  ]
+  },
+  {
+   "id": 34,
+@@ -371,7 +569,13 @@
+    "They will grow into trees",
+    "They will clean the water"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Electronics aren't food. Fish can't eat or digest them.",
++   "Electronics contain metals like lead and mercury that can leak into water and harm wildlife and people. They should go to e-waste recycling.",
++   "Electronics don't grow. They break down slowly and release chemicals.",
++   "Dumping electronics makes water dirtier, not cleaner."
++  ]
+  },
+  {
+   "id": 35,
+@@ -382,7 +586,13 @@
+    "Carrying a refillable water bottle",
+    "Throwing reusable bottles away"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "A running tap wastes water and has nothing to do with bottles.",
++   "A new bottle for every drink is exactly the single-use waste we're trying to avoid.",
++   "One refillable bottle can replace hundreds of single-use plastic bottles a year.",
++   "Throwing away reusable bottles means you'll need disposable ones instead."
++  ]
+  },
+  {
+   "id": 36,
+@@ -393,7 +603,13 @@
+    "Animals may be able to move between habitats more safely",
+    "The forest stops growing"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Corridors give wildlife more room to move, not less.",
++   "Protecting a forest doesn't stop rivers from flowing.",
++   "A corridor connects habitats, so animals can find food, mates and new homes without crossing dangerous roads or open land. That keeps their populations healthy.",
++   "Protected forests keep growing. Protection helps them."
++  ]
+  },
+  {
+   "id": 37,
+@@ -404,7 +620,13 @@
+    "Using banned nets",
+    "Following catch limits designed to maintain fish populations"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Catching every fish in a breeding area stops the population from replacing itself.",
++   "Ignoring seasons and population levels can catch fish before they breed, which can make populations collapse.",
++   "Some nets are banned because they wreck habitats or catch far too many fish and other animals.",
++   "Catch limits use science to work out how many fish can be caught while leaving enough to reproduce, so the population lasts."
++  ]
+  },
+  {
+   "id": 38,
+@@ -415,7 +637,13 @@
+    "Corals turn into rocks overnight",
+    "The ocean stops having waves"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Reef animals live in water and can't move onto land.",
++   "When the water stays too warm, corals push out the colorful algae living inside them that give them food. The coral turns white, and if the heat lasts too long it can starve and die.",
++   "Corals don't turn into rock overnight. Bleaching happens over weeks of heat stress.",
++   "Waves are made by wind, not by coral reefs."
++  ]
+  },
+  {
+   "id": 39,
+@@ -426,7 +654,13 @@
+    "The amount of carbon in a pencil",
+    "A mark made by shoes in soil"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "A carbon footprint adds up the greenhouse gases released by something, like your travel, food or electricity use. It's usually measured as an amount of carbon dioxide.",
++   "It isn't a tree root. It's a way to measure emissions.",
++   "It's not about the carbon inside a pencil. It measures greenhouse gases released into the air.",
++   "The name is a metaphor. It's not a real footprint."
++  ]
+  },
+  {
+   "id": 40,
+@@ -437,7 +671,13 @@
+    "It cannot be repaired",
+    "It creates no environmental impact at all"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Efficient appliances are designed to use less electricity, not more.",
++   "Energy-efficient appliances, like ones with the ENERGY STAR label, do the same job using less electricity. That lowers both power bills and emissions.",
++   "Efficiency has nothing to do with whether something can be repaired.",
++   "Every appliance has some impact from being made and used. Efficient ones just have less."
++  ]
+  },
+  {
+   "id": 41,
+@@ -448,7 +688,13 @@
+    "A coal-fired generator",
+    "A diesel engine"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "A gasoline generator burns fuel to make electricity.",
++   "Solar panels turn sunlight straight into electricity, with no fuel burned and no exhaust while they run.",
++   "Coal plants burn coal to boil water and spin turbines.",
++   "A diesel engine burns diesel fuel."
++  ]
+  },
+  {
+   "id": 42,
+@@ -459,7 +705,13 @@
+    "Cleaning batteries",
+    "Watering plants"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Rainwater can't be turned into gasoline.",
++   "Rain barrel water isn't treated, so it isn't safe to drink without treatment.",
++   "Batteries shouldn't be washed with water, so that isn't a use for rain barrels.",
++   "Rainwater collected from roofs works well for gardens and lawns, saving treated tap water for drinking."
++  ]
+  },
+  {
+   "id": 43,
+@@ -470,7 +722,13 @@
+    "A plastic fork",
+    "Vegetable peels"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Metal cans don't break down in compost. Recycle them instead.",
++   "Glass doesn't decompose. It can be recycled.",
++   "Plastic forks don't break down in home compost.",
++   "Vegetable peels are natural material that breaks down quickly and adds nutrients to compost."
++  ]
+  },
+  {
+   "id": 44,
+@@ -481,7 +739,13 @@
+    "It is guaranteed to be recycled",
+    "It turns into clean water"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Recycling bins don't make compost. Food in them just causes contamination.",
++   "Leftover food can soak into paper and spoil other recyclables, and dirty loads may get sent to the landfill. A quick rinse helps.",
++   "Nothing in recycling is guaranteed to be recycled, especially dirty items.",
++   "Food residue doesn't turn into water. It contaminates other materials."
++  ]
+  },
+  {
+   "id": 45,
+@@ -492,7 +756,13 @@
+    "Pouring paint into a roadside drain",
+    "Washing rubbish into a gutter"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Storm drains often flow straight to streams. Keeping chemicals and litter out keeps that water cleaner for fish and for people downstream.",
++   "Oil dumped outdoors soaks into the soil and washes into water.",
++   "Paint poured down a drain flows to streams and can poison water life.",
++   "Rubbish washed into gutters ends up in streams and rivers."
++  ]
+  },
+  {
+   "id": 46,
+@@ -503,7 +773,13 @@
+    "It increases water use by design",
+    "It may reduce water use during showers"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Showerheads don't make electricity, although using less hot water does save the energy used to heat it.",
++   "Leaks still need fixing. A low-flow showerhead doesn't stop them.",
++   "Low-flow showerheads are designed to use less water, not more.",
++   "Low-flow showerheads mix air into the spray, so they use less water per minute but still feel like a full shower. Using less hot water also saves energy."
++  ]
+  },
+  {
+   "id": 47,
+@@ -514,7 +790,13 @@
+    "Living things interacting with one another and their environment",
+    "A single animal in a cage"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "A weather forecast predicts the weather. An ecosystem is a living system.",
++   "Plastic products aren't alive. Ecosystems are made of living things and their surroundings.",
++   "An ecosystem is all the living things in an area plus the water, soil, air and sunlight they depend on, all affecting each other.",
++   "A single animal in a cage isn't part of a natural, interacting community."
++  ]
+  },
+  {
+   "id": 48,
+@@ -525,7 +807,13 @@
+    "Other populations may be affected",
+    "Every species becomes stronger"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Food webs are connected, but losing one species doesn't erase every food web everywhere.",
++   "Ecosystems are always changing, and losing a species definitely causes change.",
++   "Every species is connected to others. If one disappears, its predators may lose food and its prey may grow out of control, causing ripple effects.",
++   "Losing a species usually weakens a food web. It doesn't make other species stronger."
++  ]
+  },
+  {
+   "id": 49,
+@@ -536,7 +824,13 @@
+    "Sharks",
+    "Bees"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Penguins live in cold coastal areas and don't pollinate plants.",
++   "Earthworms are great for soil, but they don't carry pollen between flowers.",
++   "Sharks live in the ocean and don't pollinate plants.",
++   "Bees carry pollen from flower to flower while collecting food. That helps many fruits, vegetables and wild plants make seeds."
++  ]
+  },
+  {
+   "id": 50,
+@@ -547,7 +841,13 @@
+    "All animals become healthier",
+    "The ecosystem becomes balanced automatically"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Human snacks don't have the nutrients wild animals need and can make them sick. Animals that get used to handouts may also lose their fear of people, which is dangerous for both.",
++   "Wild animals still need natural food. Snacks can't replace their diet.",
++   "Junk food isn't healthy for wildlife, just as it isn't for people.",
++   "Feeding wildlife can upset the natural balance, for example by crowding animals together and spreading disease."
++  ]
+  },
+  {
+   "id": 51,
+@@ -558,7 +858,13 @@
+    "Heating an empty home with the doors open",
+    "Leaving windows open all winter"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Blocking every vent makes the heating system work less efficiently and leaves rooms cold.",
++   "Sealing gaps around doors and windows keeps warm air in and cold air out, so the heater runs less.",
++   "Heating an empty home with the doors open lets the heat escape outside.",
++   "Open windows in winter let heat escape, so the heater has to work much harder."
++  ]
+  },
+  {
+   "id": 52,
+@@ -569,7 +875,13 @@
+    "It may reduce disposable packaging waste",
+    "It prevents students from eating"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Reusable containers are safe for food when they're cleaned properly.",
++   "Reusable containers replace single-use packaging. They don't add to it.",
++   "Reusable containers can replace bags, wrappers and throwaway boxes, cutting down the trash from a school's lunches.",
++   "Students can eat normally from reusable containers."
++  ]
+  },
+  {
+   "id": 53,
+@@ -580,7 +892,13 @@
+    "Bury it in a garden",
+    "Pour it into a storm drain"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Paint can contain chemicals that harm soil and water. Local rules explain how to get rid of it safely, often through hazardous waste collection or by donating leftovers.",
++   "Paint in a stream can poison fish and plants.",
++   "Burying paint lets its chemicals soak into the soil and groundwater.",
++   "Storm drains lead straight to rivers and lakes, so paint poured in pollutes them."
++  ]
+  },
+  {
+   "id": 54,
+@@ -591,7 +909,13 @@
+    "It causes every plant to need more watering",
+    "It must eliminate all insects"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Native drought-tolerant plants are adapted to the local climate, so they can live mostly on rainfall and need far less watering than a lawn.",
++   "Plants can't change how much rain falls.",
++   "Drought-tolerant plants need less water, not more.",
++   "Native plants support insects, including pollinators. They don't eliminate them."
++  ]
+  },
+  {
+   "id": 55,
+@@ -602,7 +926,13 @@
+    "Planting native shrubs",
+    "Building over a natural wetland"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Restoring a meadow brings habitat back.",
++   "Protecting a forest keeps habitat safe.",
++   "Native shrubs give wildlife food and shelter.",
++   "Building over a wetland destroys the home of many plants and animals, and also removes its natural flood protection."
++  ]
+  },
+  {
+   "id": 56,
+@@ -613,7 +943,13 @@
+    "They increase damage to every habitat",
+    "They can reduce trampling of nearby plants and soil"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Staying on trails keeps them in good shape. They don't disappear.",
++   "Animals still live outdoors. Staying on the trail actually leaves them more undisturbed space.",
++   "Staying on marked trails reduces damage. It doesn't increase it.",
++   "Walking off-trail crushes plants and packs down soil. Sticking to marked trails keeps the impact in one place."
++  ]
+  },
+  {
+   "id": 57,
+@@ -624,7 +960,13 @@
+    "They disappear instantly anywhere",
+    "They break down under suitable conditions, which can vary"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Many biodegradable items can contaminate recycling. Check what your local program accepts.",
++   "Biodegradable products still affect the environment, from how they're made to how they break down.",
++   "Nothing disappears instantly. Breaking down can take weeks or even years.",
++   "Biodegradable items need the right conditions, like heat, moisture, air and microbes, to break down. Many only break down in industrial compost facilities."
++  ]
+  },
+  {
+   "id": 58,
+@@ -635,7 +977,13 @@
+    "It may not break down quickly or safely there",
+    "It will vanish immediately"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Biodegradable plastic isn't safe food for sea animals.",
++   "Litter doesn't turn into drinking water.",
++   "Cold seawater lacks the heat and microbes many biodegradable products need, so they can last a long time and still harm animals.",
++   "Nothing vanishes instantly. In the ocean it may take years to break down."
++  ]
+  },
+  {
+   "id": 59,
+@@ -646,7 +994,13 @@
+    "Wash full loads when practical",
+    "Wash one item at a time"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Running an empty washer wastes water and energy.",
++   "Most of a washer's energy goes into heating the water. Cold or warm washes use much less.",
++   "Full loads clean more clothes for the same energy and water. Many washers use nearly as much for a tiny load as for a full one.",
++   "Washing items one at a time multiplies the water and energy used."
++  ]
+  },
+  {
+   "id": 60,
+@@ -657,7 +1011,13 @@
+    "It creates new drinking water",
+    "It reduces water use"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Leaks waste treated drinking water. They don't help rivers.",
++   "A leaking toilet can waste up to about 200 gallons of water a day without anyone noticing, because the water drains away silently.",
++   "Leaks waste drinking water. They don't create new water.",
++   "A leak always adds to water use. It never reduces it."
++  ]
+  },
+  {
+   "id": 61,
+@@ -668,7 +1028,13 @@
+    "A resource replenished naturally on a human time scale when managed appropriately",
+    "A resource that cannot be reused"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Even renewable resources like forests or fish can run out if they're overused.",
++   "Renewable resources come from nature, like sunlight, wind, wood and water. They aren't made of plastic.",
++   "Renewable resources, like sunlight, wind and well-managed forests, are naturally replaced within a human lifetime, as long as we don't use them faster than they recover.",
++   "Renewable resources can be used again and again. That's what makes them renewable."
++  ]
+  },
+  {
+   "id": 62,
+@@ -679,7 +1045,13 @@
+    "More people may have the option to cycle for some trips",
+    "Cycling becomes impossible"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Cities still need sidewalks for people walking.",
++   "Bike lanes add another option. They don't remove bus routes.",
++   "Safe bike lanes make cycling feel less scary, so more people choose bikes instead of cars for short trips.",
++   "Bike lanes make cycling easier and safer, not impossible."
++  ]
+  },
+  {
+   "id": 63,
+@@ -690,7 +1062,13 @@
+    "Neon",
+    "Helium"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Methane traps heat in the atmosphere, about 80 times more than carbon dioxide over 20 years. It comes from landfills, livestock and leaks from oil and gas equipment.",
++   "Argon doesn't absorb heat, so it isn't a greenhouse gas.",
++   "Neon doesn't trap heat, so it isn't a greenhouse gas.",
++   "Helium doesn't trap heat. It's used in balloons and science equipment."
++  ]
+  },
+  {
+   "id": 64,
+@@ -701,7 +1079,13 @@
+    "The area may become hotter and lose habitat",
+    "It increases shade"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Removing trees removes some of the air cleaning they do, so the air isn't guaranteed to be cleaner.",
++   "Paving an area is the opposite of creating a forest.",
++   "Dark pavement soaks up sunlight and stays hot, creating a 'heat island', while removing the trees takes away shade and habitat.",
++   "Trees give shade. Pavement replaces that shade with heat."
++  ]
+  },
+  {
+   "id": 65,
+@@ -712,7 +1096,13 @@
+    "Printing every draft several times",
+    "Using a new sheet for every short note"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Sharing materials digitally when it makes sense means fewer printed pages and fewer trees cut down.",
++   "Throwing away usable notebooks wastes paper.",
++   "Printing every draft several times uses much more paper.",
++   "Using a new sheet for every short note wastes paper. Scrap paper works fine."
++  ]
+  },
+  {
+   "id": 66,
+@@ -723,7 +1113,13 @@
+    "It must be thrown away sooner",
+    "The product may stay useful longer"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Designing for repair is about lasting longer, not adding packaging.",
++   "Products designed for repair are easier to maintain, not harder.",
++   "Products that can be fixed get thrown away later, not sooner.",
++   "When parts can be fixed or swapped, a product stays useful longer, so fewer new ones need to be made and less ends up as waste."
++  ]
+  },
+  {
+   "id": 67,
+@@ -734,7 +1130,13 @@
+    "A tiny drop of oil",
+    "A very small piece of plastic"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Natural stones aren't plastic.",
++   "Microplastics aren't alive. They're bits of plastic.",
++   "A drop of oil isn't a microplastic, although plastic is usually made from oil.",
++   "Microplastics are plastic pieces smaller than 5 millimeters, from broken-down litter, clothing fibers and more. They've been found in oceans, soil and even food."
++  ]
+  },
+  {
+   "id": 68,
+@@ -745,7 +1147,13 @@
+    "The fibers turn into clean air",
+    "The washing machine stops using water"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Synthetic fabrics like polyester are a type of plastic, so they don't suddenly become biodegradable.",
++   "Synthetic clothes shed tiny plastic fibers in the wash. Some slip through water treatment and end up in rivers and oceans as microplastics.",
++   "Fibers don't turn into air. They stay in the water.",
++   "Shedding fibers doesn't stop the washing machine from using water."
++  ]
+  },
+  {
+   "id": 69,
+@@ -756,7 +1164,13 @@
+    "Throwing waste from a car",
+    "Taking rubbish to a bin or carrying it home"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Wrappers left on trails are litter that can harm wildlife.",
++   "Cans left beside a river can wash into the water.",
++   "Throwing waste from a car is littering, and it's illegal in many places.",
++   "Using a bin, or carrying your trash home when there isn't one, keeps it out of nature."
++  ]
+  },
+  {
+   "id": 70,
+@@ -767,7 +1181,13 @@
+    "It makes litter harmless",
+    "It can remove waste before more of it reaches the water"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Cleanups remove plastic. They don't increase how much is made.",
++   "Cleanups help, but stopping litter at the source is still important.",
++   "Litter is still harmful. Cleanups just remove some of it.",
++   "Picking up litter near a river stops it from washing into the water and out to the ocean, where it's much harder to remove."
++  ]
+  },
+  {
+   "id": 71,
+@@ -778,7 +1198,13 @@
+    "They make all water unsafe",
+    "They produce no habitat"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Wetlands reduce flooding, but they can't prevent every flood.",
++   "Wetlands soak up floodwater like a sponge and release it slowly, and they're rich habitats for birds, fish and frogs.",
++   "Wetlands actually help clean water by trapping mud and pollutants.",
++   "Wetlands are some of the richest habitats on Earth."
++  ]
+  },
+  {
+   "id": 72,
+@@ -789,7 +1215,13 @@
+    "It turns salt water into oil",
+    "It can improve water quality, though it has limits"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Wetlands can't remove every pollutant, especially large amounts or certain chemicals.",
++   "Wetlands don't control whether rain falls.",
++   "Wetlands can't turn salt water into oil.",
++   "Wetland plants and soil trap mud and soak up extra nutrients, which improves water quality. But they can be overwhelmed, so preventing pollution still matters."
++  ]
+  },
+  {
+   "id": 73,
+@@ -800,7 +1232,13 @@
+    "Providing safe, clean water for pets and following wildlife guidance",
+    "Disturbing wild animals at water sources"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Shade helps animals stay cool. Blocking it puts them at risk.",
++   "Parked cars heat up fast on hot days and can kill pets within minutes.",
++   "Clean water and shade help animals cope with heat, and following wildlife guidance avoids stressing wild animals.",
++   "Disturbing animals at water sources can stop them drinking when they need it most."
++  ]
+  },
+  {
+   "id": 74,
+@@ -811,7 +1249,13 @@
+    "It automatically improves biodiversity",
+    "It may disturb or harm local wildlife"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Pets can chase, scare or hunt wild animals.",
++   "Pets don't pick out invasive species. They often harm native wildlife instead.",
++   "Roaming pets usually reduce wildlife. They don't improve biodiversity.",
++   "Roaming pets can chase, disturb or hunt wildlife, especially nesting birds, and can spread disease. Keeping them on a leash protects sensitive areas."
++  ]
+  },
+  {
+   "id": 75,
+@@ -822,7 +1266,13 @@
+    "A shaded tree",
+    "A closed notebook"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Heavy traffic is one of the most common sources of noise pollution in cities, from engines, tires and horns.",
++   "A quiet library is, by definition, quiet.",
++   "Trees can actually help block noise.",
++   "A closed notebook makes no noise."
++  ]
+  },
+  {
+   "id": 76,
+@@ -833,7 +1283,13 @@
+    "Every animal becomes silent forever",
+    "Wildlife becomes immune to all disturbance"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Noise can drown out animal calls, so some birds sing louder or at different times, and some animals avoid noisy areas altogether.",
++   "Plants still need sunlight. Noise doesn't change that.",
++   "Animals don't go silent forever, though some change how they call.",
++   "Animals can't become immune to all disturbance. Constant noise can stress them."
++  ]
+  },
+  {
+   "id": 77,
+@@ -844,7 +1300,13 @@
+    "Releasing aquarium plants into a lake",
+    "Moving firewood long distances without checking rules"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Unknown seeds might be an invasive species that spreads into the wild area.",
++   "Seeds and tiny creatures can hitch a ride on boots and gear. Cleaning them before you visit a new area stops invasive species from spreading.",
++   "Aquarium plants released into lakes can spread fast and take over.",
++   "Firewood can carry insects and diseases that kill trees in new places, so many areas ask you to buy firewood locally."
++  ]
+  },
+  {
+   "id": 78,
+@@ -855,7 +1317,13 @@
+    "It could become invasive or spread disease",
+    "It will always improve the pond"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Released fish usually survive and spread. They don't just disappear.",
++   "Pet fish like goldfish eat many things, including native fish eggs and plants.",
++   "Released pet fish can breed quickly, outcompete native species and spread disease. Released goldfish have grown huge and taken over some ponds and lakes.",
++   "Releasing pets often harms a pond's native life. It doesn't improve it."
++  ]
+  },
+  {
+   "id": 79,
+@@ -866,7 +1334,13 @@
+    "Coral reefs become forests",
+    "Fish populations always grow"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "When fish are caught faster than they can reproduce, populations shrink and can collapse, hurting the animals and people who depend on them.",
++   "Fishing doesn't change how salty the ocean is.",
++   "Coral reefs don't turn into forests.",
++   "Overfishing makes fish populations smaller, not bigger."
++  ]
+  },
+  {
+   "id": 80,
+@@ -877,7 +1351,13 @@
+    "It guarantees no fish will ever be caught",
+    "It increases illegal fishing by definition"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Science-based limits leave enough fish to reproduce, so the population stays healthy and fishing can continue for years to come.",
++   "Limits help fish reproduce by leaving enough adults in the water.",
++   "Catch limits still allow fishing. They just cap how much.",
++   "Catch limits help prevent overfishing. They don't cause illegal fishing."
++  ]
+  },
+  {
+   "id": 81,
+@@ -888,7 +1368,13 @@
+    "Replacing working items every week",
+    "Buying disposable versions of reusable products"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Durable products last longer, so fewer need to be made, shipped and thrown away.",
++   "Extra packaging creates more waste.",
++   "Replacing working items wastes all the materials used to make them.",
++   "Disposable versions create waste every time they're used."
++  ]
+  },
+  {
+   "id": 82,
+@@ -899,7 +1385,13 @@
+    "Food becomes unsafe",
+    "All food waste disappears"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Smaller portions mean less food left on the plate and thrown away.",
++   "Smaller portions use less food, not more.",
++   "Portion size doesn't make food unsafe.",
++   "Smaller portions cut food waste, but they can't make all of it disappear."
++  ]
+  },
+  {
+   "id": 83,
+@@ -910,7 +1402,13 @@
+    "Paving every open area",
+    "Removing all vegetation"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Blocked storm drains make flooding worse.",
++   "Permeable pavement, rain gardens and parks let rain soak into the ground instead of all rushing into the drains at once.",
++   "Paving every open area stops water soaking in, so more runs off and floods.",
++   "Plants and soil absorb rain. Removing them makes flooding worse."
++  ]
+  },
+  {
+   "id": 84,
+@@ -921,7 +1419,13 @@
+    "More water may run off quickly into drains",
+    "The city becomes a wetland instantly"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Runoff makes rivers rise faster, not stop rising.",
++   "Pavement blocks rain from soaking into the ground.",
++   "Rain can't soak into pavement, so it rushes into drains and streams. That can cause flooding and carry pollution along with it.",
++   "A city doesn't turn into a wetland because it rains."
++  ]
+  },
+  {
+   "id": 85,
+@@ -932,7 +1436,13 @@
+    "Using bright lights all night",
+    "Removing every flower"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Routine insecticides kill helpful insects like bees and butterflies.",
++   "Native plants give local wildlife food and shelter, and skipping unneeded pesticides keeps insects, birds and other animals safe.",
++   "Bright lights all night confuse insects, birds and other animals.",
++   "Removing flowers takes away food for pollinators."
++  ]
+  },
+  {
+   "id": 86,
+@@ -943,7 +1453,13 @@
+    "It removes all insects",
+    "Artificial light may disrupt some animals"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Lights remove natural darkness. That's the problem.",
++   "Many animals need darkness to sleep, hunt or migrate.",
++   "Lights attract and kill many insects, but they don't remove all of them.",
++   "Artificial light at night can confuse migrating birds, lead baby sea turtles away from the ocean, and disturb insects and bats."
++  ]
+  },
+  {
+   "id": 87,
+@@ -954,7 +1470,13 @@
+    "Setting fires for fun",
+    "Wasting paper"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Cutting trees without replanting or management shrinks forests.",
++   "Certified products, like ones with the FSC label, come from forests managed to protect wildlife and regrow trees.",
++   "Fires set for fun can spread out of control and destroy forests.",
++   "Wasting paper means more trees need to be cut down."
++  ]
+  },
+  {
+   "id": 88,
+@@ -965,7 +1487,13 @@
+    "It may help maintain forest resources, depending on how it is managed",
+    "It eliminates all climate impacts"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Replanted forests take centuries to become anything like an old-growth forest.",
++   "Management can reduce harm, but it can't guarantee wildlife won't be disturbed.",
++   "Careful management and replanting can keep a forest producing wood while still supporting wildlife, but the results depend on how well it's done.",
++   "Forestry still has climate impacts, like from cutting and transporting wood."
++  ]
+  },
+  {
+   "id": 89,
+@@ -976,7 +1504,13 @@
+    "Burning a jar",
+    "Using a clean glass jar to store food"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Putting a jar in the trash without checking means it's neither reused nor recycled.",
++   "Throwing something away after one use is the opposite of reusing it.",
++   "Burning a jar doesn't reuse it.",
++   "Reusing means using something again, for the same job or a new one, like storing food in a clean jar instead of buying a new container."
++  ]
+  },
+  {
+   "id": 90,
+@@ -987,7 +1521,13 @@
+    "Bottles become unnecessary everywhere",
+    "The school uses no water"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Refill fountains help, but they can't end all water pollution.",
++   "Easy refill stations make reusable bottles more convenient, so students buy fewer single-use bottles.",
++   "Bottles are still useful. Refill stations just make reusable ones easier to use.",
++   "Fountains still use water. The savings are in plastic waste."
++  ]
+  },
+  {
+   "id": 91,
+@@ -998,7 +1538,13 @@
+    "Dumping oil near a well",
+    "Using and disposing of chemicals responsibly"
+   ],
+-  "correct": 3
++  "correct": 3,
++  "explanations": [
++   "Chemicals poured on soil can seep down into groundwater.",
++   "Leaking containers let chemicals soak into the ground and the water below.",
++   "Oil near a well can seep into the drinking water supply.",
++   "Groundwater feeds many wells and springs. Using chemicals carefully and disposing of them properly keeps them from soaking into it."
++  ]
+  },
+  {
+   "id": 92,
+@@ -1009,7 +1555,13 @@
+    "They disappear instantly",
+    "They turn into harmless fertilizer automatically"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Pesticides can wash or drift into streams, where they can harm fish, insects and other water life and pollute the water downstream.",
++   "Pesticides are toxic to many living things, including fish.",
++   "Pesticides don't vanish instantly. Some last a long time.",
++   "Pesticides don't turn into fertilizer."
++  ]
+  },
+  {
+   "id": 93,
+@@ -1020,7 +1572,13 @@
+    "Recycling can accept food and rubbish mixed together",
+    "Recycling never requires sorting"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "What can be recycled depends on your local facility, so checking local rules helps you avoid contaminating the recycling.",
++   "Not every plastic is accepted. It depends on the type of plastic and your local program.",
++   "Food and trash mixed in contaminate recycling.",
++   "Most programs need some sorting, like keeping trash and food out."
++  ]
+  },
+  {
+   "id": 94,
+@@ -1031,7 +1589,13 @@
+    "It may not be accepted or successfully recycled",
+    "It is guaranteed to become a new product"
+   ],
+-  "correct": 2
++  "correct": 2,
++  "explanations": [
++   "Dirty recyclables don't become compost. They contaminate recycling.",
++   "Dirty items can spoil other recyclables. They don't clean them.",
++   "Food residue and mixed materials, like paper glued to plastic, are hard to separate, so the item may be rejected and sent to the landfill.",
++   "Nothing is guaranteed to be recycled. Clean items made of one material have the best chance."
++  ]
+  },
+  {
+   "id": 95,
+@@ -1042,7 +1606,13 @@
+    "Ignoring heat warnings",
+    "Removing all trees"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Dark pavement soaks up heat and makes areas hotter.",
++   "Shade from trees and air-conditioned cooling centers give people a place to escape dangerous heat.",
++   "Heat warnings help keep people safe, so ignoring them is risky.",
++   "Trees provide shade and cooling. Removing them makes heat worse."
++  ]
+  },
+  {
+   "id": 96,
+@@ -1053,7 +1623,13 @@
+    "Temperatures must be lower than nearby parks",
+    "Trees become unnecessary"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Without shade, people get more direct sun and heat, which can cause heat illness, especially for children, older people and outdoor workers.",
++   "Shade doesn't change how long a heatwave lasts.",
++   "Areas without shade are usually hotter than nearby parks, not cooler.",
++   "Trees matter even more during a heatwave because they provide shade and cooling."
++  ]
+  },
+  {
+   "id": 97,
+@@ -1064,7 +1640,13 @@
+    "Hand out single-use items without need",
+    "Use extra packaging for every item"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "The best way to cut waste is to avoid creating it, then make it easy to sort whatever is left.",
++   "Mixing all the trash together sends recyclables and compost to the landfill.",
++   "Handing out unneeded single-use items creates waste.",
++   "Extra packaging creates more waste."
++  ]
+  },
+  {
+   "id": 98,
+@@ -1075,7 +1657,13 @@
+    "Littering becomes impossible",
+    "Bins no longer need collection"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Clear bins help with sorting, but they can't make everything recyclable.",
++   "Clear labels make it easy to know where things go, so more gets recycled or composted correctly.",
++   "Bins help reduce litter, but they can't make littering impossible.",
++   "Bins still need to be emptied and collected."
++  ]
+  },
+  {
+   "id": 99,
+@@ -1086,7 +1674,13 @@
+    "They solve every environmental problem alone",
+    "They only matter if someone else acts first"
+   ],
+-  "correct": 1
++  "correct": 1,
++  "explanations": [
++   "Individual actions add up, and they can inspire others to act too.",
++   "Individual choices help, especially when combined with community efforts and policies that make sustainable choices easier for everyone.",
++   "No single person can solve every environmental problem alone.",
++   "Everyone can act now. Waiting for someone else means less gets done."
++  ]
+  },
+  {
+   "id": 100,
+@@ -1097,6 +1691,12 @@
+    "Ignore leaks and litter",
+    "Dump waste upstream"
+   ],
+-  "correct": 0
++  "correct": 0,
++  "explanations": [
++   "Cutting pollution, restoring streamside plants and testing the water together protect the river and show whether the plan is working.",
++   "Plants beside rivers filter runoff and hold the banks in place. Removing them harms the river.",
++   "Ignoring leaks and litter lets pollution build up.",
++   "Dumping waste upstream pollutes the whole river below it."
++  ]
+  }
+ ]
+diff --git a/public/host.html b/public/host.html
+index 4b81148..5d4341e 100644
+--- a/public/host.html
++++ b/public/host.html
+@@ -17,7 +17,9 @@
+       <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
+       <h2 id="quizText"></h2>
+       <ol id="quizChoices" class="choices"></ol>
++      <div id="quizExplain" class="explain" hidden></div>
+       <div class="timer"><div id="quizTimer"></div></div>
++      <button id="quizContinue" type="button" hidden>Continue ▸</button>
+     </div>
+     <div id="results" hidden>
+       <h2>Results</h2>
+diff --git a/public/host.js b/public/host.js
+index a5dcf38..da6f185 100644
+--- a/public/host.js
++++ b/public/host.js
+@@ -20,7 +20,6 @@ const LABELS = {
+   results: ['Race again', 'New track'],
+ };
+ const RACING = ['countdown', 'race', 'question', 'reveal'];
+-const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
+ const MAP_FADE = 1500;
+ 
+ let state = { phase: 'draw', players: [], laps: 2, green: 0, results: null };
+@@ -39,7 +38,7 @@ let drawing = false;
+ let countdownEnd = 0;
+ let goUntil = 0;
+ let questionEnd = 0;
+-let revealStart = 0;
++let readEnd = 0; // when the explanation screen closes on its own
+ let trackError = '';
+ let listStamp = 0;
+ const snapshots = createSnapshots();
+@@ -203,8 +202,10 @@ function paintQuiz() {
+   const { question, reveal, players } = state;
+   if (!question) return;
+   $('quizNumber').textContent = `Question ${question.number}`;
++  const readers = players.filter((player) => !player.bot && player.connected);
+   $('quizCount').textContent = reveal
+     ? `${players.filter((player) => player.answer === reveal.correct).length} of ${players.length} got it right`
++      + (readers.length ? ` · ${readers.filter((player) => player.ready).length} of ${readers.length} done reading` : '')
+     : `${players.filter((player) => player.answered).length} of ${players.length} answered`;
+   $('quizText').textContent = question.text;
+   $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
+@@ -214,6 +215,28 @@ function paintQuiz() {
+     if (reveal) row.append(element('span', 'votes', String(reveal.counts[index])));
+     return row;
+   }));
++
++  // Why the right answer is right, and why the most popular wrong answer was wrong.
++  $('quizExplain').hidden = !reveal;
++  $('quizContinue').hidden = !reveal;
++  if (!reveal) return;
++  const cards = [explainCard('is-right', '✓ Correct:', reveal.correct)];
++  const wrong = reveal.counts.map((count, index) => [count, index]).filter(([count, index]) => count && index !== reveal.correct);
++  if (wrong.length) {
++    const [count, index] = wrong.sort((a, b) => b[0] - a[0])[0];
++    cards.push(explainCard('is-wrong', `✗ ${count} picked`, index));
++  }
++  $('quizExplain').replaceChildren(...cards);
++}
++
++function explainCard(kind, label, index) {
++  const { question, reveal } = state;
++  const card = element('div', `explain-card ${kind}`);
++  card.append(
++    element('div', 'explain-label', `${label} ${'ABCD'[index]}. ${question.choices[index]}`),
++    element('p', '', reveal.explanations[index] || ''),
++  );
++  return card;
+ }
+ 
+ function paintGreen() {
+@@ -267,11 +290,12 @@ function frame(now) {
+     count.hidden = true;
+   }
+ 
+-  // The question stays up while people answer and for a moment after the answer is shown.
++  // The question stays up while people answer and while they read the explanation.
+   // Then it steps aside so the room can watch the map change.
+-  const holding = phase === 'reveal' && now < revealStart + REVEAL_HOLD;
++  const holding = phase === 'reveal' && state.reveal.reading;
+   $('quiz').hidden = !(phase === 'question' || holding);
+   if (phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
++  if (holding) $('quizTimer').style.width = `${Math.max(0, (readEnd - now) / (state.reveal.seconds * 1000)) * 100}%`;
+ 
+   if (phase === 'draw' || !scene || !sheet || !view.width) return;
+   if (phase === 'race') {
+@@ -367,7 +391,7 @@ const send = connect({
+       if (message.phase === 'race' && (state.phase === 'countdown' || state.phase === 'reveal')) goUntil = now + 900;
+       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+       if (message.phase === 'question') questionEnd = now + message.question.endsIn;
+-      if (message.phase === 'reveal' && state.phase !== 'reveal') revealStart = now;
++      if (message.phase === 'reveal' && message.reveal.reading) readEnd = now + message.reveal.endsIn;
+       if (message.phase === 'draw') track = scene = life = map = oldMap = null;
+       state = message;
+       updateUI();
+@@ -405,6 +429,7 @@ secondButton.addEventListener('click', () => {
+ $('lapsDown').addEventListener('click', () => send({ t: 'laps', laps: Math.max(1, state.laps - 1) }));
+ $('lapsUp').addEventListener('click', () => send({ t: 'laps', laps: Math.min(5, state.laps + 1) }));
+ $('addBot').addEventListener('click', () => send({ t: 'bot' }));
++$('quizContinue').addEventListener('click', () => send({ t: 'continue' }));
+ $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));
+ 
+ new ResizeObserver(layout).observe(stage);
+diff --git a/public/play.html b/public/play.html
+index 123cc4d..891932a 100644
+--- a/public/play.html
++++ b/public/play.html
+@@ -52,6 +52,8 @@
+     <div class="timer"><div id="quizTimer"></div></div>
+     <h2 id="quizText"></h2>
+     <div id="quizChoices" class="choices"></div>
++    <div id="quizExplain" class="explain" hidden></div>
++    <button id="gotIt" class="primary got-it" type="button" hidden>Got it, keep racing</button>
+   </div>
+ </section>
+ 
+diff --git a/public/play.js b/public/play.js
+index 6492047..a5d5fc1 100644
+--- a/public/play.js
++++ b/public/play.js
+@@ -5,6 +5,13 @@ import { prepareTrack } from '/shared/track.js';
+ import { carIcon, connect, createEffects, createLife, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
+ 
+ const $ = (id) => document.getElementById(id);
++
++function element(tag, className, text) {
++  const node = document.createElement(tag);
++  if (className) node.className = className;
++  if (text !== undefined) node.textContent = text;
++  return node;
++}
+ const canvas = $('view');
+ const banner = $('banner');
+ 
+@@ -43,6 +50,7 @@ let steer = 0;
+ let countdownEnd = 0;
+ let goUntil = 0;
+ let questionEnd = 0;
++let readEnd = 0; // when the explanation screen closes on its own
+ let retryTimer = 0;
+ let carInfo = null; // shared/cars.json, once it has loaded
+ let myChoice = null; // what this phone picked for the question on screen
+@@ -95,9 +103,21 @@ function showCarCard(type) {
+   }));
+ }
+ 
++// One explanation card: which answer it's about, then why it's right or wrong.
++function explainCard(kind, label, index) {
++  const { question, reveal } = state;
++  const card = element('div', `explain-card ${kind}`);
++  card.append(
++    element('div', 'explain-label', `${label} ${'ABCD'[index]}. ${question.choices[index]}`),
++    element('p', '', reveal.explanations[index] || ''),
++  );
++  return card;
++}
++
+ function showQuiz(mine) {
+   const { question, reveal, phase } = state;
+-  const asking = phase === 'question' || phase === 'reveal';
++  // The explanation stays up while people read; then it gets out of the way of the race.
++  const asking = phase === 'question' || (phase === 'reveal' && reveal.reading);
+   $('quiz').hidden = !asking;
+   if (!asking || !question) return;
+   if (choiceFor !== question.number) {
+@@ -109,9 +129,23 @@ function showQuiz(mine) {
+   $('quizNumber').textContent = `Question ${question.number}`;
+   $('quizText').textContent = question.text;
+   let note = picked === null ? 'Pick one' : 'Answer sent';
+-  if (reveal) note = picked === null ? 'Too slow!' : picked === reveal.correct ? 'Right! Speed boost' : 'Wrong';
++  if (reveal) note = picked === null ? 'Too slow!' : picked === reveal.correct ? 'Right! Speed boost' : 'Not quite';
+   $('quizNote').textContent = note;
+   $('quizNote').className = reveal ? (picked === reveal.correct ? 'good' : 'bad') : '';
++  $('quizChoices').hidden = !!reveal;
++  $('quizExplain').hidden = !reveal;
++  $('gotIt').hidden = !reveal;
++  if (reveal) {
++    const cards = [];
++    if (picked !== null && picked !== reveal.correct) cards.push(explainCard('is-wrong', '✗ You picked', picked));
++    cards.push(explainCard('is-right', picked === reveal.correct ? '✓ You got it:' : '✓ Correct answer:', reveal.correct));
++    $('quizExplain').replaceChildren(...cards);
++    const readers = state.players.filter((player) => !player.bot && player.connected);
++    const done = readers.filter((player) => player.ready).length;
++    $('gotIt').disabled = mine.ready;
++    $('gotIt').textContent = mine.ready ? `Waiting for others (${done} of ${readers.length} ready)` : 'Got it, keep racing';
++    return;
++  }
+   $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
+     const button = element('button', `choice c${index}`);
+     button.type = 'button';
+@@ -193,6 +227,12 @@ addEventListener('keyup', (event) => {
+ });
+ addEventListener('blur', releaseAll);
+ 
++$('gotIt').addEventListener('click', () => {
++  if (state?.phase !== 'reveal' || !state.reveal.reading) return;
++  $('gotIt').disabled = true;
++  send({ t: 'ready' });
++});
++
+ // ---------- The close-up view ----------
+ 
+ function frame(now) {
+@@ -201,6 +241,7 @@ function frame(now) {
+   if ((screen !== 'race' && screen !== 'results') || !tiles || !sheet || !me) return;
+ 
+   if (state.phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
++  if (state.phase === 'reveal' && state.reveal.reading) $('quizTimer').style.width = `${Math.max(0, (readEnd - now) / (state.reveal.seconds * 1000)) * 100}%`;
+ 
+   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   const width = canvas.clientWidth;
+@@ -318,6 +359,7 @@ const send = connect({
+       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
+       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+       if (message.phase === 'question') questionEnd = now + message.question.endsIn;
++      if (message.phase === 'reveal' && message.reveal.reading) readEnd = now + message.reveal.endsIn;
+       if (message.phase === 'draw') track = tiles = life = null;
+       state = message;
+       showScreen();
+diff --git a/public/style.css b/public/style.css
+index cc1e86e..056fab6 100644
+--- a/public/style.css
++++ b/public/style.css
+@@ -216,6 +216,18 @@ input {
+ .good { color: var(--accent); }
+ .bad { color: var(--danger); }
+ 
++/* Explanations after each question */
++.explain { display: grid; gap: 10px; }
++.explain-card { padding: 12px 14px; border-radius: 14px; border: 2px solid; background: rgba(255, 255, 255, 0.04); }
++.explain-card.is-right { border-color: var(--accent); }
++.explain-card.is-wrong { border-color: var(--danger); }
++.explain-label { font-weight: 800; margin-bottom: 4px; }
++.explain-card.is-right .explain-label { color: var(--accent); }
++.explain-card.is-wrong .explain-label { color: var(--danger); }
++.explain-card p { color: var(--text); line-height: 1.45; }
++.got-it { margin-top: auto; min-height: 56px; font-size: 17px; }
++#quizContinue { justify-self: end; }
++
+ #stage .quiz {
+   pointer-events: auto; display: grid; gap: 16px; width: min(820px, 88%);
+   background: rgba(23, 25, 28, 0.95); border: 1px solid var(--line); border-radius: 22px; padding: 26px 30px;
+@@ -223,6 +235,7 @@ input {
+ #stage .quiz h2 { font-size: clamp(22px, 2.6vw, 36px); }
+ #stage .choices { grid-template-columns: 1fr 1fr; }
+ #stage .choice { font-size: clamp(15px, 1.5vw, 21px); }
++#stage .explain-card { font-size: clamp(15px, 1.4vw, 20px); }
+ 
+ .meter { height: 16px; margin-top: 8px; border-radius: 999px; background: #55514b; overflow: hidden; }
+ #greenBar { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width 1.2s ease; }
+@@ -237,6 +250,7 @@ input {
+   background: rgba(23, 25, 28, 0.93); overflow-y: auto; touch-action: manipulation;
+ }
+ .phone .quiz h2 { font-size: 21px; }
++.phone .explain-card { font-size: 16px; }
+ .phone .choices { margin-top: auto; }
+ .phone .choice { font-size: 17px; min-height: 62px; }
+ #hudRight { text-align: right; }
+diff --git a/questions.db b/questions.db
+index ed818c679c9ad440da13f17679d29684983d0fbc..37d43453bcd8df98dea5c1777c2f63bc86c7f20f 100644
+GIT binary patch
+literal 69632
+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
+
+delta 1782
+zcmZ`(du&r>6#wq}{O-M9%L03r4G=~L8<a9jDYYxzyp+;iN-3q3vDGpv83RXwiOW=W
+zHjI&gqkKj*h@v3MQxQ?{fe-{GATC4`17ZLL1&I$LM8(&+iT-Jmp4|Jpzw<li{?55y
+z_ZEHkMPa=yKc5g{!vB9iU9P&unoq{A8N?70EVqc|*1qg7EZ5D&9<yL78Zt!aO>J$r
+z2%|<BkfFEU&{B2QJJ#FQpRG5f2gKE)jm|c2Fzqy6GtM>~GgR!a9I(O4FZ#yUBGVAV
+zVDw`!RbkK<YIX93Zep#r%wrqnE7EzXSgfV1&3jF+8jl*8VWK{ydoXXg(7k{3fZ2i`
+zmM)NZ!<`>3J)}h<z(T+>E!51X{&b7MjQJvg3MH<D5P9zA2@5PvBdG`szGT#F=8-=x
+zF_?KDl7y@;<3nWaFCQ~-rVueiq8=xvDSy4fU_mn?`KsF1B$)Z3+vix1u1O^AFtEKt
+z#VqS@zv&@1kMbQ?B0PGvR|a<@C5dp-n?b(ryS)q&b2Wu<Tf&E$y6c}Xn4A<zBj_Ub
+z1ag*cD&nJWyrAzf&5`(ov%UQEB~)=FD2cab-FD3R^6Tvk>Sm*gwO;Y0Fz58ygACNT
+zNV>wH3%ZdrvHuu@=q#;!XF456&hgJas?;nkBp(v1$MPcUXM#LO+W$X;dD6t4<ECvW
+z-Yig_ilcm;h+<V9C0&8YlEgu7E0yrdUfPN=SNbi+PTLfWM{HX$_Kn*tLxY}@Y*bY>
+zN}uZ(?=O?_>OxsR#=YemF)sGKGfwMj5ZOemQOgtT16C(5k`9X(#40+^oH6y8%8fq5
+z6#bLBn>s@t6XIl3F5AW%j$G#Nf3coHM-<yKEl)?=(EUm0zGtv#1|rhJNGgp;<(C&_
+zD2Y&#R$KuEfyS@a%ix+$$&#Qu9Y$a3j_zi#Le-o~v?W%ecOA#B%h23FN!LmxrilnA
+zK9}0Vlw|Bxb_d=&KE9tpY?@X$6isSF>pgiAMM5H36<47^TaD@6h5Xd1&m?G=O3BJZ
+zK*<W+Sul{(Gy8CwK}u4-j(``dH4fb_LGu)?emLdp;_1RdKI5(<GK^Ai<n@Zb1=W%x
+zwlIj_tC2ElD1m8(BTq?P^^|zME@u!KiOOX%1nVev5D7*RC?9=T1|>jAYZEq!U5}}L
+zkFR?DwSVnCPpl=DnJg!tm-D5y;sJV<=9}l6xbb)67(+<EShqdzvha;Cf}GD~cS%7%
+zB~7-Xf)do3ysuUUUo9ocXrL>Am6~54#_4{}pvxzcrp^dBR75{`^Jf_X_h3V6YtV%q
+zFMIo-4E0`gBb5w!k+Ja5J9?NqNql3QAn<MPzbC`AiTJGqQi<jGwBY5VG8DQgY4O*1
+zv_W-jS%+>;Ko15+JS{=qS6a#kzqFG<wF|NQkh>;;-ML?RNrstsQ_>mAG--V#cAUgT
+ztie9&8&hHILz_(3u01l$8jt2=V@d|o*6ul_hdigqoeH3j<0xs%#3CWg|GMrlgBpiO
+z+yNDsACZrg9WvC8MM_vzlL*`l9+2VQF}UkX{IMXaO`7&Do)p#CmP2h1`>|-W;oNv_
+z&kIO1vDR4@vRCEP(rsy(c!GXP<K|w|WmBoK+0d<jUUxL_@4QLE7IJ|!=d#s2w|*6#
+z5TjAcTh;2U!g3>WZ!stug-DsJ!c&FnMSPtMb(NH~E3NJn0=u6&#K3PCNj(g&QMJAQ
+z;pqbm=8nW9XE32E$Qk}@KZ8_-NLrGe4ltnb(oLUB&^Q7)1*w`xe7K55-0(ck#WS3e
+zM_jR}=0~5anD;GxhJkVy60Lz&zxI9$mf;(h4?|>#-RE{7^1zCx7(|95;#IsJ?F1@*
+z@VNBQ5K3ZpPnG85(1+SBu%aA~;b95TB?6dqrSlptei?qQ&Sc7k9PwdXd|@!E)R&Z%
+z*buQlx)M)V8|8nlKFc6kijOMXsdxmlJ9<84a8C)ok;9FGNdD%rHyF$*M$W*<@}O4X
+V*T>H=@D?Fr^E*>+<P@&i_YWZ70zUu%
+
+diff --git a/scripts/export-questions.js b/scripts/export-questions.js
+index 89985ac..da052d7 100644
+--- a/scripts/export-questions.js
++++ b/scripts/export-questions.js
+@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
+ 
+ const file = (name) => fileURLToPath(new URL(`../${name}`, import.meta.url));
+ const db = new DatabaseSync(file('questions.db'), { readOnly: true });
+-const questions = db.prepare('SELECT id, question, choice_a, choice_b, choice_c, choice_d, correct_index FROM questions ORDER BY id').all()
+-  .map((row) => ({ id: row.id, question: row.question, choices: [row.choice_a, row.choice_b, row.choice_c, row.choice_d], correct: row.correct_index }));
++const questions = db.prepare('SELECT id, question, choice_a, choice_b, choice_c, choice_d, correct_index, explain_a, explain_b, explain_c, explain_d FROM questions ORDER BY id').all()
++  .map((row) => ({
++    id: row.id, question: row.question, choices: [row.choice_a, row.choice_b, row.choice_c, row.choice_d], correct: row.correct_index,
++    explanations: [row.explain_a, row.explain_b, row.explain_c, row.explain_d],
++  }));
+ fs.writeFileSync(file('data/questions.json'), `${JSON.stringify(questions, null, 1)}\n`);
+ console.log(`Wrote ${questions.length} questions to data/questions.json`);
+diff --git a/server.js b/server.js
+index 1784d7c..9b55124 100644
+--- a/server.js
++++ b/server.js
+@@ -27,7 +27,12 @@ const MAX_RACE_MS = 10 * 60 * 1000;
+ 
+ const QUESTION_EVERY_MS = 20000; // of driving time; the clock stops during a question
+ const ANSWER_MS = 12000;
+-const REVEAL_MS = 4500;
++// After each question everyone reads why the answer is right (and why theirs was wrong).
++// Reading time grows with the text; players can tap "Got it" to move on together sooner.
++const READ_MIN_MS = 15000;
++const READ_MAX_MS = 40000;
++const READ_MS_PER_WORD = 400; // about 150 words a minute, so slower readers aren't rushed
++const MAP_MS = 3000; // then the big screen shows the map turning greener
+ const BOOST_MS = 4000;
+ const BOOST_SPEED = 1.3;
+ const GREEN_TARGET = 0.7; // share of right answers that turns the whole map green by the end
+@@ -52,13 +57,27 @@ async function loadQuestions() {
+   try {
+     const { DatabaseSync } = await import('node:sqlite');
+     const db = new DatabaseSync(path.join(ROOT, 'questions.db'), { readOnly: true });
+-    rows = db.prepare('SELECT id, question, choice_a, choice_b, choice_c, choice_d, correct_index FROM questions').all()
+-      .map((row) => ({ id: row.id, question: row.question, choices: [row.choice_a, row.choice_b, row.choice_c, row.choice_d], correct: row.correct_index }));
++    rows = db.prepare('SELECT id, question, choice_a, choice_b, choice_c, choice_d, correct_index, explain_a, explain_b, explain_c, explain_d FROM questions').all()
++      .map((row) => ({
++        id: row.id, question: row.question, choices: [row.choice_a, row.choice_b, row.choice_c, row.choice_d], correct: row.correct_index,
++        explanations: [row.explain_a, row.explain_b, row.explain_c, row.explain_d],
++      }));
+     db.close();
+   } catch {
+     rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'));
+   }
+-  return rows.filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct));
++  return rows
++    .filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct))
++    .map((q) => ({ ...q, explanations: q.explanations?.length === 4 ? q.explanations : ['', '', '', ''] }));
++}
++
++const words = (text) => String(text).split(/\s+/).filter(Boolean).length;
++
++// Long enough to read the question, the right answer's explanation and the longest wrong one.
++function readingTime(question) {
++  const right = question.explanations[question.correct];
++  const wrong = Math.max(0, ...question.explanations.filter((_, index) => index !== question.correct).map(words));
++  return clamp((words(question.text) + words(right) + wrong) * READ_MS_PER_WORD, READ_MIN_MS, READ_MAX_MS);
+ }
+ 
+ const QUESTIONS = await loadQuestions();
+@@ -154,12 +173,17 @@ function stateMessage(room) {
+       connected: player.connected, correct: player.correct,
+       answered: player.answer !== null,
+       answer: reveal ? player.answer : null, // what each player picked is only shown afterwards
++      ready: !!player.ready,
+     })),
+     question: question && {
+       number: question.number, text: question.text, choices: question.choices,
+       endsIn: Math.max(0, question.endsAt - now), seconds: ANSWER_MS / 1000,
+     },
+-    reveal: reveal && { correct: reveal.correct, counts: reveal.counts, endsIn: Math.max(0, reveal.until - now) },
++    reveal: reveal && {
++      correct: reveal.correct, counts: reveal.counts, explanations: reveal.explanations,
++      reading: reveal.until === null, // false once everyone has read and the map is changing
++      endsIn: Math.max(0, (reveal.until ?? reveal.readUntil) - now), seconds: reveal.readMs / 1000,
++    },
+     results: room.results,
+     summary: room.summary,
+   };
+@@ -233,7 +257,10 @@ function askQuestion(room, now) {
+   room.asked.add(picked.id);
+   room.questionCount++;
+   room.phase = 'question';
+-  room.question = { number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct, endsAt: now + ANSWER_MS, closeAt: null };
++  room.question = {
++    number: room.questionCount, text: picked.question, choices: picked.choices, correct: picked.correct,
++    explanations: picked.explanations, endsAt: now + ANSWER_MS, closeAt: null,
++  };
+   for (const player of room.players) {
+     player.answer = null;
+     const right = Math.random() < BOT_RIGHT_CHANCE;
+@@ -273,17 +300,37 @@ function stepQuestion(room, now) {
+   // No answer counts as wrong, so everyone has to take part for the map to turn green.
+   const share = right / Math.max(1, room.players.length);
+   room.green = Math.min(1, room.green + share / (room.expectedQuestions * GREEN_TARGET));
+-  room.reveal = { correct: question.correct, counts, until: now + REVEAL_MS };
++  const readMs = readingTime(question);
++  room.reveal = { correct: question.correct, counts, explanations: question.explanations, readMs, readUntil: now + readMs, until: null, skipped: false };
++  for (const player of room.players) player.ready = player.bot;
+   room.phase = 'reveal';
+   sendState(room);
+ }
+ 
++// Reading stops when the time is up, when every connected player has tapped "Got it", or when
++// the big screen presses Continue. With no players connected it waits so the room can read.
++function stepReveal(room, now) {
++  const { reveal } = room;
++  if (reveal.until !== null) {
++    if (now >= reveal.until) resumeRace(room);
++    return;
++  }
++  const readers = room.players.filter((player) => !player.bot && player.connected);
++  const allRead = readers.length > 0 && readers.every((player) => player.ready);
++  if (now < reveal.readUntil && !allRead && !reveal.skipped) return;
++  reveal.until = now + MAP_MS;
++  sendState(room);
++}
++
+ function resumeRace(room) {
+   room.phase = 'race';
+   room.question = null;
+   room.reveal = null;
+   room.nextQuestionAt = room.raceTime + QUESTION_EVERY_MS;
+-  for (const player of room.players) player.answer = null;
++  for (const player of room.players) {
++    player.answer = null;
++    player.ready = false;
++  }
+   sendState(room);
+ }
+ 
+@@ -417,10 +464,7 @@ function stepRoom(room, now) {
+     return;
+   }
+   if (room.phase === 'question') return stepQuestion(room, now);
+-  if (room.phase === 'reveal') {
+-    if (now >= room.reveal.until) resumeRace(room);
+-    return;
+-  }
++  if (room.phase === 'reveal') return stepReveal(room, now);
+   if (room.phase !== 'race') return;
+ 
+   room.raceTime += TICK * 1000; // driving time only: it stands still during questions
+@@ -512,6 +556,9 @@ const hostActions = {
+     });
+     sendState(room);
+   },
++  continue(room) {
++    if (room.phase === 'reveal' && room.reveal.until === null) room.reveal.skipped = true;
++  },
+   again(room) {
+     if (room.phase !== 'results') return;
+     room.phase = 'lobby';
+@@ -575,6 +622,9 @@ function onPlayer(room, player, message) {
+     if (![0, 1, 2, 3].includes(choice)) return;
+     player.answer = choice;
+     sendState(room);
++  } else if (message.t === 'ready' && room.phase === 'reveal' && !player.ready) {
++    player.ready = true;
++    sendState(room);
+   }
+ }
+ 

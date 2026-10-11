@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "export-questions": "node scripts/export-questions.js"
+    "export-questions": "node scripts/export-questions.js",
+    "try-gemini": "node scripts/try-gemini.js"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

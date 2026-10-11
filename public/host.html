@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Race game: big screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="host">
@@ -13,17 +15,17 @@
   <div id="hint"></div>
   <div id="overlay">
     <div id="count" hidden></div>
+    <div id="ranking" aria-live="polite" hidden></div>
     <div id="quiz" class="quiz" hidden>
       <div class="quiz-top"><span id="quizNumber"></span><span id="quizCount"></span></div>
       <h2 id="quizText"></h2>
-      <ol id="quizChoices" class="choices"></ol>
+      <ol id="quizRows"></ol>
       <div class="timer"><div id="quizTimer"></div></div>
     </div>
     <div id="results" hidden>
       <h2>Results</h2>
       <p id="realWinner"></p>
       <ol id="resultList"></ol>
-      <p id="greenResult"></p>
     </div>
   </div>
 </main>
@@ -35,17 +37,27 @@
     <div class="label">Game code</div>
     <div id="code">····</div>
   </section>
-  <section id="greenBox" hidden>
-    <div class="label">How green is the map <span id="greenValue">0%</span></div>
-    <div class="meter"><div id="greenBar"></div></div>
-  </section>
   <section>
     <div class="label" id="listTitle">Players</div>
     <ol id="players"></ol>
   </section>
   <section id="actions">
     <div id="clock" hidden></div>
-    <div id="lapsRow" hidden>
+    <form id="topicRow" class="option" hidden>
+      <span class="label">Topic</span>
+      <div><input id="topic" maxlength="60" autocomplete="off" aria-label="What the questions are about"><button type="submit">Set</button></div>
+    </form>
+    <div id="sourceRow" class="row" hidden>
+      <label id="pdfButton" class="button">Upload a PDF<input id="pdf" type="file" accept="application/pdf" hidden></label>
+      <button id="teacher" type="button">Teacher screen</button>
+    </div>
+    <p id="bankNote" hidden></p>
+    <div id="modeRow" class="option" hidden><span class="label">Mode</span><div><button id="soloMode" type="button">Solo</button><button id="teamMode" type="button">Team</button></div></div>
+    <div id="worldRow" class="option" hidden>
+      <span class="label">World</span>
+      <div><span id="worldName"></span><button id="worldNext" type="button">Change</button></div>
+    </div>
+    <div id="lapsRow" class="option" hidden>
       <span class="label">Laps</span>
       <div><button id="lapsDown" type="button" aria-label="Fewer laps">−</button><span id="laps">2</span><button id="lapsUp" type="button" aria-label="More laps">+</button></div>
     </div>

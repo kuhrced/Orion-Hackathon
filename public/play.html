@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#17191c">
 <title>Race game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="phone" data-screen="join">
@@ -36,6 +38,7 @@
 <section class="screen" id="race">
   <canvas id="view"></canvas>
   <div id="hud">
+    <div id="liveLeaderboard" aria-live="polite"></div>
     <div id="place"></div>
     <div id="hudRight">
       <div id="lap"></div>
@@ -59,6 +62,7 @@
   <div class="label">You finished</div>
   <div class="big" id="myPlace"></div>
   <p id="myScore"></p>
+  <p id="myNote"></p>
   <p id="doneWinner"></p>
   <ol id="doneList"></ol>
   <p id="doneNote">Look at the big screen for the next race.</p>
