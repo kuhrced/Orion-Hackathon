@@ -54,6 +54,10 @@ const LEVEL_WEIGHT = [0, 0.7, 1, 1.4]; // a harder question cleans more of the m
 const BOT_RIGHT_CHANCE = [0, 0.75, 0.55, 0.35]; // by level
 
 const HEARTBEAT_MS = 1500;
+// How long the Start button waits for Gemini before the host may start with the built-in
+// questions. Gemini normally answers in 5 seconds; reading a PDF takes longer.
+const GEMINI_WAIT_MS = Number(process.env.GEMINI_WAIT_MS) || 25000;
+const GEMINI_WAIT_PDF_MS = Number(process.env.GEMINI_WAIT_PDF_MS) || 60000;
 const MAX_PDF_BYTES = 12 * 1024 * 1024; // Gemini takes about 20 MB per request, and the file grows by a third on the way
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
 const RACING = new Set(['countdown', 'race', 'question-countdown', 'question', 'reveal']);
@@ -117,22 +121,37 @@ function prepareBank(room) {
     room.writing = false;
     return;
   }
-  if (room.writing) return; // already asked; the answer is on its way
+  if (room.writing || room.pending === key) return; // already asked; the answer is on its way
   useBank(room, backupBank);
   room.bankNote = '';
   room.writing = true;
+  room.pending = key;
   room.writingSince = Date.now();
-  writeBank(key, topic, key === room.pdf?.key ? room.pdf.data : null).then(() => {
-    if (room.topic !== topic) return; // the host has moved on to another topic
+  const pdf = key === room.pdf?.key ? room.pdf.data : null;
+  // The host must never be stuck on the Start button. If Gemini is slow, the race may start
+  // with the built-in questions; if Gemini answers before the start, its questions are used.
+  const giveUp = setTimeout(() => {
+    if (room.pending !== key || !room.writing) return;
+    room.writing = false;
+    room.bankNote = 'Gemini is slow right now. You can start with the built-in questions, or wait for Gemini.';
+    sendState(room);
+  }, pdf ? GEMINI_WAIT_PDF_MS : GEMINI_WAIT_MS);
+  writeBank(key, topic, pdf).then(() => {
+    if (room.pending !== key) return; // the host has moved on to another topic
     room.writing = false;
     if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
+    room.bankNote = '';
     useBank(room, banks.get(key));
   }).catch((error) => {
     console.log(`Gemini could not write questions: ${error.message}`);
-    if (room.topic !== topic) return;
+    if (room.pending !== key) return;
     room.writing = false;
     room.bankNote = 'Gemini could not write the questions, so the built-in environment questions are used.';
-  }).finally(() => sendState(room));
+  }).finally(() => {
+    clearTimeout(giveUp);
+    if (room.pending === key) room.pending = null;
+    sendState(room);
+  });
 }
 
 // ---------- HTTP ----------
@@ -237,7 +256,7 @@ function createRoom() {
     track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
-    topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false,
+    topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false, pending: null,
     // 'personal': each player gets their own question at their own level.
     // 'class': everyone gets the same question, and the level follows the class as a whole.
     mode: 'personal', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
