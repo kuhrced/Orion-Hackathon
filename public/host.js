@@ -272,8 +272,10 @@ function updateUI() {
   drawCanvas.hidden = phase !== 'draw';
   gameCanvas.hidden = phase === 'draw';
   hint.hidden = !HINTS[phase];
-  hint.textContent = (phase === 'draw' && trackError) || HINTS[phase] || '';
-  hint.classList.toggle('error', phase === 'draw' && !!trackError);
+  // With no questions Start cannot work, so the banner says why instead of "Press Start".
+  const noQuestions = phase === 'lobby' && !!state.bank && !state.bank.count && !state.bank.writing && !uploading;
+  hint.textContent = (phase === 'draw' && trackError) || (noQuestions && (state.bank.note || 'Add questions on the teacher screen to start.')) || HINTS[phase] || '';
+  hint.classList.toggle('error', (phase === 'draw' && !!trackError) || noQuestions);
 
   const [mainLabel, secondLabel] = LABELS[phase] ?? (racing ? [null, 'End race'] : []);
   mainButton.hidden = racing;
@@ -474,9 +476,15 @@ const send = connect({
   },
 });
 
+let lobbyAt = -Infinity; // when "Make track" or "Race again" was pressed; a moment later the same button says "Start race"
 mainButton.addEventListener('click', () => {
+  const now = performance.now();
+  if (state.phase === 'lobby') {
+    if (now - lobbyAt > 1000) send({ t: 'start' }); // a double click on "Make track" or "Race again" must not start the race
+    return;
+  }
+  lobbyAt = now;
   if (state.phase === 'draw') send({ t: 'track', points: stroke.map(([x, y]) => [x * WORLD.width, y * WORLD.height]) });
-  else if (state.phase === 'lobby') send({ t: 'start' });
   else if (state.phase === 'results') send({ t: 'again' });
 });
 let endedAt = -Infinity; // when "End race" was pressed; a moment later the same button says "New track"

@@ -162,7 +162,10 @@ function prepareBank(room) {
     room.writing = false;
     if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
     room.bankNote = '';
-    useBank(room, banks.get(key));
+    // Questions the teacher added by hand while waiting stay, on top of Gemini's.
+    const written = banks.get(key);
+    const added = !spareBank && room.bank.source === 'teacher' ? room.bank.questions : [];
+    useBank(room, added.length ? makeBank(topic, 'teacher', [...added, ...written.questions], written.made) : written);
   }).catch((error) => {
     console.log(`Gemini could not write questions: ${error.message}`);
     if (room.pending !== key) return;
@@ -209,7 +212,10 @@ async function receivePdf(request, response) {
   const data = Buffer.concat(chunks);
   if (data.subarray(0, 5).toString('latin1') !== '%PDF-') return reply(400, 'That is not a PDF file.');
   const name = header('x-name').replace(/\.pdf$/i, '').replace(/[^\p{L}\p{N} ._()-]/gu, '').trim().slice(0, 40) || 'document';
-  room.pdf = { topic: `PDF: ${name}`, key: `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`, data };
+  const key = `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`;
+  // Another file under the same name gets its own questions (prepareBank keeps a set with the same topic).
+  if (room.pdf && room.pdf.key !== key) useBank(room, noBank(`PDF: ${name}`));
+  room.pdf = { topic: `PDF: ${name}`, key, data };
   room.topic = room.pdf.topic;
   room.letDown = null; // a new upload means: ask Gemini again, and wait for it
   prepareBank(room);
