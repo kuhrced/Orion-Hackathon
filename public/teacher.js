@@ -222,6 +222,11 @@ $('pdf').addEventListener('change', async () => {
   const [file] = $('pdf').files;
   $('pdf').value = '';
   if (!file) return;
+  if (file.size > 12 * 1024 * 1024) { // the server's limit: say so at once and send nothing
+    formError = 'That file is too big. The limit is 12 MB.';
+    paint();
+    return;
+  }
   uploading = true;
   formError = '';
   paint();
