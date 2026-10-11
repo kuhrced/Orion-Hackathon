@@ -1,17 +1,23 @@
-// The commentator on the big screen. The server decides what is said and sends the words, and
-// a sound clip from ElevenLabs when it has one. Without a clip, the browser's own voice reads
-// the words out. The words are always shown too, because a hackathon hall is loud.
+// The voice on the big screen. It reads the question out when it appears and the right answer
+// when time is up; the server sends the words, and a sound clip from ElevenLabs when it has one.
+// Without a clip, the browser's own voice reads the words.
 
 const SAVED = 'race-commentator-muted';
 
-export function createCommentator(caption) {
+export function createCommentator() {
   const queue = [];
-  let busy = false;
   let playing = null; // the sound clip being played
+  let finish = null; // ends the line that is being read now
   let muted = false;
   try {
     muted = localStorage.getItem(SAVED) === '1';
   } catch { /* private mode: start with the sound on */ }
+
+  function quiet() {
+    playing?.pause();
+    playing = null;
+    window.speechSynthesis?.cancel();
+  }
 
   // Reads the line out with the voice built into the browser.
   function browserVoice(text, done) {
@@ -21,44 +27,34 @@ export function createCommentator(caption) {
     const voices = speech.getVoices().filter((voice) => voice.lang.startsWith('en'));
     line.voice = voices.find((voice) => /Daniel|Google UK English Male|Aaron|Alex/.test(voice.name)) ?? voices[0] ?? null;
     line.lang = line.voice?.lang ?? 'en-US';
-    line.rate = 1.15;
-    line.pitch = 1.05;
-    line.onend = done;
-    // A voice that is refused (a reloaded page nobody has clicked yet) or cut off must not end
-    // the line at once: the words stay up for the reading time used when the voice is off.
-    line.onerror = () => setTimeout(done, 1200 + text.length * 55);
-    speech.cancel(); // never let lines pile up behind the race
+    line.rate = 1.05;
+    line.onend = line.onerror = done;
+    speech.cancel(); // one line at a time
     speech.speak(line);
   }
 
   function next() {
-    if (busy) return;
+    if (finish) return; // a line is still being read
     const line = queue.shift();
-    if (!line) return;
-    busy = true;
-    caption.textContent = line.text;
-    caption.hidden = false;
+    if (!line || muted) return;
     let over = false;
     const done = () => {
       if (over) return;
       over = true;
       clearTimeout(guard);
-      setTimeout(() => {
-        busy = false;
-        playing = null;
-        if (!queue.length) caption.hidden = true;
-        next();
-      }, 350);
+      finish = null;
+      playing = null;
+      next();
     };
     // Whatever happens to the sound, the line ends: browsers sometimes never say "finished".
-    const guard = setTimeout(done, muted ? 1200 + line.text.length * 55 : 2500 + line.text.length * 95);
-    if (muted) return;
+    const guard = setTimeout(done, 2500 + line.text.length * 95);
+    finish = done;
     if (!line.audio) return browserVoice(line.text, done);
     // If the clip cannot be played, the browser's own voice reads the line: once, although a
     // clip that fails can report it in two ways.
     let fellBack = false;
     const fallBack = () => {
-      if (fellBack) return;
+      if (fellBack || over) return;
       fellBack = true;
       browserVoice(line.text, done);
     };
@@ -69,8 +65,15 @@ export function createCommentator(caption) {
   }
 
   return {
-    // line: { text, audio }. Only the newest lines are kept: old news is not worth saying.
+    // line: { text, audio, cut }. `cut` stops what is being read: the answer does not wait
+    // for the end of the question.
     say(line) {
+      if (line.cut) {
+        queue.length = 0;
+        const ending = finish;
+        quiet();
+        ending?.();
+      }
       queue.push(line);
       while (queue.length > 2) queue.shift();
       next();
@@ -84,8 +87,10 @@ export function createCommentator(caption) {
         localStorage.setItem(SAVED, muted ? '1' : '0');
       } catch { /* not saved, still works */ }
       if (muted) {
-        playing?.pause();
-        window.speechSynthesis?.cancel();
+        queue.length = 0;
+        const ending = finish;
+        quiet();
+        ending?.();
       }
       return muted;
     },

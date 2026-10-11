@@ -56,9 +56,10 @@ questions right.
   heartbeat, and a screen that hears nothing for 5 seconds reconnects and shows a banner.
   Car positions are blended on the server's race clock, not on arrival time, so bunched-up
   Wi-Fi packets do not make the cars stutter.
-- The commentator: `say(room, kind, data)` in `server.js` picks a line from `commentary.js` and
-  sends it to the big screen only. With an ElevenLabs key, `voice.js` makes the sound first and
+- The voice: in team mode `say(room, text)` in `server.js` sends the question, and then the right
+  answer, to the big screen only. With an ElevenLabs key, `voice.js` makes the sound first and
   the screen plays it from `/voice/<id>.mp3`; otherwise the browser's own voice reads the words.
+  It reads nothing else: the team asked for no race commentary.
 - Player memory: `memory.js` keeps one record per player per race, in `data/memory.json` and,
   with a key, in Backboard. `placeOnGrid` uses `recall` to set a returning player's level and
   weak subtopics; `finishRace` calls `remember`. Players are known by an id their phone keeps.

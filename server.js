@@ -8,7 +8,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
-import { LINES } from './commentary.js';
 import { geminiModel, geminiReady, writeFeedback, writeQuestions } from './gemini.js';
 import { loadMemory, recall, remember } from './memory.js';
 import { carTuning, CAR_TYPES } from './shared/cars.js';
@@ -273,9 +272,9 @@ function createRoom() {
     topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false, pending: null, letDown: null,
     // 'solo': each player gets their own question at their own level.
     // 'team': everyone gets the same question, and the level follows the group as a whole.
-    mode: 'solo', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
+    mode: 'team', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
     lastWorld: null, props: [], watchers: new Set(), pdf: null, writingSince: 0, tick: 0, lastActive: Date.now(),
-    talkingUntil: 0, voiceLine: Promise.resolve(), saidLeader: null, leader: null, leaderSince: 0, saidLastLap: false, nextSmashLine: 0,
+    voiceLine: Promise.resolve(),
   };
   rooms.set(code, room);
   return room;
@@ -420,7 +419,6 @@ function placeOnGrid(room) {
   });
   Object.assign(room, {
     raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null,
-    saidLeader: null, leader: null, leaderSince: 0, saidLastLap: false, nextSmashLine: 0,
     classLevel: 2, classWeak: new Set(),
   });
   // Everything on the road is stood back up for the new race.
@@ -457,48 +455,25 @@ function playersChanged(room) {
 
 // ---------- Questions during the race ----------
 
-// Picks this player's next question: at their level, not one they have had, and from a
-// subtopic they got wrong before if there is one, so weak spots come round again.
-// ---------- Commentator ----------
+// ---------- The voice ----------
 
-// The commentator says a line on the big screen. `kind` is one of the moments in commentary.js.
-// A line that is not `important` is dropped while another one is still being spoken, so the
-// commentary never runs behind the race.
-function say(room, kind, data, important = false) {
-  if (!room.host) return; // only the big screen has a voice
-  const now = performance.now();
-  if (!important && now < room.talkingUntil) return;
-  const text = LINES[kind](data);
-  room.talkingUntil = Math.max(now, room.talkingUntil) + 600 + text.length * 60; // about how long it takes to say
+// The voice on the big screen reads the question out when it appears, and the right answer
+// when time is up. Nothing else: no race commentary. Only in team mode, where everyone has
+// the same question; in solo mode every phone has a different one.
+// `cut` stops whatever is still being read, so the answer never waits behind the question.
+function say(room, text, cut = false) {
   const { host } = room;
+  if (!host) return; // only the big screen has a voice
   if (!voiceReady()) {
-    send(host, { t: 'say', text, audio: null });
+    send(host, { t: 'say', text, audio: null, cut }); // the browser's own voice reads it
     return;
   }
   // ElevenLabs makes the sound. One line at a time, so they reach the screen in order; if it
   // fails, the screen gets the words alone and reads them out with the browser's own voice.
-  room.voiceLine = room.voiceLine.then(() => speak(text)).then((id) => send(host, { t: 'say', text, audio: id && `/voice/${id}.mp3` }));
+  room.voiceLine = room.voiceLine.then(() => speak(text)).then((id) => send(host, { t: 'say', text, audio: id && `/voice/${id}.mp3`, cut }));
 }
 
-// Called on every step of a race: has the lead changed, has the last lap begun?
-function watchRace(room, order) {
-  if (order.length < 2 || room.firstFinish !== null) return;
-  const [first] = order;
-  if (room.leader !== first.id) {
-    room.leader = first.id;
-    room.leaderSince = room.raceTime;
-  }
-  // A new leader is only news once they have held the place for a moment, and not at the
-  // start, when the order is just the grid.
-  if (room.raceTime > 6000 && room.saidLeader !== first.id && room.raceTime - room.leaderSince > 1200) {
-    if (room.saidLeader !== null || room.raceTime > 9000) say(room, 'lead', { name: first.name });
-    room.saidLeader = first.id;
-  }
-  if (!room.saidLastLap && room.laps > 1 && first.car.lap === room.laps) {
-    room.saidLastLap = true;
-    say(room, 'lastLap', { name: first.name }, true);
-  }
-}
+const answerLine = (q) => `The answer is: ${q.choices[q.correct]}.`;
 
 // Picks a question at `level` that has not been `seen`, from a `weak` subtopic if there is one.
 // It is used for one player (personal mode) and for the whole room (class mode).
@@ -540,7 +515,12 @@ function askQuestion(room, now) {
       : null;
   }
   sendState(room);
-  say(room, 'question', { number: room.questionCount });
+  // While "get ready" counts down, the two sound clips can already be made, so the voice
+  // starts the moment the question appears.
+  if (shared && room.host && voiceReady()) {
+    speak(shared.question);
+    speak(answerLine(shared));
+  }
 }
 
 function stepQuestion(room, now) {
@@ -596,11 +576,7 @@ function stepQuestion(room, now) {
   room.reveal = { until: now + REVEAL_MS };
   room.phase = 'reveal';
   sendState(room);
-  say(room, 'reveal', {
-    // Everybody on the screen counts here, bots too, so the words match the ticks and crosses.
-    right: room.players.filter((player) => player.answer === player.q.correct).map((player) => player.name),
-    total: room.players.length,
-  }, true);
+  if (room.mode === 'team' && room.players[0]?.q) say(room, answerLine(room.players[0].q), true);
 }
 
 function resumeRace(room) {
@@ -697,10 +673,7 @@ function stepCar(room, player, dt) {
   if (!car.done && car.progress >= room.laps * track.n) {
     car.done = true;
     car.finishTime = room.raceTime;
-    if (room.firstFinish === null) {
-      room.firstFinish = room.raceTime;
-      say(room, 'finish', { name: player.name }, true);
-    }
+    room.firstFinish ??= room.raceTime;
   }
 }
 
@@ -730,12 +703,14 @@ function pushApart(players) {
       a.y -= dy * pushA;
       b.x += dx * pushB;
       b.y += dy * pushB;
-      if (massA < massB) a.v *= 0.72;
-      else if (massB < massA) b.v *= 0.72;
-      // Equal weights: only the car behind loses speed. Slowing both kept them touching, so
-      // they slowed each other again and again and crawled round stuck together.
-      else if (a.progress < b.progress) a.v *= 0.88;
-      else b.v *= 0.88;
+      // Whoever runs into the back of another car loses speed, so it pays to steer round it.
+      // Weight still counts: a heavier car shoves the lighter one aside (above) and loses
+      // little. Only the car behind is slowed: slowing both kept them touching, and they
+      // crawled round stuck together.
+      const aBehind = a.progress < b.progress;
+      const behind = aBehind ? a : b;
+      const heavier = aBehind ? massA > massB : massB > massA;
+      behind.v *= heavier ? 0.95 : 0.85;
     }
   }
 }
@@ -785,11 +760,6 @@ function stepProps(room, dt) {
         smash(room, prop);
       } else if (prop.kind === 'dummy' && closing > SMASH_SPEED) {
         smash(room, prop, { limb: true }); // a dummy hit this hard loses an arm, a leg or its head
-      }
-      // The commentator enjoys a good crash, but not every single one.
-      if ((prop.kind === 'dummy' || prop.kind === 'crate') && closing > SMASH_SPEED && room.raceTime > room.nextSmashLine) {
-        room.nextSmashLine = room.raceTime + 14000;
-        say(room, 'smash', { name: player.name, what: prop.kind });
       }
     }
   }
@@ -877,7 +847,6 @@ function finishRace(room) {
   room.summary = { questions: room.questionCount, realWinner: quiz[0]?.correct > 0 ? quiz[0].id : null, topic: room.bank.topic };
   broadcast(room, snapshotMessage(room));
   sendState(room);
-  say(room, 'results', { winner: room.summary.realWinner ? quiz[0].name : null, right: quiz[0]?.correct ?? 0 }, true);
 
   // Remember this race for every person who answered, so their next race can build on it.
   const at = Date.now();
@@ -917,7 +886,6 @@ function stepRoom(room, now) {
     if (now >= room.startAt) {
       room.phase = 'race';
       sendState(room);
-      say(room, 'start', { count: room.players.length, laps: room.laps, world: room.track.world }, true);
     } else if (room.tick++ % 12 === 0) {
       broadcast(room, snapshotMessage(room));
     }
@@ -929,6 +897,7 @@ function stepRoom(room, now) {
     if (now >= room.question.readyAt) {
       room.phase = 'question';
       sendState(room);
+      if (room.mode === 'team' && room.players[0]?.q) say(room, room.players[0].q.question);
     }
     return;
   }
@@ -947,7 +916,6 @@ function stepRoom(room, now) {
   order.forEach((player, index) => {
     player.car.place = index + 1;
   });
-  watchRace(room, order);
   if (room.tick++ % 2 === 0) {
     // Only the road objects that are moving, or have just stopped, need to be sent.
     const moved = room.props.filter((prop) => !prop.gone && (prop.moving || prop.settled));

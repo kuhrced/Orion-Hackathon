@@ -15,15 +15,21 @@ export const voiceReady = () => !!process.env.ELEVENLABS_API_KEY;
 
 const clips = new Map(); // id -> the sound, as MP3
 const known = new Map(); // a line that was spoken before -> its id, so the same words are not paid for twice
+const making = new Map(); // a line that is being made right now -> the request, shared by everyone who wants it
 let failures = 0;
 let pausedUntil = 0;
 
 export const clip = (id) => clips.get(id) ?? null;
 
 // Makes a sound clip of `text` and returns its id, or null if it could not be made.
-export async function speak(text) {
-  if (!voiceReady() || Date.now() < pausedUntil) return null;
-  if (clips.has(known.get(text))) return known.get(text);
+export function speak(text) {
+  if (!voiceReady() || Date.now() < pausedUntil) return Promise.resolve(null);
+  if (clips.has(known.get(text))) return Promise.resolve(known.get(text));
+  if (!making.has(text)) making.set(text, make(text).finally(() => making.delete(text)));
+  return making.get(text);
+}
+
+async function make(text) {
   const post = (body) => fetch(`${BASE()}/v1/text-to-speech/${VOICE()}?output_format=mp3_44100_64`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'xi-api-key': process.env.ELEVENLABS_API_KEY },

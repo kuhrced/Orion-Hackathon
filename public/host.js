@@ -24,7 +24,7 @@ const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal']
 const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
 const MAP_FADE = 1500;
 
-let state = { phase: 'draw', players: [], laps: 1, mode: 'solo', results: null };
+let state = { phase: 'draw', players: [], laps: 1, mode: 'team', results: null };
 let track = null;
 let scene = null;
 let life = null; // the moving layer: smoke, birds, river
@@ -532,7 +532,7 @@ $('teacher').addEventListener('click', () => {
 });
 const showVoice = () => {
   $('voiceToggle').textContent = `Voice: ${commentator.muted ? 'off' : 'on'}`;
-  $('voiceToggle').title = 'The commentator. The words stay on the screen when the voice is off.';
+  $('voiceToggle').title = 'In team mode a voice reads the question and the right answer.';
 };
 $('voiceToggle').addEventListener('click', () => {
   commentator.toggle();

@@ -94,14 +94,13 @@ Node.js 22.13 or newer); levels and subtopics already set are kept:
 npm run export-questions
 ```
 
-## Commentator
+## Voice
 
-A commentator talks about the race on the big screen: the start, a new leader, questions, right
-answers, crashes, the last lap, the finish and the real winner. The words also show at the
-bottom of the map. The **Voice: on/off** button on the big screen turns the sound off.
+In Team mode a voice on the big screen reads each question out when it appears, and the right
+answer when time is up. It says nothing else. The **Voice: on/off** button turns it off.
 
 Without a key the browser's own voice is used. To get an ElevenLabs voice, add
-`ELEVENLABS_API_KEY=` and your key to `.env` and restart. A race is about 600 letters of speech.
+`ELEVENLABS_API_KEY=` and your key to `.env` and restart.
 
 ## Player memory
 
@@ -138,8 +137,8 @@ code uses the site's own address.
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
 | `public/teacher.html`, `public/teacher.js`, `public/teacher.css` | The teacher screen: Gemini's questions with answers, and the players' progress |
 | `gemini.js` | Asks Gemini for questions (from a topic or a PDF) and for the personal notes |
-| `commentary.js`, `voice.js` | What the commentator says, and the ElevenLabs voice that says it |
-| `public/commentator.js` | Plays the commentator on the big screen and shows the words |
+| `voice.js` | The ElevenLabs voice that reads the question and the answer |
+| `public/commentator.js` | Plays that voice on the big screen |
 | `memory.js` | What the game remembers about each player (a file, and Backboard with a key) |
 | `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
 | `questions.db` | Where the backup questions were first written |
