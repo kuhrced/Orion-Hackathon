@@ -128,6 +128,7 @@ function prepareBank(room) {
     useBank(room, cached);
     room.bankNote = '';
     room.writing = false;
+    room.pending = null; // an answer that is still on its way is for another topic
     return;
   }
   if (!geminiReady()) {
@@ -409,7 +410,6 @@ function editBank(room, message) {
   const own = room.bank === spareBank || room.bank.source === 'empty' || room.bank.source === 'teacher';
   useBank(room, makeBank(own ? room.topic : room.bank.topic, own ? 'teacher' : room.bank.source, questions, room.bank.made));
   room.bankNote = ''; // the note about having no questions is no longer true
-  sendBank(room, room.host);
   for (const socket of room.watchers) sendBank(room, socket);
   sendState(room);
 }

@@ -349,6 +349,7 @@ function frame(now) {
   // Then it steps aside so the room can watch the map change.
   const holding = phase === 'reveal' && now < revealStart + REVEAL_HOLD;
   $('quiz').hidden = !(phase === 'question' || holding);
+  $('ranking').style.visibility = $('quiz').hidden ? '' : 'hidden'; // the Top 3 box would lie on the question panel
   if (phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
   if (phase === 'draw' || !scene || !sheet || !view.width) return;

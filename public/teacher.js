@@ -69,9 +69,10 @@ function paintStatus() {
   $('topic').disabled = $('pdf').disabled = blocked;
   $('topicForm').querySelector('button').disabled = blocked;
   $('pdfButton').classList.toggle('disabled', blocked);
+  $('bank').classList.toggle('locked', racing); // the server takes no changes during a race
   $('formNote').textContent = formError
-    || (!state.bank.gemini ? 'There is no Gemini key on the server, so new questions cannot be written.'
-      : racing ? 'A race is running. You can change the questions when it ends.' : '');
+    || (racing ? 'A race is running. You can change the questions when it ends.'
+      : !state.bank.gemini ? 'There is no Gemini key on the server, so Gemini cannot write questions. Add your own below.' : '');
   $('formNote').classList.toggle('error', !!formError);
 }
 
@@ -204,6 +205,7 @@ $('addQuestion').addEventListener('click', () => {
 $('cancelQuestion').addEventListener('click', () => { questionModal.hidden = true; });
 $('addQuestionForm').addEventListener('submit', (event) => {
   event.preventDefault();
+  if (RACING.includes(state?.phase)) return; // keep what was typed until the race ends
   send({ t: 'addQuestion', question: {
     question: $('newQuestion').value,
     choices: [...document.querySelectorAll('.new-choice')].map((input) => input.value),

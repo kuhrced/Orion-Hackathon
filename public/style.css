@@ -76,7 +76,7 @@ input {
 
 #ranking { position: absolute; left: 28px; top: 28px; z-index: 3; min-width: 190px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(35, 37, 38, 0.9); box-shadow: 0 8px 22px rgba(0,0,0,.22); font-size: 14px; line-height: 1.7; }
 #ranking strong { display: block; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
-#ranking b { float: right; color: var(--accent); }
+#ranking b { float: right; margin-left: 12px; color: var(--accent); }
 #ranking span { color: var(--muted); font-size: 11px; }
 
 #results {
