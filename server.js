@@ -216,8 +216,19 @@ function lanUrls() {
     .map((net) => `http://${net.address}:${PORT}`);
 }
 
+// One line in the server's output for every page a device opens, and for every join. When a
+// phone "cannot get in", this shows at once whether it reached this computer at all (if
+// nothing is printed, the network is in the way, not the game).
+function seen(request, what) {
+  const agent = request.headers['user-agent'] ?? '';
+  const device = /Android/i.test(agent) ? 'Android' : /iPhone|iPad|iPod/i.test(agent) ? 'iPhone' : 'computer';
+  const address = (request.socket.remoteAddress ?? '?').replace(/^::ffff:/, '');
+  console.log(`${new Date().toLocaleTimeString()}  ${device} at ${address} ${what}`);
+}
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  if (Object.hasOwn(PAGES, url.pathname)) seen(request, `opened ${url.pathname}${url.search}`);
   if (url.pathname === '/pdf' && request.method === 'POST') return receivePdf(request, response);
   if (url.pathname.startsWith('/voice/')) {
     const sound = clip(url.pathname.slice(7).replace(/\.mp3$/, ''));
@@ -227,7 +238,9 @@ const server = http.createServer(async (request, response) => {
   }
   if (url.pathname === '/info') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify({ lan: lanUrls() }));
+    // PUBLIC_URL is for when the game is reachable at another address (online, or a tunnel):
+    // the QR code then points there.
+    response.end(JSON.stringify({ lan: lanUrls(), public: process.env.PUBLIC_URL || null }));
     return;
   }
   if (url.pathname === '/qr.svg') {
@@ -1127,6 +1140,7 @@ function onJoin(socket, message) {
   socket.room = room;
   socket.player = player;
   send(socket, { t: 'joined', id: player.id, key: player.key, code: room.code });
+  if (socket.request) seen(socket.request, `joined game ${room.code} as "${player.name}"`);
   if (room.track) sendTrack(room, socket);
   if (room.track) send(socket, propsMessage(room));
   playersChanged(room);
@@ -1153,8 +1167,9 @@ function onPlayer(room, player, message) {
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
 
-wss.on('connection', (socket) => {
+wss.on('connection', (socket, request) => {
   socket.alive = true;
+  socket.request = request;
   socket.on('pong', () => {
     socket.alive = true;
   });

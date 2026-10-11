@@ -414,13 +414,13 @@ function frame(now) {
 
 async function showJoin(code) {
   let base = location.origin;
-  if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
-    // Phones cannot open "localhost", so show this computer's Wi-Fi address instead.
-    try {
-      const info = await (await fetch('/info')).json();
-      if (info.lan[0]) base = info.lan[0];
-    } catch { /* keep the origin */ }
-  }
+  try {
+    const info = await (await fetch('/info')).json();
+    // A public address, if the game has one, works for every phone. Otherwise phones cannot
+    // open "localhost", so show this computer's Wi-Fi address instead.
+    if (info.public) base = info.public.replace(/\/$/, '');
+    else if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) && info.lan[0]) base = info.lan[0];
+  } catch { /* keep the origin */ }
   const url = `${base}/play?room=${code}`;
   $('qr').src = `/qr.svg?d=${encodeURIComponent(url)}`;
   // No address to type: the QR code goes straight into this game. The code is for anyone
