@@ -55,7 +55,10 @@ let choiceFor = 0; // the question number that pick belongs to
 let answersOpenAt = 0; // answers stay locked for a moment, so a steering tap cannot pick one
 let lockTimer = 0;
 const held = { left: false, right: false };
-const snapshots = createSnapshots(100); // a little more patience than the big screen: phones are on Wi-Fi
+// The other cars are drawn 150 ms in the past. Wi-Fi often holds everything back for a tenth
+// of a second (measured: about twice a second), and with less patience the cars stop and jump
+// each time. My own car does not wait for this: see aheadOf() below.
+const snapshots = createSnapshots(150);
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
@@ -316,7 +319,9 @@ function frame(now) {
 
   if (state.phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // sharp enough, and far fewer pixels to fill than 2 or 3
+  // Sharp enough, and far fewer pixels to fill than 2 or 3. A phone that cannot keep up gets
+  // a softer picture with less than half the pixels.
+  const dpr = Math.min(window.devicePixelRatio || 1, lite ? 1 : 1.5);
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
@@ -358,7 +363,7 @@ function frame(now) {
   tiles.draw(ctx, 0, region);
 
   const pixel = dpr / zoom; // world units per screen pixel
-  slowFrames = slowFrames * 0.97 + (dt > 0.034 ? 0.03 : 0);
+  slowFrames = slowFrames * 0.97 + (dt > 0.03 ? 0.03 : 0); // a steady 30 frames a second counts as slow too
   if (slowFrames > 0.6) lite = true;
   life.ground(ctx, 0, now / 1000, region, pixel, lite);
   effects.update(cars, { dt, now, green: 0, racing, length: CAR_LENGTH, spray: scene.theme.spray });

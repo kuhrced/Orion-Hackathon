@@ -384,7 +384,7 @@ export function createEffects() {
           }
           if (!car.off && Math.abs(spin) > 1.5 && car.v > 230) {
             for (const side of [-1, 1]) {
-              if (marks.length > 520) marks.shift();
+              if (marks.length > 200) marks.shift();
               marks.push({ x: rearX - Math.sin(car.a) * side * length * 0.17, y: rearY + Math.cos(car.a) * side * length * 0.17, a: car.a, born: now, w: length * 0.2, h: length * 0.07 });
             }
           }
