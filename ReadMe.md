@@ -1,130 +1,142 @@
 # QR Racer
 
-A 2D party racing game with an environment theme. The host draws a track on the big screen, up
-to 6 players join on their phones with a QR code, and everyone races. The map starts grey and
-polluted. Every 20 seconds the race stops for a question. Right answers give a speed boost and
-heal the map. The first car home wins the race, but the real winner is the player with
-the most right answers.
+QR Racer is a multiplayer racing quiz game. A teacher hosts a race on a large screen, and
+players join from their phones using a room code or QR link. Questions pause the race; correct
+answers earn points and a temporary speed boost.
 
-## Run it
+The game does not change an environment or map health. Race progress is based on driving,
+answers, and points.
 
-You need Node.js 20 or newer.
+## Run locally
+
+Requires Node.js 20 or newer.
 
 ```bash
 npm install
-```
-
-```bash
 npm start
 ```
 
-Open `http://localhost:3000` on the laptop for the landing page, then press **Host a race** to open
-the big screen (`/host`).
+Open [http://localhost:3000](http://localhost:3000), then choose **Host a race**.
 
-## Play
+To use Gemini, copy `.env.example` to `.env` and add a key:
 
-1. On the big screen, draw a loop and press **Make track**. The game adds bends and scenery, and
-   picks one of five worlds: forest, ocean, swamp, desert or ice. Press **Change** to try another.
-2. Players scan the QR code with their phone camera. The phone must be on the same Wi-Fi as the
-   laptop. They type a name and press **Join**.
-3. Players can press **Change car** on their phone. Each car type drives differently, and the
-   phone shows its stats.
-4. Press **Add bot** if you want computer cars too. Bots also answer questions.
-5. Press **Start race**. Cars drive forward by themselves; players steer with the two buttons.
-   Cones, tyres, crates, barrels and crash-test dummies stand on the road. Hitting them sends
-   them flying and tumbling; crates smash and dummies lose parts. The car keeps its speed.
-6. Before each question there is a 3-second "get ready" countdown. Then everyone picks an
-   answer on their phone. A right answer gives a
-   speed boost, and every right answer makes the shared map greener.
-7. After the race, press **Race again** or **New track**.
+```bash
+GEMINI_API_KEY=your-key
+```
 
-A lap takes 45 to 60 seconds. Two laps is the default; the host can change it before the start.
-A short race asks questions more often, so the map can always become fully clean.
+The server also supports:
 
-If a phone cannot open the page, check that it is on the same Wi-Fi, and allow Node.js in the
-laptop's firewall when it asks. Some event Wi-Fi blocks phones from reaching laptops; a phone
-hotspot fixes that.
+- `PORT`: server port; defaults to `3000`.
+- `PUBLIC_URL`: public base URL used for QR codes and join links.
+- `ELEVENLABS_API_KEY`: optional hosted voice generation.
+- `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL`: optional ElevenLabs settings.
+- `BACKBOARD_API_KEY`: optional player-memory storage.
+- `GEMINI_WAIT_MS` and `GEMINI_WAIT_PDF_MS`: question-generation wait limits.
+
+Never commit `.env` or API keys. Use `npm run try-gemini` to test Gemini separately.
+
+## How to play
+
+1. On the host screen, draw a track and choose the number of laps.
+2. Select a topic, or leave the default topic as **Random**.
+3. Share the displayed direct join link or scan the QR code. The link includes the room code,
+   for example `http://192.168.1.20:3000/play?room=FKYG`.
+4. Players choose a name and car on their phones.
+5. The host can add computer players, edit questions, and start the race.
+6. Players steer their cars and answer questions when the race pauses.
+
+The host screen shows the top three players by points. A correct answer can award up to 1,000
+points; the longer a player takes to answer, the fewer points they receive. The same ranking is
+also available on player screens.
+
+## Race modes
+
+### Solo mode
+
+Each player receives an individual question selected for their current difficulty level. Correct
+answers raise their level, incorrect answers lower it, and missed subtopics can return later.
+
+### Team mode
+
+Everyone receives the same question at the same time. The question and all available answers are
+shown to the team. The group difficulty changes based on the team's results, but the question is
+not dynamically changed per player.
+
+In team mode, the large screen can read the question and answer aloud. Without ElevenLabs, the
+browser's built-in speech synthesis is used.
 
 ## Questions
 
-Every player gets their own question, at their own level: easy, medium or hard. A right answer
-moves a player up a level and a wrong one moves them down. Harder questions give a longer boost
-and clean more of the map. Subtopics a player gets wrong come back later.
+Questions come from one of two sources:
 
-### Gemini writes the questions
+- Gemini-generated questions based on the topic or an uploaded PDF.
+- Questions manually added or edited on the teacher screen.
 
-Copy `.env.example` to `.env` and put a Gemini API key in it (get one at
-https://aistudio.google.com/apikey). Git ignores `.env`; never put the key anywhere else.
+There is no active built-in question fallback. If Gemini is unavailable, the teacher must add
+questions manually before starting the race. The teacher screen lets the host:
 
-```bash
-npm run try-gemini
+- Add a question through the add-question dialog.
+- Edit the question, answer choices, correct answer, difficulty, and subtopic.
+- Remove questions.
+- See the correct answers and player progress.
+
+New questions are inserted at the top of the question list.
+
+### AI safety and limits
+
+Gemini requests are rate-limited by the server. Generated question content is checked for
+unsafe or inappropriate material, and prompts that contain sensitive topics receive a warning
+asking the host to retry with a safer topic. Generated question text is also checked before it
+is used in a race.
+
+The default policy allows up to three question-generation requests and twelve feedback requests
+per ten-minute window. These limits help prevent accidental request loops and excessive API use.
+
+## Player memory
+
+The game can remember a player's previous topic performance, correct answers, and weak subtopics.
+Local memory is stored in `data/memory.json`, which is ignored by Git. Backboard storage is
+optional and requires `BACKBOARD_API_KEY`.
+
+## Project structure
+
+```text
+server.js
+  HTTP/static serving, WebSocket routing, room orchestration, and race loop
+
+server/
+  question-bank.js       Question-bank data structures and lookup helpers
+  question-service.js     Gemini generation, caching, retries, and bank preparation
+  question-lifecycle.js  Question timing, answers, scoring, team mode, and voice prompts
+  room-state.js           State, leaderboard, snapshot, and prop messages
+  race-physics.js         Car movement, respawning, collisions, and prop physics
+
+shared/
+  track.js               Track generation and shared world geometry
+  cars.js, cars.json     Car definitions and tuning
+  props.js               Road-object definitions
+
+public/
+  index.html/js/css      Landing page and room-code entry
+  host.html/js            Host screen, QR link, race controls, and leaderboard
+  play.html/js            Player join, car selection, steering, and answers
+  teacher.html/js/css     Question editor and player progress screen
+  render.js               Race rendering
+  commentator.js          Browser voice playback
+
+gemini.js                Gemini API integration and question/feedback prompts
+ai-policy.js             AI rate limits and content-safety checks
+voice.js                 Optional ElevenLabs voice generation
+memory.js                Local and optional Backboard player memory
 ```
 
-With a key, Gemini writes a fresh set of questions in three levels for the topic the host types in
-(the environment by default), and a personal note for each player after the race.
-
-The host can also press **Upload a PDF** (up to 12 MB). Gemini reads it and writes the questions
-from what the document says. **Start race** waits until Gemini has finished, so the questions
-the host asked for are the ones that get played.
-
-### Teacher screen
-
-Press **Teacher screen** on the big screen to open a second page, `/teacher`. It shows Gemini
-working, every question with its right answer, and how each player is doing during the race.
-It needs the host's key, so players cannot open it.
-
-### Backup questions
-
-Without a key, or if Gemini cannot be reached, the game uses the built-in questions below.
-
-The 100 built-in questions are in `data/questions.json`, each with a level and a subtopic. They
-were exported from `questions.db`. After changing the database, refresh the copy (this needs
-Node.js 22.13 or newer); levels and subtopics already set are kept:
+## Useful commands
 
 ```bash
+npm start
+npm run try-gemini
 npm run export-questions
 ```
 
-## Put it online
-
-The server is one Node.js process and reads its port from the `PORT` variable, so it runs on any
-Node host with `npm install` and `npm start`. The host must allow WebSockets. Online, the QR
-code uses the site's own address.
-
-## Files
-
-| File | What it does |
-| --- | --- |
-| `server.js` | Serves the pages, keeps the rooms, moves the cars and asks the questions |
-| `shared/track.js` | Turns the drawn line into a track (used by the server and the browser) |
-| `public/index.html`, `public/landing.css`, `public/landing.js` | The landing page at `/`: Host a race, or join with a code |
-| `public/cars/` | The four cars that drive across the landing page |
-| `shared/cars.json` | Car stats from `docs/car-stats.pdf`: top speed, acceleration, handling and weight for each car type |
-| `shared/props.js` | The cones, tyres, crates, barrels and dummies on the road: what they are and where they start |
-| `shared/cars.js` | Turns those stats into what the race uses, and says which row of `cars.png` is which car type |
-| `public/host.html`, `public/host.js` | The big screen at `/host`: drawing, lobby, race view, questions, results |
-| `public/play.html`, `public/play.js` | The phone: join, close-up view, steering buttons, answers |
-| `public/worlds.js` | The five worlds: how each one looks polluted and clean, and everything that moves on the map |
-| `public/render.js` | Draws the cars and what they leave behind, and keeps the map picture ready |
-| `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
-| `public/teacher.html`, `public/teacher.js`, `public/teacher.css` | The teacher screen: Gemini's questions with answers, and the players' progress |
-| `gemini.js` | Asks Gemini for questions (from a topic or a PDF) and for the personal notes |
-| `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
-| `questions.db` | Where the backup questions were first written |
-| `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |
-
-## Things to tune
-
-All of these are constants at the top of `server.js`:
-
-- Car speed and steering.
-- How often a question comes, how long players have to answer, and how strong the boost is.
-- `GREEN_TARGET`: the share of right answers that makes the map fully green by the end.
-
-World size and road width are at the top of `shared/track.js`. How much each car stat changes
-the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.json`.
-
-## Not built yet
-
-Music, the ElevenLabs commentator, sound effects, and putting the server online.
-figuring out who "json" is and why he sent me packages
+The server needs WebSocket support and must be reachable by phones on the same network. If
+phones cannot open the join link, check the laptop firewall and Wi-Fi client isolation settings.

@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-aq="good">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QR Racer</title>
+  <title>Know &amp; Go</title>
+  <!-- The fonts load in the background: a phone with no internet on this Wi-Fi must not wait for them. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <link rel="stylesheet" href="/landing.css" />
 </head>
 <body>
@@ -17,10 +18,6 @@
   <div class="road" aria-hidden="true">
     <div class="scenery">
       <div class="hills"></div>
-      <div class="factory">
-        <div class="stack s1"><em></em><em></em><em></em></div>
-        <div class="stack s2"><em></em><em></em><em></em></div>
-      </div>
       <div class="trees"></div>
     </div>
     <div class="track">
@@ -36,30 +33,30 @@
     <a href="#home">Home</a>
     <a href="#cars">Cars</a>
     <a href="#about">About</a>
-    <a href="#team">Larpers</a>
+    <a href="#team">Team</a>
   </nav>
 
   <div class="page" data-page="home">
   <div class="hero-wrap">
     <p class="note note-1">🌍 There is no Planet B</p>
-    <p class="note note-2">🏭 The larp is choking our world</p>
-    <p class="note note-3">💨 Larp to clear the air</p>
-    <p class="note note-4">🌱 Every larp counts for a larpy planet</p>
+    <p class="note note-2">🏭 Pollution is choking our world</p>
+    <p class="note note-3">💨 Learn to clear the air</p>
+    <p class="note note-4">🌱 Every answer counts for a greener planet</p>
 
     <main class="hero">
-      <p class="tag">🌱 Larp multiplayer racing</p>
-      <h1 class="logo">LARP<span>RACER</span></h1>
+      <p class="tag">🌱 Multiplayer learning race</p>
+      <h1 class="logo">KNOW <span>&amp; GO</span></h1>
       <p class="sub">Race from your phone. Put the track on the big screen, scan the code and see who finishes first.</p>
 
       <div class="actions">
         <button class="btn btn-host" id="hostBtn">
-          <span class="btn-icon">🏁</span> Host a larp session
+          <span class="btn-icon">🏁</span> Host a learning session
         </button>
 
         <form class="join" id="joinForm" autocomplete="off">
-          <label for="code" class="sr-only">Larp code</label>
-          <input id="code" name="code" maxlength="4" placeholder="LARP CODE" inputmode="text" />
-          <button class="btn btn-join" type="submit">Larp</button>
+          <label for="code" class="sr-only">Learning code</label>
+          <input id="code" name="code" maxlength="4" placeholder="LEARNING CODE" inputmode="text" />
+          <button class="btn btn-join" type="submit">Join</button>
         </form>
         <p class="error" id="error" role="alert"></p>
       </div>
@@ -136,7 +133,7 @@
     <div class="team-grid">
       <article class="panel member">
         <div class="avatar">1</div>
-        <h3>Fiolarp</h3>
+        <h3>Teammate 1</h3>
         <p class="role">Role</p>
         <p>A line about what they worked on.</p>
         <div class="links">
@@ -146,7 +143,7 @@
       </article>
       <article class="panel member">
         <div class="avatar">2</div>
-        <h3>Jeremlarp</h3>
+        <h3>Teammate 2</h3>
         <p class="role">Role</p>
         <p>A line about what they worked on.</p>
         <div class="links">
@@ -156,7 +153,7 @@
       </article>
       <article class="panel member">
         <div class="avatar">3</div>
-        <h3>Clarp</h3>
+        <h3>Teammate 3</h3>
         <p class="role">Role</p>
         <p>A line about what they worked on.</p>
         <div class="links">
@@ -166,7 +163,7 @@
       </article>
       <article class="panel member">
         <div class="avatar">4</div>
-        <h3>Adam Larp</h3>
+        <h3>Teammate 4</h3>
         <p class="role">Role</p>
         <p>A line about what they worked on.</p>
         <div class="links">

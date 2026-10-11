@@ -5,6 +5,8 @@
 
 // The "lite" model on purpose: it wrote 30 questions in 5 seconds in testing, and the free plan
 // lets it be called far more often than the bigger models, which ran out of quota at once.
+import { assertSafeQuestions, assertSafeText, reserveAi } from './ai-policy.js';
+
 const MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const LEVELS = { easy: 1, medium: 2, hard: 3 };
 
@@ -13,7 +15,8 @@ export const geminiModel = MODEL;
 
 // `pdf` is an optional Buffer holding a PDF for Gemini to read along with the prompt.
 async function ask(prompt, schema, pdf = null) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL()}:generateContent`;
+  // GEMINI_URL lets a test stand in for Gemini.
+  const url = `${process.env.GEMINI_URL || 'https://generativelanguage.googleapis.com'}/v1beta/models/${MODEL()}:generateContent`;
   const body = {
     contents: [{ parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
     // Low thinking: writing quiz questions does not need deep reasoning, and it is about three
@@ -68,6 +71,7 @@ function shuffled(list) {
 // With `pdf` (a Buffer), the questions are about what the document says, not about the topic
 // in general: this is how a teacher turns their own handout into a quiz.
 export async function writeQuestions(topic, perLevel = 10, pdf = null) {
+  reserveAi('questions');
   const prompt = `Write multiple-choice quiz questions for school students aged 11 to 16.
 ${pdf ? 'Base every question on the attached document. Ask only about things the document says.' : `Topic: ${topic}`}
 
@@ -77,6 +81,9 @@ Write ${perLevel} easy, ${perLevel} medium and ${perLevel} hard questions.
 - hard: needs specific knowledge, or two steps of reasoning.
 
 Rules:
+- Content must be strictly safe for school and suitable for work. Do not create sexual, graphic,
+  self-harm, illegal drug, weapon-making, hateful, extremist, or abusive content. If the topic
+  requests any of those, return no questions.
 - Every fact must be accurate and not controversial.
 - A question is at most 110 characters. Plain text only.
 - Exactly 4 answer choices, each at most 70 characters. Exactly one is correct.
@@ -127,12 +134,15 @@ Return JSON in exactly this shape:
     const usable = questions.filter((q) => q.level === level).length;
     if (usable < Math.min(5, perLevel)) throw new Error(`Gemini only wrote ${usable} usable questions at level ${level}`);
   }
+  assertSafeQuestions(questions);
   return questions;
 }
 
 // Asks Gemini for one short sentence for each player about what they know and what to review.
 // players: [{ id, name, answers: [{ subtopic, level, right }] }]. Returns a Map of id -> sentence.
 export async function writeFeedback(topic, players) {
+  reserveAi('feedback');
+  assertSafeText(topic, 'Topic');
   const prompt = `These are quiz results from a classroom game. Topic: ${topic}
 Levels: 1 easy, 2 medium, 3 hard.
 
@@ -140,6 +150,9 @@ ${JSON.stringify(players)}
 
 For each player write ONE short, friendly sentence of at most 110 characters. Say what they know well and
 what to review next, using only the results above. Speak to the player as "you". Simple words. No emojis.
+Do not write level numbers; say "easy", "medium" or "hard" questions if the level matters.
+Some players have "earlier": their result the last time they played this topic. For them, say if they
+improved, when the results show it.
 
 Return JSON in exactly this shape: {"notes": [{"id": 1, "note": "..."}]}`;
   const schema = {

@@ -69,9 +69,10 @@ function paintStatus() {
   $('topic').disabled = $('pdf').disabled = blocked;
   $('topicForm').querySelector('button').disabled = blocked;
   $('pdfButton').classList.toggle('disabled', blocked);
+  $('bank').classList.toggle('locked', racing); // the server takes no changes during a race
   $('formNote').textContent = formError
-    || (!state.bank.gemini ? 'There is no Gemini key on the server, so new questions cannot be written.'
-      : racing ? 'A race is running. You can change the questions when it ends.' : '');
+    || (racing ? 'A race is running. You can change the questions when it ends.'
+      : !state.bank.gemini ? 'There is no Gemini key on the server, so Gemini cannot write questions. Add your own below.' : '');
   $('formNote').classList.toggle('error', !!formError);
 }
 
@@ -127,7 +128,7 @@ function paintClass() {
   if (!state) return;
   const asking = state.phase === 'question' || state.phase === 'reveal';
   $('room').textContent = `Game ${state.code}`;
-  $('phase').textContent = state.question ? `Question ${state.question.number}` : PHASES[state.phase] ?? '';
+  $('phase').textContent = `${state.question ? `Question ${state.question.number}` : PHASES[state.phase] ?? ''} · ${state.mode === 'team' ? 'Team mode: same question for everyone' : 'Solo mode: a question each'}`;
   // The state hides the right answer until time is up. This screen may know it sooner.
   const answers = new Map((bank?.questions ?? []).map((q) => [q.question, q.choices[q.correct]]));
   const rows = state.players.map((player) => {
@@ -140,7 +141,10 @@ function paintClass() {
       const right = answers.get(player.q.text);
       if (right) now.append(element('span', 'key', `Answer: ${right}`));
     } else {
-      now.append(element('span', 'idle', RACING.includes(state.phase) ? 'Driving' : state.phase === 'results' ? 'Finished' : 'Waiting'));
+      // Between questions there is room to show what is remembered about this player.
+      const { back } = player;
+      const memory = back ? ` · played ${back.races} ${back.races === 1 ? 'race' : 'races'} before, ${back.right} of ${back.asked} right${back.weak.length ? ` · review: ${back.weak.join(', ')}` : ''}` : '';
+      now.append(element('span', 'idle', `${RACING.includes(state.phase) ? 'Driving' : state.phase === 'results' ? 'Finished' : 'Waiting'}${memory}`));
     }
     let mark = '';
     let markClass = 'mark';
@@ -201,6 +205,7 @@ $('addQuestion').addEventListener('click', () => {
 $('cancelQuestion').addEventListener('click', () => { questionModal.hidden = true; });
 $('addQuestionForm').addEventListener('submit', (event) => {
   event.preventDefault();
+  if (RACING.includes(state?.phase)) return; // keep what was typed until the race ends
   send({ t: 'addQuestion', question: {
     question: $('newQuestion').value,
     choices: [...document.querySelectorAll('.new-choice')].map((input) => input.value),
