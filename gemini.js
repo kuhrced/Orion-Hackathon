@@ -9,11 +9,13 @@ const MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const LEVELS = { easy: 1, medium: 2, hard: 3 };
 
 export const geminiReady = () => !!process.env.GEMINI_API_KEY;
+export const geminiModel = MODEL;
 
-async function ask(prompt, schema) {
+// `pdf` is an optional Buffer holding a PDF for Gemini to read along with the prompt.
+async function ask(prompt, schema, pdf = null) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL()}:generateContent`;
   const body = {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
     // Low thinking: writing quiz questions does not need deep reasoning, and it is about three
     // times faster (measured: 8 questions in 5 seconds instead of 15).
     generationConfig: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0.8, thinkingConfig: { thinkingLevel: 'low' } },
@@ -22,7 +24,7 @@ async function ask(prompt, schema) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(pdf ? 120000 : 60000), // reading a document takes longer
   });
   let response = await post();
   // 429 means too many requests this minute (the free plan allows only a few), and 503 means
@@ -62,9 +64,12 @@ function shuffled(list) {
 //
 // This is one request on purpose. The free plan allows only a few requests a minute, so a
 // request per level would run out as soon as two rooms started at once.
-export async function writeQuestions(topic, perLevel = 10) {
+//
+// With `pdf` (a Buffer), the questions are about what the document says, not about the topic
+// in general: this is how a teacher turns their own handout into a quiz.
+export async function writeQuestions(topic, perLevel = 10, pdf = null) {
   const prompt = `Write multiple-choice quiz questions for school students aged 11 to 16.
-Topic: ${topic}
+${pdf ? 'Base every question on the attached document. Ask only about things the document says.' : `Topic: ${topic}`}
 
 Write ${perLevel} easy, ${perLevel} medium and ${perLevel} hard questions.
 - easy: everyday knowledge that most students already have.
@@ -103,7 +108,7 @@ Return JSON in exactly this shape:
     },
     required: ['questions'],
   };
-  const answer = await ask(prompt, schema);
+  const answer = await ask(prompt, schema, pdf);
   const seen = new Set();
   const questions = [];
   for (const item of Array.isArray(answer?.questions) ? answer.questions : []) {

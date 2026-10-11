@@ -41,6 +41,8 @@ let goUntil = 0;
 let questionEnd = 0;
 let revealStart = 0;
 let trackError = '';
+let uploading = false; // a PDF is on its way to the server
+let uploadError = '';
 let listStamp = 0;
 const snapshots = createSnapshots();
 const effects = createEffects();
@@ -245,18 +247,29 @@ function updateUI() {
 
   const [mainLabel, secondLabel] = LABELS[phase] ?? [];
   mainButton.hidden = secondButton.hidden = racing;
-  mainButton.textContent = mainLabel ?? '';
-  secondButton.textContent = secondLabel ?? '';
-  mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && !state.players.length);
-  $('lapsRow').hidden = $('worldRow').hidden = $('topicRow').hidden = phase !== 'lobby';
-  if (document.activeElement !== $('topic')) $('topic').value = state.topic ?? '';
   const { bank } = state;
-  $('bankNote').hidden = phase !== 'lobby' || !bank;
+  // The race waits for Gemini: the questions the host asked for are the ones that get played.
+  const writing = uploading || !!bank?.writing;
+  mainButton.textContent = (phase === 'lobby' && writing ? 'Gemini is writing…' : mainLabel) ?? '';
+  secondButton.textContent = secondLabel ?? '';
+  mainButton.disabled = (phase === 'draw' && stroke.length < 8) || (phase === 'lobby' && (!state.players.length || writing));
+  $('lapsRow').hidden = $('worldRow').hidden = phase !== 'lobby';
+  // The topic can be set while the track is still being drawn, so Gemini works in the meantime.
+  const choosing = phase === 'draw' || phase === 'lobby';
+  $('topicRow').hidden = $('sourceRow').hidden = !choosing;
+  if (document.activeElement !== $('topic')) $('topic').value = state.topic?.startsWith('PDF: ') ? '' : state.topic ?? '';
+  $('pdfButton').classList.toggle('disabled', writing || !bank?.gemini);
+  $('pdf').disabled = writing || !bank?.gemini;
+  $('bankNote').hidden = !choosing || !bank;
+  $('bankNote').classList.toggle('busy', writing);
+  $('bankNote').classList.toggle('error', !writing && !!uploadError);
   if (bank) {
-    $('bankNote').textContent = bank.writing
-      ? `Gemini is writing questions about "${state.topic}"…`
-      : bank.source === 'gemini' ? `Gemini wrote ${bank.count} questions about "${bank.topic}", in three levels.`
-        : bank.note || `Using the ${bank.count} built-in environment questions.`;
+    const about = state.topic?.startsWith('PDF: ') ? `from "${state.topic.slice(5)}"` : `about "${state.topic}"`;
+    $('bankNote').textContent = uploading ? 'Sending the PDF…'
+      : bank.writing ? `Gemini is writing questions ${about}…`
+        : uploadError ? uploadError
+          : bank.source === 'gemini' ? `Gemini wrote ${bank.count} questions ${about}, in three levels.`
+            : bank.note || `Using the ${bank.count} built-in environment questions.`;
   }
   $('worldName').textContent = WORLDS[track?.world]?.label ?? '';
   $('laps').textContent = state.laps;
@@ -444,6 +457,36 @@ $('topicRow').addEventListener('submit', (event) => {
   event.preventDefault();
   $('topic').blur();
   send({ t: 'topic', topic: $('topic').value });
+});
+$('topic').addEventListener('input', () => {
+  uploadError = '';
+});
+// A PDF goes to the server, and Gemini writes the questions from what it says.
+$('pdf').addEventListener('change', async () => {
+  const [file] = $('pdf').files;
+  $('pdf').value = '';
+  if (!file) return;
+  const { code, key } = loadSaved();
+  uploading = true;
+  uploadError = '';
+  updateUI();
+  try {
+    const response = await fetch('/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf', 'X-Room': code, 'X-Key': encodeURIComponent(key), 'X-Name': encodeURIComponent(file.name) },
+      body: file,
+    });
+    if (!response.ok) uploadError = (await response.json()).error;
+  } catch {
+    uploadError = 'The PDF could not be sent. Is it bigger than 12 MB?';
+  }
+  uploading = false;
+  updateUI();
+});
+// The teacher screen shows the questions with their answers, so it opens with the host's key.
+$('teacher').addEventListener('click', () => {
+  const { code, key } = loadSaved();
+  if (code) window.open(`/teacher#${code}.${key}`, 'teacher');
 });
 $('addBot').addEventListener('click', () => send({ t: 'bot' }));
 $('removeBot').addEventListener('click', () => send({ t: 'bot', remove: true }));

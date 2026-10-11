@@ -61,7 +61,17 @@ npm run try-gemini
 ```
 
 With a key, Gemini writes a fresh set of questions in three levels for the topic the host types in
-the lobby (the environment by default), and a personal note for each player after the race.
+(the environment by default), and a personal note for each player after the race.
+
+The host can also press **Upload a PDF** (up to 12 MB). Gemini reads it and writes the questions
+from what the document says. **Start race** waits until Gemini has finished, so the questions
+the host asked for are the ones that get played.
+
+### Teacher screen
+
+Press **Teacher screen** on the big screen to open a second page, `/teacher`. It shows Gemini
+working, every question with its right answer, and how each player is doing during the race.
+It needs the host's key, so players cannot open it.
 
 ### Backup questions
 
@@ -97,7 +107,8 @@ code uses the site's own address.
 | `public/worlds.js` | The five worlds: how each one looks polluted and clean, and everything that moves on the map |
 | `public/render.js` | Draws the cars and what they leave behind, and keeps the map picture ready |
 | `public/cars.png` | Car pictures: 6 colours across, 4 types down, each 128 × 256, pointing up |
-| `gemini.js` | Asks Gemini for questions and for the personal notes |
+| `public/teacher.html`, `public/teacher.js`, `public/teacher.css` | The teacher screen: Gemini's questions with answers, and the players' progress |
+| `gemini.js` | Asks Gemini for questions (from a topic or a PDF) and for the personal notes |
 | `data/questions.json` | The built-in backup questions, with a level and a subtopic each |
 | `questions.db` | Where the backup questions were first written |
 | `CLAUDE.md` | Project notes that Claude reads when a teammate works on this repo |

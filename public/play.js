@@ -54,7 +54,7 @@ let choiceFor = 0; // the question number that pick belongs to
 let answersOpenAt = 0; // answers stay locked for a moment, so a steering tap cannot pick one
 let lockTimer = 0;
 const held = { left: false, right: false };
-const snapshots = createSnapshots();
+const snapshots = createSnapshots(100); // a little more patience than the big screen: phones are on Wi-Fi
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
@@ -225,7 +225,7 @@ function frame(now) {
 
   if (state.phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // sharp enough, and far fewer pixels to fill than 2 or 3
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
@@ -354,6 +354,11 @@ const send = connect({
       if (message.phase === 'draw') track = tiles = life = null;
       state = message;
       showScreen();
+      // An answer that got lost on the way (the connection dropped just then) is sent again.
+      const mine = message.players.find((player) => player.id === me?.id);
+      if (message.phase === 'question' && mine && !mine.answered && myChoice !== null && choiceFor === message.question.number && now >= answersOpenAt) {
+        send({ t: 'answer', choice: myChoice });
+      }
     } else if (message.t === 'track') {
       track = prepareTrack(message.track);
       scene = createScene(track);

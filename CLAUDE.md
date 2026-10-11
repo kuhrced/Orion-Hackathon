@@ -47,6 +47,13 @@ questions right.
   `prepareBank` in `server.js` falls back to `data/questions.json` when there is no key or the
   call fails. Everything Gemini returns is checked before it is used. Never call Gemini in the
   middle of a race: banks are written in the lobby and reused.
+- The host can upload a PDF instead of typing a topic (`POST /pdf`, with the room and host key in
+  headers). `public/teacher.js` is a second screen for the host only: it connects with
+  `{ t: 'watch', code, key }` and is the only screen that is sent the right answers early.
+- Screens look after their own connection (`connect` in `public/render.js`): the server sends a
+  heartbeat, and a screen that hears nothing for 5 seconds reconnects and shows a banner.
+  Car positions are blended on the server's race clock, not on arrival time, so bunched-up
+  Wi-Fi packets do not make the cars stutter.
 
 Game phases, in order: `draw`, `lobby`, `countdown`, `race`, then `question-countdown`,
 `question` and `reveal` every 10 to 20 seconds of driving, and finally `results`.

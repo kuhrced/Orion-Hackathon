@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Race game: teacher screen</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/teacher.css">
+</head>
+<body class="teacher">
+<header>
+  <h1>Teacher screen</h1>
+  <span id="room"></span>
+  <span id="phase"></span>
+  <span class="private">Only the host can open this screen. Players never see the answers.</span>
+</header>
+
+<main id="page">
+  <section id="gemini">
+    <div id="status">
+      <div id="statusLine"></div>
+      <div id="statusDetail"></div>
+    </div>
+    <ol id="steps">
+      <li id="step1">The topic or PDF is sent to Gemini</li>
+      <li id="step2">Gemini writes 30 questions: 10 easy, 10 medium, 10 hard</li>
+      <li id="step3">The server checks every question: 4 choices, 1 right answer</li>
+    </ol>
+    <form id="topicForm">
+      <input id="topic" maxlength="60" autocomplete="off" placeholder="Type any topic" aria-label="What the questions are about">
+      <button type="submit" class="primary">Write questions</button>
+      <label id="pdfButton" class="button">Upload a PDF<input id="pdf" type="file" accept="application/pdf" hidden></label>
+    </form>
+    <p id="formNote"></p>
+  </section>
+
+  <section id="class">
+    <h2>Players</h2>
+    <ol id="classRows"></ol>
+  </section>
+
+  <section id="bank">
+    <h2 id="bankTitle">Questions</h2>
+    <div id="columns">
+      <div><h3><span class="level l1">Easy</span></h3><ol id="level1"></ol></div>
+      <div><h3><span class="level l2">Medium</span></h3><ol id="level2"></ol></div>
+      <div><h3><span class="level l3">Hard</span></h3><ol id="level3"></ol></div>
+    </div>
+  </section>
+</main>
+
+<main id="locked" hidden>
+  <h2>This screen is locked</h2>
+  <p id="lockedNote"></p>
+</main>
+<script type="module" src="/teacher.js"></script>
+</body>
+</html>

@@ -54,7 +54,7 @@ export function renderMap(scene, scale, green) {
 
 // The map cut into squares that are drawn only when a phone gets near them. The whole map at
 // phone sharpness would be far too big to keep in memory.
-export function createTiles(scene, { units = 512, pixels = 640, keep = 30, perFrame = 2 } = {}) {
+export function createTiles(scene, { units = 512, pixels = 640, keep = 30, perFrame = 1 } = {}) {
   const tiles = new Map();
   let frame = 0;
   return {
@@ -462,27 +462,47 @@ export function createEffects() {
 
 // Keeps the last few server updates and blends between them, so cars move smoothly even
 // though updates arrive only 30 times a second.
+//
+// The blending follows the server's race clock (`time` in each update), not the moment an
+// update arrived. Over Wi-Fi, updates often arrive in bunches: nothing for a tenth of a second,
+// then three at once. Going by arrival time would make every car stop and jump; going by the
+// race clock keeps it smooth, as long as the bunching is shorter than `delay`.
 export function createSnapshots(delay = 80) {
   const buffer = [];
+  let offset = null; // this screen's clock minus the race clock, for the updates that arrived fastest
+  let wasMoving = false;
   return {
     push(message) {
+      const at = performance.now();
+      const lag = at - message.time;
+      const last = buffer.at(-1);
+      // The race clock stands still on the grid and goes back to zero for a new race. Then
+      // only the newest update matters: there is nothing to blend.
+      const moving = !!last && message.time > last.time;
+      if (!moving) buffer.length = 0;
+      // A late update has a bigger lag. Trust the quickest ones at once and drift up only
+      // slowly. After a stop (the grid, a question) the two clocks are matched up again.
+      if (offset === null || !moving || !wasMoving || Math.abs(lag - offset) > 400) offset = lag;
+      else offset = lag < offset ? lag : offset + (lag - offset) * 0.02;
+      wasMoving = moving;
       const cars = new Map(message.cars.map(([id, x, y, a, lap, place, done, v, boost, off]) => [id, { x, y, a, lap, place, done: !!done, v, boost: !!boost, off: !!off }]));
-      buffer.push({ at: performance.now(), time: message.time, cars });
-      while (buffer.length > 12) buffer.shift();
+      buffer.push({ at, time: message.time, cars });
+      while (buffer.length > 20) buffer.shift();
     },
     latest: () => buffer.at(-1) ?? null,
     sample() {
       if (!buffer.length) return new Map();
-      const when = performance.now() - delay;
-      let older = buffer[0];
-      let newer = buffer[0];
-      for (const snapshot of buffer) {
-        newer = snapshot;
-        if (snapshot.at >= when) break;
-        older = snapshot;
+      const when = performance.now() - offset - delay; // on the race clock
+      let older = buffer.at(-1);
+      let newer = buffer.at(-1);
+      // Walk back from the newest update to the two that the wanted moment lies between.
+      for (let i = buffer.length - 1; i >= 0; i--) {
+        older = buffer[i];
+        if (older.time <= when) break;
+        newer = older;
       }
-      const span = newer.at - older.at;
-      const t = span > 0 ? Math.max(0, Math.min(1, (when - older.at) / span)) : 1;
+      const span = newer.time - older.time;
+      const t = span > 0 ? Math.max(0, Math.min(1, (when - older.time) / span)) : 1;
       const out = new Map();
       for (const [id, to] of newer.cars) {
         const from = older.cars.get(id) ?? to;
@@ -495,21 +515,54 @@ export function createSnapshots(delay = 80) {
   };
 }
 
-// Reconnecting WebSocket. `onOpen` runs on every (re)connect.
+// A connection to the server that looks after itself. `onOpen` runs on every (re)connect. The server sends a heartbeat every second
+// and a half; if nothing is heard for a few seconds the connection is dead (a phone that
+// changed Wi-Fi does not notice by itself), so it is dropped and opened again. While it is
+// down, a banner says so: a frozen picture with no explanation looks like a broken game.
+//
+// send(message) returns true if the message went out.
 export function connect({ onOpen, onMessage, onClose }) {
   let socket;
+  let heard = 0;
+  let wasOpen = false;
+  const banner = Object.assign(document.createElement('div'), { id: 'offline', hidden: true, textContent: 'Connection lost. Reconnecting…' });
+  document.body.append(banner);
   const open = () => {
-    socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-    socket.onopen = () => onOpen?.();
-    socket.onmessage = (event) => onMessage(JSON.parse(event.data));
-    socket.onclose = () => {
+    const mine = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    socket = mine;
+    heard = performance.now();
+    mine.onopen = () => {
+      if (socket !== mine) return;
+      heard = performance.now();
+      wasOpen = true;
+      banner.hidden = true;
+      onOpen?.();
+    };
+    mine.onmessage = (event) => {
+      if (socket !== mine) return;
+      heard = performance.now();
+      const message = JSON.parse(event.data);
+      if (message.t !== 'hb') onMessage(message);
+    };
+    mine.onclose = () => {
+      if (socket !== mine) return; // an old connection that was already replaced
+      socket = null;
+      banner.hidden = !wasOpen; // nothing to say before the first connection
       onClose?.();
       setTimeout(open, 1000);
     };
   };
   open();
+  setInterval(() => {
+    if (!socket || performance.now() - heard < 5000) return;
+    const dead = socket;
+    dead.onclose(); // do not wait for the browser to notice: that can take minutes
+    dead.close();
+  }, 1000);
   return (message) => {
-    if (socket.readyState === 1) socket.send(JSON.stringify(message));
+    if (socket?.readyState !== 1) return false;
+    socket.send(JSON.stringify(message));
+    return true;
   };
 }
 

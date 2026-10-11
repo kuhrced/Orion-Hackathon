@@ -1,0 +1,84 @@
+/* Teacher screen. Colours and buttons come from style.css. */
+
+body.teacher { height: auto; min-height: 100%; }
+
+.teacher header {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px;
+  padding: 16px 24px; border-bottom: 1px solid var(--line);
+}
+.teacher h1 { font-size: 22px; }
+.teacher h2 { font-size: 16px; margin-bottom: 10px; }
+.teacher h3 { margin: 0 0 8px; font-size: 15px; }
+#room, #phase { font-weight: 800; color: var(--accent); }
+#phase { color: var(--text); }
+.private { margin-left: auto; color: var(--muted); font-size: 14px; }
+
+#page { display: grid; gap: 18px; padding: 18px 24px 40px; max-width: 1500px; margin: 0 auto; }
+#page > section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; min-width: 0; }
+#locked { padding: 80px 24px; text-align: center; color: var(--muted); }
+#locked h2 { font-size: 24px; color: var(--text); }
+
+/* ---------- Gemini ---------- */
+
+#gemini { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px 28px; align-items: start; }
+#statusLine { font-size: 24px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+#statusDetail { color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+#gemini.busy #statusLine::before {
+  content: ""; display: inline-block; width: 0.7em; height: 0.7em; margin-right: 12px;
+  border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+
+#steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; color: var(--muted); font-size: 15px; }
+#steps li { display: flex; gap: 10px; align-items: baseline; }
+#steps li::before { content: "○"; width: 1em; flex: none; text-align: center; }
+#steps li.now { color: var(--text); font-weight: 700; }
+#steps li.now::before { content: "●"; color: var(--accent); animation: pulse 1s ease-in-out infinite; }
+#steps li.done { color: var(--text); }
+#steps li.done::before { content: "✓"; color: var(--accent); font-weight: 900; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+
+#topicForm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+#topicForm input[type="text"], #topicForm #topic { flex: 1 1 220px; width: auto; }
+#topicForm button, #topicForm label.button { flex: none; }
+#formNote { grid-column: 1 / -1; color: var(--muted); font-size: 14px; min-height: 1.4em; margin-top: -6px; }
+#formNote.error { color: var(--danger); }
+
+/* ---------- Players ---------- */
+
+#classRows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+#classRows li { display: flex; align-items: center; gap: 14px; padding: 8px 12px; border-radius: 12px; background: var(--panel-2); min-width: 0; }
+#classRows li.gone { opacity: 0.45; }
+#classRows li.empty { color: var(--muted); background: none; border: 1px dashed var(--line); }
+#classRows .who { display: flex; align-items: center; gap: 8px; width: 210px; flex: none; min-width: 0; }
+#classRows .name { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#classRows .now { display: grid; flex: 1; min-width: 0; }
+#classRows .ask { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#classRows .key { color: var(--accent); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#classRows .idle { color: var(--muted); }
+#classRows .mark { width: 96px; flex: none; text-align: right; font-weight: 800; color: var(--muted); }
+#classRows .mark.good { color: var(--accent); }
+#classRows .mark.bad { color: var(--danger); }
+#classRows .score { width: 48px; flex: none; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ---------- Questions ---------- */
+
+#columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+#columns ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.card { background: var(--panel-2); border-radius: 12px; padding: 12px 14px; animation: arrive 0.35s ease-out backwards; }
+@keyframes arrive { from { opacity: 0; transform: translateY(8px); } }
+.card .subtopic { font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.card .ask { font-weight: 700; margin: 2px 0 8px; overflow-wrap: anywhere; }
+.card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 14px; color: var(--muted); }
+.card ul li { display: flex; gap: 8px; padding: 3px 8px; border-radius: 8px; overflow-wrap: anywhere; }
+.card ul li.right { background: rgba(185, 238, 79, 0.14); color: var(--accent); font-weight: 700; }
+.card .letter { font-weight: 800; flex: none; }
+.card.ghost { height: 132px; animation: pulse 1.2s ease-in-out infinite; }
+
+@media (max-width: 900px) {
+  #gemini, #columns { grid-template-columns: minmax(0, 1fr); }
+  #classRows .who { width: 130px; }
+  .private { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .card.ghost, #steps li.now::before { animation: none; }
+}

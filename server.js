@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
-import { geminiReady, writeFeedback, writeQuestions } from './gemini.js';
+import { geminiModel, geminiReady, writeFeedback, writeQuestions } from './gemini.js';
 import { carTuning, CAR_TYPES } from './shared/cars.js';
 import { buildProps, PROP_KINDS } from './shared/props.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
@@ -50,6 +50,8 @@ const LEVEL_NAMES = [null, 'Easy', 'Medium', 'Hard'];
 const LEVEL_WEIGHT = [0, 0.7, 1, 1.4]; // a harder question cleans more of the map and boosts for longer
 const BOT_RIGHT_CHANCE = [0, 0.75, 0.55, 0.35]; // by level
 
+const HEARTBEAT_MS = 1500;
+const MAX_PDF_BYTES = 12 * 1024 * 1024; // Gemini takes about 20 MB per request, and the file grows by a third on the way
 const BOT_NAMES = ['Robo Rita', 'Tin Tom', 'Bolt', 'Gizmo', 'Sparky', 'Nutty'];
 const RACING = new Set(['countdown', 'race', 'question-countdown', 'question', 'reveal']);
 
@@ -67,19 +69,27 @@ const TUNING = CAR_TYPES.map((type) => carTuning(CARS.types[type].stats));
 const BACKUP = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/questions.json'), 'utf8'))
   .filter((q) => q.question && q.choices.length === 4 && q.choices.every(Boolean) && [0, 1, 2, 3].includes(q.correct) && [1, 2, 3].includes(q.level));
 
-// A bank is a set of questions for one topic, sorted by level.
-const makeBank = (topic, source, questions) => ({
-  topic, source, count: questions.length,
+// A bank is a set of questions for one topic (or one PDF), sorted by level. `made` says how
+// it came to be, for the teacher's screen.
+const makeBank = (topic, source, questions, made = {}) => ({
+  topic, source, count: questions.length, made, questions,
   levels: [null, 1, 2, 3].map((level) => (level ? questions.filter((q) => q.level === level) : null)),
 });
 const backupBank = makeBank(DEFAULT_TOPIC, 'backup', BACKUP);
-const banks = new Map(); // topic -> a bank Gemini has already written, so it is asked only once
-const writing = new Map(); // topic -> the request that is writing it right now, shared by every room that wants it
-function writeBank(topic) {
-  const key = topic.toLowerCase();
+const banks = new Map(); // key -> a bank Gemini has already written, so it is asked only once
+const writing = new Map(); // key -> the request that is writing it right now, shared by every room that wants it
+
+// A typed topic is its own key. An uploaded PDF is known by its contents, so two files with
+// the same name do not get mixed up.
+const bankKey = (room) => (room.pdf?.topic === room.topic ? room.pdf.key : room.topic.toLowerCase());
+
+function writeBank(key, topic, pdf) {
   if (!writing.has(key)) {
-    writing.set(key, writeQuestions(topic)
-      .then((questions) => banks.set(key, makeBank(topic, 'gemini', questions)))
+    const started = Date.now();
+    writing.set(key, writeQuestions(topic, 10, pdf)
+      .then((questions) => banks.set(key, makeBank(topic, 'gemini', questions, {
+        model: geminiModel(), seconds: Math.round((Date.now() - started) / 100) / 10, from: pdf ? 'pdf' : 'topic',
+      })))
       .finally(() => writing.delete(key)));
   }
   return writing.get(key);
@@ -95,7 +105,8 @@ function useBank(room, bank) {
 // and if it fails, the room plays with the backup questions. Safe to call again and again.
 function prepareBank(room) {
   const topic = room.topic;
-  const cached = banks.get(topic.toLowerCase());
+  const key = bankKey(room);
+  const cached = banks.get(key);
   if (cached || !geminiReady()) {
     useBank(room, cached ?? backupBank);
     room.bankNote = cached ? '' : 'No Gemini key, so the built-in environment questions are used.';
@@ -106,23 +117,60 @@ function prepareBank(room) {
   useBank(room, backupBank);
   room.bankNote = '';
   room.writing = true;
-  writeBank(topic).then(() => {
+  room.writingSince = Date.now();
+  writeBank(key, topic, key === room.pdf?.key ? room.pdf.data : null).then(() => {
     if (room.topic !== topic) return; // the host has moved on to another topic
     room.writing = false;
     if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
-    useBank(room, banks.get(topic.toLowerCase()));
+    useBank(room, banks.get(key));
   }).catch((error) => {
     console.log(`Gemini could not write questions: ${error.message}`);
     if (room.topic !== topic) return;
     room.writing = false;
-    room.bankNote = 'Gemini could not be reached, so the built-in environment questions are used.';
+    room.bankNote = 'Gemini could not write the questions, so the built-in environment questions are used.';
   }).finally(() => sendState(room));
 }
 
 // ---------- HTTP ----------
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg' };
-const PAGES = { '/': '/public/index.html', '/host': '/public/host.html', '/play': '/public/play.html' };
+const PAGES = { '/': '/public/index.html', '/host': '/public/host.html', '/play': '/public/play.html', '/teacher': '/public/teacher.html' };
+
+// The host uploads a PDF and Gemini writes the questions from it. Only someone with the room's
+// host key may do this.
+async function receivePdf(request, response) {
+  const header = (name) => {
+    try {
+      return decodeURIComponent(String(request.headers[name] ?? ''));
+    } catch {
+      return '';
+    }
+  };
+  const reply = (status, message) => {
+    response.writeHead(status, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify(status === 200 ? { ok: true } : { error: message }));
+  };
+  const room = rooms.get(header('x-room'));
+  if (!room || room.hostKey !== header('x-key')) return reply(403, 'This is not your game.');
+  if (!geminiReady()) return reply(400, 'There is no Gemini key on the server, so it cannot read a PDF.');
+  if (RACING.has(room.phase)) return reply(409, 'Wait for the race to end.');
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > MAX_PDF_BYTES) return reply(413, 'That file is too big. The limit is 12 MB.');
+    chunks.push(chunk);
+  }
+  const data = Buffer.concat(chunks);
+  if (data.subarray(0, 5).toString('latin1') !== '%PDF-') return reply(400, 'That is not a PDF file.');
+  const name = header('x-name').replace(/\.pdf$/i, '').replace(/[^\p{L}\p{N} ._()-]/gu, '').trim().slice(0, 40) || 'document';
+  room.pdf = { topic: `PDF: ${name}`, key: `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`, data };
+  room.topic = room.pdf.topic;
+  room.writing = false;
+  prepareBank(room);
+  sendState(room);
+  reply(200);
+}
 
 function lanUrls() {
   return Object.values(os.networkInterfaces())
@@ -133,6 +181,7 @@ function lanUrls() {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  if (url.pathname === '/pdf' && request.method === 'POST') return receivePdf(request, response);
   if (url.pathname === '/info') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ lan: lanUrls() }));
@@ -179,7 +228,7 @@ function createRoom() {
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
     topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false,
-    lastWorld: null, props: [], tick: 0, lastActive: Date.now(),
+    lastWorld: null, props: [], watchers: new Set(), pdf: null, writingSince: 0, tick: 0, lastActive: Date.now(),
   };
   rooms.set(code, room);
   return room;
@@ -194,6 +243,17 @@ function broadcast(room, message) {
   for (const socket of [room.host, ...room.players.map((player) => player.socket)]) {
     if (socket && socket.readyState === 1) socket.send(data);
   }
+}
+
+// The full list of questions with the right answers. Only teacher screens get this.
+function sendBank(room, socket) {
+  const { topic, source, made, questions } = room.bank;
+  send(socket, {
+    t: 'bank', topic, source, made, writing: room.writing, writingFor: room.writing ? Date.now() - room.writingSince : 0, wanted: room.topic,
+    questions: questions.map(({ question, choices, correct, level, subtopic }) => ({ question, choices, correct, level, subtopic })),
+  });
+  socket.sawBank = room.bank;
+  socket.sawWriting = room.writing;
 }
 
 function stateMessage(room) {
@@ -246,7 +306,15 @@ function snapshotMessage(room, moved = []) {
   };
 }
 
-const sendState = (room) => broadcast(room, stateMessage(room));
+function sendState(room) {
+  const message = stateMessage(room);
+  broadcast(room, message);
+  // Teacher screens get the state too, and the questions again whenever they have changed.
+  for (const socket of room.watchers) {
+    send(socket, message);
+    if (socket.sawBank !== room.bank || socket.sawWriting !== room.writing) sendBank(room, socket);
+  }
+}
 const sendTrack = (room, socket) => {
   const { seed, world, width, points, checkpoints } = room.track;
   const message = { t: 'track', track: { seed, world, width, points, checkpoints } };
@@ -661,6 +729,8 @@ function stepRoom(room, now) {
     }
     return;
   }
+  // A safety net: a question never lasts longer than its clock, whatever else goes wrong.
+  if (room.question && now > room.question.endsAt + REVEAL_MS + 3000) return resumeRace(room);
   if (room.phase === 'question-countdown') {
     if (now >= room.question.readyAt) {
       room.phase = 'question';
@@ -704,9 +774,30 @@ setInterval(() => {
   last = now;
   while (owed >= TICK) {
     owed -= TICK;
-    for (const room of rooms.values()) stepRoom(room, now);
+    for (const room of rooms.values()) {
+      try {
+        stepRoom(room, now);
+      } catch (error) {
+        rescue(room, error);
+      }
+    }
   }
 }, 1000 / 60);
+
+// A mistake in one room must never stop the server or leave a race stuck. Say what happened
+// in the log, and get the room moving again.
+function rescue(room, error) {
+  console.error(`Room ${room.code} hit an error in "${room.phase}":`, error);
+  try {
+    if (room.phase === 'question-countdown' || room.phase === 'question' || room.phase === 'reveal') resumeRace(room);
+    else if (RACING.has(room.phase)) finishRace(room);
+  } catch (second) {
+    console.error(`Room ${room.code} could not be rescued and was closed:`, second);
+    rooms.delete(room.code);
+  }
+}
+process.on('uncaughtException', (error) => console.error('Unexpected error (the server keeps running):', error));
+process.on('unhandledRejection', (error) => console.error('Unexpected error (the server keeps running):', error));
 
 // Housekeeping: drop players who left the lobby, and rooms nobody uses.
 setInterval(() => {
@@ -746,6 +837,7 @@ const hostActions = {
   topic(room, message) {
     if (room.phase !== 'lobby' && room.phase !== 'draw') return;
     room.topic = String(message.topic ?? '').replace(/[^\p{L}\p{N} ,.'&()-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULT_TOPIC;
+    room.pdf = null;
     room.writing = false;
     prepareBank(room);
     sendState(room);
@@ -780,7 +872,7 @@ const hostActions = {
     playersChanged(room);
   },
   start(room) {
-    if (room.phase !== 'lobby' || !room.players.length) return;
+    if (room.phase !== 'lobby' || !room.players.length || room.writing) return; // the race waits for Gemini
     prepareBank(room); // picks up Gemini's questions if they arrived since the lobby opened
     placeOnGrid(room);
     // A question every 20 seconds of driving, or more often in a short race, so that every race
@@ -816,6 +908,20 @@ function onHost(socket, message) {
   if (room.track) send(socket, propsMessage(room));
   send(socket, stateMessage(room));
   if (room.track) send(socket, snapshotMessage(room));
+}
+
+// The teacher's screen: it shows the questions and the answers, so it needs the host key.
+function onWatch(socket, message) {
+  const room = rooms.get(String(message.code ?? ''));
+  if (!room || room.hostKey !== message.key) {
+    send(socket, { t: 'error', reason: 'This screen only works from the host\'s own link.' });
+    return;
+  }
+  socket.room = room;
+  socket.isWatcher = true;
+  room.watchers.add(socket);
+  send(socket, stateMessage(room));
+  sendBank(room, socket);
 }
 
 function onJoin(socket, message) {
@@ -878,10 +984,13 @@ wss.on('connection', (socket) => {
     }
     if (!message || typeof message.t !== 'string') return;
     if (message.t === 'host') return onHost(socket, message);
+    if (message.t === 'watch') return onWatch(socket, message);
     if (message.t === 'join') return onJoin(socket, message);
     const { room, player } = socket;
     if (!room) return;
-    if (socket.isHost) {
+    if (socket.isWatcher) {
+      if (message.t === 'topic') hostActions.topic(room, message); // the teacher may set the topic from there too
+    } else if (socket.isHost) {
       if (Object.hasOwn(hostActions, message.t)) hostActions[message.t](room, message);
     } else if (player) {
       onPlayer(room, player, message);
@@ -890,6 +999,7 @@ wss.on('connection', (socket) => {
   socket.on('close', () => {
     const { room, player } = socket;
     if (!room) return;
+    room.watchers.delete(socket);
     if (socket.isHost && room.host === socket) room.host = null;
     if (player && player.socket === socket) {
       player.socket = null;
@@ -900,6 +1010,12 @@ wss.on('connection', (socket) => {
     }
   });
 });
+
+// A small message every second and a half. A screen that hears nothing for a few seconds knows
+// its connection has died (phones often switch Wi-Fi without noticing) and connects again.
+setInterval(() => {
+  for (const socket of wss.clients) if (socket.readyState === 1) socket.send('{"t":"hb"}');
+}, HEARTBEAT_MS);
 
 // Pings keep phone connections open through proxies and spot dead ones.
 setInterval(() => {
@@ -915,7 +1031,7 @@ setInterval(() => {
 
 // Have the default questions ready before anyone joins, so the first race does not wait.
 if (geminiReady()) {
-  writeBank(DEFAULT_TOPIC)
+  writeBank(DEFAULT_TOPIC.toLowerCase(), DEFAULT_TOPIC, null)
     .then(() => console.log(`Gemini wrote ${banks.get(DEFAULT_TOPIC.toLowerCase()).count} questions about "${DEFAULT_TOPIC}".`))
     .catch((error) => console.log(`Gemini could not write the first questions: ${error.message}`));
 }

@@ -269,3 +269,26 @@ input {
 #results .note { font-size: 14px; font-weight: 400; color: var(--muted); }
 #results li { font-size: 20px; }
 #myNote { max-width: 22em; font-weight: 700; }
+
+/* Shown by connect() in render.js while the connection to the server is down. */
+#offline {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 50;
+  padding: 8px 16px; border-radius: 999px; background: #c8452f; color: #fff;
+  font-weight: 700; font-size: 14px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* The PDF button is a label around a hidden file input, made to look like the other buttons. */
+label.button {
+  display: block; text-align: center; font-weight: 700; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+}
+label.button:hover { border-color: var(--muted); }
+label.button.disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+#sourceRow > * { padding: 8px 10px; font-size: 14px; }
+#bankNote.error { color: var(--danger); }
+#bankNote.busy { color: var(--text); }
+#bankNote.busy::before {
+  content: ""; display: inline-block; width: 0.8em; height: 0.8em; margin-right: 8px; vertical-align: -1px;
+  border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
