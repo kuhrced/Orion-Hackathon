@@ -2,7 +2,8 @@
 // answer the questions that stop the race.
 import { CAR_TYPES, STAT_LABELS } from '/shared/cars.js';
 import { prepareTrack } from '/shared/track.js';
-import { carIcon, connect, createEffects, createLife, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
+import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
+import { mixColor } from '/worlds.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('view');
@@ -36,8 +37,11 @@ let pending = null; // join request waiting for an answer
 let state = null;
 let track = null;
 let tiles = null;
+let scene = null;
 let life = null; // the moving layer: smoke, birds, river
 let lastFrame = 0;
+let slowFrames = 0; // rises when frames take too long
+let lite = false; // a struggling phone drops the small decorations and keeps the race smooth
 let sheet = null;
 let steer = 0;
 let countdownEnd = 0;
@@ -47,12 +51,22 @@ let retryTimer = 0;
 let carInfo = null; // shared/cars.json, once it has loaded
 let myChoice = null; // what this phone picked for the question on screen
 let choiceFor = 0; // the question number that pick belongs to
+let answersOpenAt = 0; // answers stay locked for a moment, so a steering tap cannot pick one
+let lockTimer = 0;
 const held = { left: false, right: false };
-const snapshots = createSnapshots();
+const snapshots = createSnapshots(100); // a little more patience than the big screen: phones are on Wi-Fi
 const effects = createEffects();
+const props = createProps(); // crates, cones and so on, standing on the road
 
 $('codeInput').value = roomInUrl;
 $('nameInput').value = store.get('localStorage', 'race-name') || `${pick(FIRST)} ${pick(SECOND)}`;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
 // ---------- Screens ----------
 
@@ -96,9 +110,12 @@ function showCarCard(type) {
   }));
 }
 
+const LEVELS = [null, 'Easy', 'Medium', 'Hard'];
+
+// Every player has their own question, at their own level.
 function showQuiz(mine) {
   const { question, reveal, phase } = state;
-  const asking = phase === 'question' || phase === 'reveal';
+  const asking = (phase === 'question' || phase === 'reveal') && !!mine.q;
   $('quiz').hidden = !asking;
   if (!asking || !question) return;
   if (choiceFor !== question.number) {
@@ -107,22 +124,26 @@ function showQuiz(mine) {
     releaseAll();
   }
   const picked = reveal ? mine.answer ?? myChoice : myChoice;
-  $('quizNumber').textContent = `Question ${question.number}`;
-  $('quizText').textContent = question.text;
-  let note = picked === null ? 'Pick one' : 'Answer sent';
-  if (reveal) note = picked === null ? 'Too slow!' : picked === reveal.correct ? 'Right! Speed boost' : 'Wrong';
+  const locked = !reveal && performance.now() < answersOpenAt;
+  const correct = reveal && picked !== null && picked === mine.right;
+  $('quizNumber').replaceChildren(`Question ${question.number} `, element('span', `level l${mine.q.level}`, LEVELS[mine.q.level]));
+  $('quizText').textContent = mine.q.text;
+  let note = picked !== null ? 'Answer sent' : locked ? 'Read the question…' : 'Pick one';
+  // After the answer, say which level the next question will be: up after a right one.
+  if (reveal) note = `${picked === null ? 'Too slow!' : correct ? 'Right! Speed boost.' : 'Wrong.'} Next: ${LEVELS[mine.level].toLowerCase()}`;
   $('quizNote').textContent = note;
-  $('quizNote').className = reveal ? (picked === reveal.correct ? 'good' : 'bad') : '';
-  $('quizChoices').replaceChildren(...question.choices.map((choice, index) => {
+  $('quizNote').className = reveal ? (correct ? 'good' : 'bad') : '';
+  $('quizChoices').replaceChildren(...mine.q.choices.map((choice, index) => {
     const button = element('button', `choice c${index}`);
     button.type = 'button';
-    button.disabled = picked !== null || !!reveal;
+    button.disabled = picked !== null || !!reveal || locked;
+    if (locked) button.classList.add('locked');
     if (picked === index) button.classList.add('picked');
-    if (reveal) button.classList.add(index === reveal.correct ? 'right' : 'dim');
+    if (reveal) button.classList.add(index === mine.right ? 'right' : 'dim');
     button.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
     // pointerdown, not click: the buttons are rebuilt whenever someone else answers.
     button.addEventListener('pointerdown', () => {
-      if (myChoice !== null || state.phase !== 'question') return;
+      if (myChoice !== null || state.phase !== 'question' || performance.now() < answersOpenAt) return;
       myChoice = index;
       send({ t: 'answer', choice: index });
       showQuiz(mine);
@@ -136,7 +157,8 @@ function showResults() {
   const result = results.find((entry) => entry.id === me.id);
   const winner = results.find((entry) => entry.id === summary?.realWinner);
   $('myPlace').textContent = ordinal(result.place);
-  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right. The map is ${Math.round(summary.green * 100)}% green.`;
+  $('myScore').textContent = `You got ${result.correct} of ${summary.questions} questions right and finished on ${LEVELS[result.level].toLowerCase()}. The map is ${Math.round(summary.green * 100)}% clean.`;
+  $('myNote').textContent = result.note ?? '';
   $('doneWinner').textContent = winner ? (winner.id === me.id ? 'You are the real winner!' : `Real winner: ${winner.name}`) : '';
   $('doneList').replaceChildren(...results.map((entry) => {
     const row = element('li', entry.id === me.id ? 'me' : '');
@@ -203,7 +225,7 @@ function frame(now) {
 
   if (state.phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // sharp enough, and far fewer pixels to fill than 2 or 3
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
@@ -218,7 +240,7 @@ function frame(now) {
   const zoom = (height >= width ? Math.max(width / 640, height / 1100) : height / 620) * dpr;
   const ctx = canvas.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#6f6c66';
+  ctx.fillStyle = mixColor(scene.theme.ground[0], scene.theme.ground[1], state.green); // shows where a tile is not painted yet
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.translate(canvas.width / 2, canvas.height * 0.6);
   ctx.rotate(-mine.a - Math.PI / 2);
@@ -242,8 +264,11 @@ function frame(now) {
   const pixel = dpr / zoom; // world units per screen pixel
   const dt = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
-  life.ground(ctx, state.green, now / 1000, region, pixel);
-  effects.update(cars, { dt, now, green: state.green, racing, length: CAR_LENGTH });
+  slowFrames = slowFrames * 0.97 + (dt > 0.034 ? 0.03 : 0);
+  if (slowFrames > 0.6) lite = true;
+  life.ground(ctx, state.green, now / 1000, region, pixel, lite);
+  effects.update(cars, { dt, now, green: state.green, racing, length: CAR_LENGTH, spray: scene.theme.spray });
+  props.draw(ctx, region);
   effects.draw(ctx, now);
   const labels = [];
   for (const player of state.players) {
@@ -254,7 +279,7 @@ function frame(now) {
   }
   const self = state.players.find((player) => player.id === me.id);
   if (self) drawCar(ctx, sheet, self.color, self.type, mine.x, mine.y, mine.a, undefined, mine.boost && racing);
-  life.sky(ctx, state.green, now / 1000, region, pixel);
+  life.sky(ctx, state.green, now / 1000, region, pixel, lite);
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.font = '700 13px system-ui, sans-serif';
@@ -320,18 +345,35 @@ const send = connect({
       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
       if (message.phase === 'question-countdown') questionEnd = now + message.question.readyIn;
-      if (message.phase === 'question') questionEnd = now + message.question.endsIn;
+      if (message.phase === 'question') {
+        questionEnd = now + message.question.endsIn;
+        answersOpenAt = now + message.question.lockedFor;
+        clearTimeout(lockTimer);
+        if (message.question.lockedFor > 0) lockTimer = setTimeout(showScreen, message.question.lockedFor + 30);
+      }
       if (message.phase === 'draw') track = tiles = life = null;
       state = message;
       showScreen();
+      // An answer that got lost on the way (the connection dropped just then) is sent again.
+      const mine = message.players.find((player) => player.id === me?.id);
+      if (message.phase === 'question' && mine && !mine.answered && myChoice !== null && choiceFor === message.question.number && now >= answersOpenAt) {
+        send({ t: 'answer', choice: myChoice });
+      }
     } else if (message.t === 'track') {
       track = prepareTrack(message.track);
-      const scene = createScene(track);
+      scene = createScene(track);
       tiles = createTiles(scene);
       life = createLife(scene);
+      props.load(track);
       effects.clear();
     } else if (message.t === 's') {
       snapshots.push(message);
+      props.move(message.props);
+    } else if (message.t === 'props') {
+      props.reset(message.props);
+    } else if (message.t === 'break') {
+      const what = message.limb ? props.loseLimb(message.id) : props.smash(message.id) && 'crate';
+      if (what) effects.shatter(what, message.x, message.y, message.vx, message.vy);
     }
   },
 });

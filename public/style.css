@@ -91,7 +91,7 @@ input {
   background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto;
 }
 #joinBox { display: grid; gap: 8px; justify-items: center; text-align: center; }
-#qr { width: 190px; height: 190px; border-radius: 12px; background: #fff; padding: 6px; }
+#qr { width: 160px; height: 160px; border-radius: 12px; background: #fff; padding: 6px; }
 #joinUrl { font-weight: 700; word-break: break-all; }
 #code { font-size: 54px; font-weight: 900; letter-spacing: 0.14em; line-height: 1; color: var(--accent); }
 .label { color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -109,9 +109,9 @@ input {
 
 #actions { display: grid; gap: 8px; margin-top: auto; }
 #actions .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-#lapsRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-#lapsRow div { display: flex; align-items: center; gap: 10px; font-weight: 700; }
-#lapsRow button { padding: 6px 14px; }
+.option { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.option div { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.option button { padding: 6px 14px; }
 #clock { font-size: 34px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 820px) {
@@ -122,7 +122,7 @@ input {
 
 /* ---------- Phone ---------- */
 
-.phone { overflow: hidden; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.phone { --pedal: min(27vw, 112px); overflow: hidden; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .phone .screen { position: fixed; inset: 0; display: none; }
 .phone[data-screen="join"] #join,
 .phone[data-screen="lobby"] #lobby,
@@ -170,12 +170,12 @@ input {
 #banner small { display: block; font-size: 22px; margin-top: 8px; }
 
 #pedals {
-  position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  padding: 0 12px max(12px, env(safe-area-inset-bottom)); height: 30%; min-height: 130px;
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
+  padding: 0 16px max(16px, env(safe-area-inset-bottom)); pointer-events: none;
 }
 #pedals button {
-  font-size: 56px; border-radius: 24px; border: 2px solid rgba(255, 255, 255, 0.5);
-  background: rgba(23, 25, 28, 0.42); color: #fff; touch-action: none;
+  pointer-events: auto; width: var(--pedal); height: var(--pedal); font-size: 40px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(23, 25, 28, 0.42); color: #fff; touch-action: none;
 }
 #pedals button.down { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
@@ -208,6 +208,7 @@ input {
 .choice.c3 { background: #c7a6f5; }
 .choice:disabled { opacity: 1; cursor: default; }
 .choice.picked { border-color: #fff; }
+.choice.locked { opacity: 0.45; }
 .choice.dim { opacity: 0.32; }
 .choice.right { background: var(--accent); border-color: #fff; }
 .choice.right .letter { background: var(--accent-ink); }
@@ -233,7 +234,8 @@ input {
 
 .phone .quiz {
   position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; gap: 12px;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  /* The space at the bottom is where the thumbs rest on the steering buttons: no answer there. */
+  padding: max(16px, env(safe-area-inset-top)) 16px calc(var(--pedal) + 44px);
   background: rgba(23, 25, 28, 0.93); overflow-y: auto; touch-action: manipulation;
 }
 .phone .quiz h2 { font-size: 21px; }
@@ -243,3 +245,50 @@ input {
 #score { font-size: 20px; color: var(--accent); }
 #myScore, #doneWinner { max-width: 22em; }
 #doneWinner { font-weight: 800; color: var(--accent); }
+
+/* ---------- Levels and personal questions ---------- */
+
+.level { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.72em; font-weight: 800; color: #14161a; vertical-align: middle; white-space: nowrap; }
+.level.l1 { background: #8fe0b0; }
+.level.l2 { background: #f6d55c; }
+.level.l3 { background: #f08a5d; }
+
+#quizRows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+#quizRows li { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; background: var(--panel-2); }
+#quizRows .ask { display: grid; min-width: 0; flex: 1; }
+#quizRows .name { font-weight: 800; font-size: 14px; color: var(--muted); }
+#quizRows .text { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#quizRows .answer { color: var(--accent); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#quizRows .mark { font-size: 22px; font-weight: 900; width: 1.2em; text-align: center; color: var(--muted); }
+#quizRows .mark.good { color: var(--accent); }
+#quizRows .mark.bad { color: var(--danger); }
+
+#topicRow input { width: 150px; padding: 6px 10px; font-size: 14px; }
+#bankNote { color: var(--muted); font-size: 13px; margin-top: -2px; }
+#results .who { display: grid; min-width: 0; }
+#results .note { font-size: 14px; font-weight: 400; color: var(--muted); }
+#results li { font-size: 20px; }
+#myNote { max-width: 22em; font-weight: 700; }
+
+/* Shown by connect() in render.js while the connection to the server is down. */
+#offline {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 50;
+  padding: 8px 16px; border-radius: 999px; background: #c8452f; color: #fff;
+  font-weight: 700; font-size: 14px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* The PDF button is a label around a hidden file input, made to look like the other buttons. */
+label.button {
+  display: block; text-align: center; font-weight: 700; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+}
+label.button:hover { border-color: var(--muted); }
+label.button.disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+#sourceRow > * { padding: 8px 10px; font-size: 14px; }
+#bankNote.error { color: var(--danger); }
+#bankNote.busy { color: var(--text); }
+#bankNote.busy::before {
+  content: ""; display: inline-block; width: 0.8em; height: 0.8em; margin-right: 8px; vertical-align: -1px;
+  border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -8,7 +8,9 @@
    "Air pollution decreases",
    "More soil is created"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 2,
@@ -19,7 +21,9 @@
    "A used tissue",
    "A clean aluminum can"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 3,
@@ -30,7 +34,9 @@
    "It will make the river colder",
    "It will quickly turn into drinking water"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 4,
@@ -41,7 +47,9 @@
    "Running half-empty laundry loads",
    "Switching off lights when they aren’t needed"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Energy"
  },
  {
   "id": 5,
@@ -52,7 +60,9 @@
    "Burying batteries in a garden",
    "Washing plastic in a river"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 6,
@@ -63,7 +73,9 @@
    "The number of plants",
    "Food waste sent to landfill"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 7,
@@ -74,7 +86,9 @@
    "Coal",
    "Wind"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Energy"
  },
  {
   "id": 8,
@@ -85,7 +99,9 @@
    "The town uses more gasoline per person",
    "Every road disappears"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Energy"
  },
  {
   "id": 9,
@@ -96,7 +112,9 @@
    "Neon",
    "Argon"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Climate and air"
  },
  {
   "id": 10,
@@ -107,7 +125,9 @@
    "More nesting places for all forest animals",
    "Habitat loss"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 11,
@@ -118,7 +138,9 @@
    "Leaving a hose running",
    "Washing a car every day with a running hose"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 12,
@@ -129,7 +151,9 @@
    "The lake turns into a forest",
    "The water becomes salt-free"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Water"
  },
  {
   "id": 13,
@@ -140,7 +164,9 @@
    "A clean cardboard box",
    "An empty metal food can"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 14,
@@ -151,7 +177,9 @@
    "No insects",
    "Local pollinators"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 15,
@@ -162,7 +190,9 @@
    "The variety of living things in an area",
    "The amount of plastic in a shop"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 16,
@@ -173,7 +203,9 @@
    "All wind",
    "The water cycle"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Water"
  },
  {
   "id": 17,
@@ -184,7 +216,9 @@
    "Removing every flowering plant",
    "Covering gardens with plastic"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 18,
@@ -195,7 +229,9 @@
    "Into waterways",
    "Into a solar panel"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 19,
@@ -206,7 +242,9 @@
    "Using a new plastic bag for every item",
    "Buying a refill for a reusable container"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 20,
@@ -217,7 +255,9 @@
    "You increase road traffic automatically",
    "You increase tailpipe emissions"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Energy"
  },
  {
   "id": 21,
@@ -228,7 +268,9 @@
    "Broken glass",
    "A used light bulb"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 22,
@@ -239,7 +281,9 @@
    "Wildlife may become tangled in it",
    "It helps birds build every nest safely"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 1,
+  "subtopic": "Wildlife"
  },
  {
   "id": 23,
@@ -250,7 +294,9 @@
    "Use fewer resources and create less waste",
    "Throw everything away"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 24,
@@ -261,7 +307,9 @@
    "It makes the chair disposable",
    "It uses more new furniture"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 25,
@@ -272,7 +320,9 @@
    "Providing habitat and taking in carbon dioxide as they grow",
    "Removing every pollutant from the air"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 26,
@@ -283,7 +333,9 @@
    "Turn into a native plant immediately",
    "Make every species thrive equally"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 3,
+  "subtopic": "Wildlife"
  },
  {
   "id": 27,
@@ -294,7 +346,9 @@
    "Throwing away food without checking it",
    "Leaving groceries unrefrigerated when they need chilling"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 28,
@@ -305,7 +359,9 @@
    "Helium",
    "Methane"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 3,
+  "subtopic": "Waste"
  },
  {
   "id": 29,
@@ -316,7 +372,9 @@
    "Leaving bare soil exposed on steep slopes",
    "Planting cover crops"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 30,
@@ -327,7 +385,9 @@
    "The water becomes clean automatically",
    "Fish no longer need oxygen"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 31,
@@ -338,7 +398,9 @@
    "A shaded garden",
    "Exhaust from burning fuel"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Climate and air"
  },
  {
   "id": 32,
@@ -349,7 +411,9 @@
    "Less oxygen everywhere",
    "Cooler local spaces and more habitat"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 33,
@@ -360,7 +424,9 @@
    "A plain cardboard box",
    "A clean paper bag"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 34,
@@ -371,7 +437,9 @@
    "They will grow into trees",
    "They will clean the water"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 35,
@@ -382,7 +450,9 @@
    "Carrying a refillable water bottle",
    "Throwing reusable bottles away"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 36,
@@ -393,7 +463,9 @@
    "Animals may be able to move between habitats more safely",
    "The forest stops growing"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 37,
@@ -404,7 +476,9 @@
    "Using banned nets",
    "Following catch limits designed to maintain fish populations"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 3,
+  "subtopic": "Wildlife"
  },
  {
   "id": 38,
@@ -415,7 +489,9 @@
    "Corals turn into rocks overnight",
    "The ocean stops having waves"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 3,
+  "subtopic": "Wildlife"
  },
  {
   "id": 39,
@@ -426,7 +502,9 @@
    "The amount of carbon in a pencil",
    "A mark made by shoes in soil"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Climate and air"
  },
  {
   "id": 40,
@@ -437,7 +515,9 @@
    "It cannot be repaired",
    "It creates no environmental impact at all"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Energy"
  },
  {
   "id": 41,
@@ -448,7 +528,9 @@
    "A coal-fired generator",
    "A diesel engine"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Energy"
  },
  {
   "id": 42,
@@ -459,7 +541,9 @@
    "Cleaning batteries",
    "Watering plants"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 43,
@@ -470,7 +554,9 @@
    "A plastic fork",
    "Vegetable peels"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 44,
@@ -481,7 +567,9 @@
    "It is guaranteed to be recycled",
    "It turns into clean water"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 45,
@@ -492,7 +580,9 @@
    "Pouring paint into a roadside drain",
    "Washing rubbish into a gutter"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 46,
@@ -503,7 +593,9 @@
    "It increases water use by design",
    "It may reduce water use during showers"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 47,
@@ -514,7 +606,9 @@
    "Living things interacting with one another and their environment",
    "A single animal in a cage"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 48,
@@ -525,7 +619,9 @@
    "Other populations may be affected",
    "Every species becomes stronger"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 49,
@@ -536,7 +632,9 @@
    "Sharks",
    "Bees"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Wildlife"
  },
  {
   "id": 50,
@@ -547,7 +645,9 @@
    "All animals become healthier",
    "The ecosystem becomes balanced automatically"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 51,
@@ -558,7 +658,9 @@
    "Heating an empty home with the doors open",
    "Leaving windows open all winter"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Energy"
  },
  {
   "id": 52,
@@ -569,7 +671,9 @@
    "It may reduce disposable packaging waste",
    "It prevents students from eating"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 53,
@@ -580,7 +684,9 @@
    "Bury it in a garden",
    "Pour it into a storm drain"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Waste"
  },
  {
   "id": 54,
@@ -591,7 +697,9 @@
    "It causes every plant to need more watering",
    "It must eliminate all insects"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 55,
@@ -602,7 +710,9 @@
    "Planting native shrubs",
    "Building over a natural wetland"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 56,
@@ -613,7 +723,9 @@
    "They increase damage to every habitat",
    "They can reduce trampling of nearby plants and soil"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 57,
@@ -624,7 +736,9 @@
    "They disappear instantly anywhere",
    "They break down under suitable conditions, which can vary"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 3,
+  "subtopic": "Land and forests"
  },
  {
   "id": 58,
@@ -635,7 +749,9 @@
    "It may not break down quickly or safely there",
    "It will vanish immediately"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 3,
+  "subtopic": "Waste"
  },
  {
   "id": 59,
@@ -646,7 +762,9 @@
    "Wash full loads when practical",
    "Wash one item at a time"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 1,
+  "subtopic": "Energy"
  },
  {
   "id": 60,
@@ -657,7 +775,9 @@
    "It creates new drinking water",
    "It reduces water use"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 61,
@@ -668,7 +788,9 @@
    "A resource replenished naturally on a human time scale when managed appropriately",
    "A resource that cannot be reused"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 3,
+  "subtopic": "Land and forests"
  },
  {
   "id": 62,
@@ -679,7 +801,9 @@
    "More people may have the option to cycle for some trips",
    "Cycling becomes impossible"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 1,
+  "subtopic": "Land and forests"
  },
  {
   "id": 63,
@@ -690,7 +814,9 @@
    "Neon",
    "Helium"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Climate and air"
  },
  {
   "id": 64,
@@ -701,7 +827,9 @@
    "The area may become hotter and lose habitat",
    "It increases shade"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Climate and air"
  },
  {
   "id": 65,
@@ -712,7 +840,9 @@
    "Printing every draft several times",
    "Using a new sheet for every short note"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 66,
@@ -723,7 +853,9 @@
    "It must be thrown away sooner",
    "The product may stay useful longer"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 67,
@@ -734,7 +866,9 @@
    "A tiny drop of oil",
    "A very small piece of plastic"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 68,
@@ -745,7 +879,9 @@
    "The fibers turn into clean air",
    "The washing machine stops using water"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 3,
+  "subtopic": "Land and forests"
  },
  {
   "id": 69,
@@ -756,7 +892,9 @@
    "Throwing waste from a car",
    "Taking rubbish to a bin or carrying it home"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 70,
@@ -767,7 +905,9 @@
    "It makes litter harmless",
    "It can remove waste before more of it reaches the water"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 71,
@@ -778,7 +918,9 @@
    "They make all water unsafe",
    "They produce no habitat"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 72,
@@ -789,7 +931,9 @@
    "It turns salt water into oil",
    "It can improve water quality, though it has limits"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 3,
+  "subtopic": "Water"
  },
  {
   "id": 73,
@@ -800,7 +944,9 @@
    "Providing safe, clean water for pets and following wildlife guidance",
    "Disturbing wild animals at water sources"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 74,
@@ -811,7 +957,9 @@
    "It automatically improves biodiversity",
    "It may disturb or harm local wildlife"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 75,
@@ -822,7 +970,9 @@
    "A shaded tree",
    "A closed notebook"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 1,
+  "subtopic": "Climate and air"
  },
  {
   "id": 76,
@@ -833,7 +983,9 @@
    "Every animal becomes silent forever",
    "Wildlife becomes immune to all disturbance"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 77,
@@ -844,7 +996,9 @@
    "Releasing aquarium plants into a lake",
    "Moving firewood long distances without checking rules"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 3,
+  "subtopic": "Wildlife"
  },
  {
   "id": 78,
@@ -855,7 +1009,9 @@
    "It could become invasive or spread disease",
    "It will always improve the pond"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 79,
@@ -866,7 +1022,9 @@
    "Coral reefs become forests",
    "Fish populations always grow"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 80,
@@ -877,7 +1035,9 @@
    "It guarantees no fish will ever be caught",
    "It increases illegal fishing by definition"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Wildlife"
  },
  {
   "id": 81,
@@ -888,7 +1048,9 @@
    "Replacing working items every week",
    "Buying disposable versions of reusable products"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 82,
@@ -899,7 +1061,9 @@
    "Food becomes unsafe",
    "All food waste disappears"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 1,
+  "subtopic": "Land and forests"
  },
  {
   "id": 83,
@@ -910,7 +1074,9 @@
    "Paving every open area",
    "Removing all vegetation"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 3,
+  "subtopic": "Water"
  },
  {
   "id": 84,
@@ -921,7 +1087,9 @@
    "More water may run off quickly into drains",
    "The city becomes a wetland instantly"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 85,
@@ -932,7 +1100,9 @@
    "Using bright lights all night",
    "Removing every flower"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 86,
@@ -943,7 +1113,9 @@
    "It removes all insects",
    "Artificial light may disrupt some animals"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Wildlife"
  },
  {
   "id": 87,
@@ -954,7 +1126,9 @@
    "Setting fires for fun",
    "Wasting paper"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Land and forests"
  },
  {
   "id": 88,
@@ -965,7 +1139,9 @@
    "It may help maintain forest resources, depending on how it is managed",
    "It eliminates all climate impacts"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 3,
+  "subtopic": "Land and forests"
  },
  {
   "id": 89,
@@ -976,7 +1152,9 @@
    "Burning a jar",
    "Using a clean glass jar to store food"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 1,
+  "subtopic": "Waste"
  },
  {
   "id": 90,
@@ -987,7 +1165,9 @@
    "Bottles become unnecessary everywhere",
    "The school uses no water"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 1,
+  "subtopic": "Water"
  },
  {
   "id": 91,
@@ -998,7 +1178,9 @@
    "Dumping oil near a well",
    "Using and disposing of chemicals responsibly"
   ],
-  "correct": 3
+  "correct": 3,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 92,
@@ -1009,7 +1191,9 @@
    "They disappear instantly",
    "They turn into harmless fertilizer automatically"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Water"
  },
  {
   "id": 93,
@@ -1020,7 +1204,9 @@
    "Recycling can accept food and rubbish mixed together",
    "Recycling never requires sorting"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Waste"
  },
  {
   "id": 94,
@@ -1031,7 +1217,9 @@
    "It may not be accepted or successfully recycled",
    "It is guaranteed to become a new product"
   ],
-  "correct": 2
+  "correct": 2,
+  "level": 3,
+  "subtopic": "Waste"
  },
  {
   "id": 95,
@@ -1042,7 +1230,9 @@
    "Ignoring heat warnings",
    "Removing all trees"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Climate and air"
  },
  {
   "id": 96,
@@ -1053,7 +1243,9 @@
    "Temperatures must be lower than nearby parks",
    "Trees become unnecessary"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Climate and air"
  },
  {
   "id": 97,
@@ -1064,7 +1256,9 @@
    "Hand out single-use items without need",
    "Use extra packaging for every item"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 98,
@@ -1075,7 +1269,9 @@
    "Littering becomes impossible",
    "Bins no longer need collection"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 2,
+  "subtopic": "Waste"
  },
  {
   "id": 99,
@@ -1086,7 +1282,9 @@
    "They solve every environmental problem alone",
    "They only matter if someone else acts first"
   ],
-  "correct": 1
+  "correct": 1,
+  "level": 3,
+  "subtopic": "Land and forests"
  },
  {
   "id": 100,
@@ -1097,6 +1295,8 @@
    "Ignore leaks and litter",
    "Dump waste upstream"
   ],
-  "correct": 0
+  "correct": 0,
+  "level": 3,
+  "subtopic": "Water"
  }
 ]
