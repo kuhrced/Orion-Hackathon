@@ -1,8 +1,8 @@
 // Phone: join with a code, steer with two buttons while watching a close-up of your car, and
 // answer the questions that stop the race.
-import { CAR_TYPES, STAT_LABELS } from '/shared/cars.js';
+import { carTuning, glide, rollAhead, CAR_TYPES, STAT_LABELS, STEER_EASE, TURN } from '/shared/cars.js';
 import { prepareTrack } from '/shared/track.js';
-import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
+import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, createTiles, drawCar, drawGoal, loadCars, ordinal, CAR_LENGTH } from '/render.js';
 import { mixColor } from '/worlds.js';
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +47,7 @@ let sheet = null;
 let steer = 0;
 let countdownEnd = 0;
 let goUntil = 0;
+let goalUntil = 0; // team mode: until when the phone says that the goal is open
 let questionEnd = 0;
 let retryTimer = 0;
 let carInfo = null; // shared/cars.json, once it has loaded
@@ -55,7 +56,10 @@ let choiceFor = 0; // the question number that pick belongs to
 let answersOpenAt = 0; // answers stay locked for a moment, so a steering tap cannot pick one
 let lockTimer = 0;
 const held = { left: false, right: false };
-const snapshots = createSnapshots(100); // a little more patience than the big screen: phones are on Wi-Fi
+// The other cars are drawn 150 ms in the past. Wi-Fi often holds everything back for a tenth
+// of a second (measured: about twice a second), and with less patience the cars stop and jump
+// each time. My own car does not wait for this: see aheadOf() below.
+const snapshots = createSnapshots(150);
 const effects = createEffects();
 const props = createProps(); // crates, cones and so on, standing on the road
 
@@ -273,6 +277,42 @@ addEventListener('blur', releaseAll);
 
 // ---------- The close-up view ----------
 
+// ---------- My own car, without the wait ----------
+//
+// What the server sends is already old when it is drawn: it travelled here, and the picture is
+// blended a little in the past to stay smooth. For the other cars that does not matter. For my
+// own car it does: I press a button and the car turns a moment later, and on a far-away server
+// that moment is a quarter of a second. So my own car is drawn where it will be once the
+// server has heard my newest steering, worked out with the same numbers the server uses
+// (shared/cars.js). The server still decides where the car really is; this only draws ahead.
+const AHEAD_MAX = 400; // never look further ahead than this many ms
+const myInputs = []; // [race clock in ms, eased steering] for the last half second
+let raceClock = 0; // counts only while the race is on, like the server's own clock
+let eased = 0; // my steering, eased the way the server eases it
+let lead = 0; // 0 = where the server said, 1 = fully ahead; fades out when the car has finished
+const drawn = { x: NaN, y: NaN, a: 0 }; // where my car is on this screen
+
+function aheadOf(car, type, dt, racing) {
+  if (racing) {
+    raceClock += dt * 1000;
+    eased += (steer - eased) * Math.min(1, STEER_EASE * dt);
+    myInputs.push([raceClock, eased]);
+    while (myInputs.length > 2 && myInputs[1][0] < raceClock - AHEAD_MAX) myInputs.shift();
+  }
+  lead += ((car.done ? 0 : 1) - lead) * Math.min(1, 6 * dt);
+  // The picture is `delay` behind the newest news, and my steering needs one trip to the
+  // server and back before it shows in that news.
+  const wait = Math.min(AHEAD_MAX, snapshots.delay + (send.latency() ?? 60)) * lead;
+  const stats = carInfo?.types?.[CAR_TYPES[type]]?.stats;
+  const turn = TURN * (stats ? carTuning(stats).turn : 1) * Math.min(1, car.v / 160);
+  const target = rollAhead(car, myInputs, raceClock - wait, turn);
+  if (![target.x, target.y, target.a].every(Number.isFinite)) return car;
+  // While the race is on, the car on this screen drives by itself and is only steered towards
+  // that target, so news that comes late does not make it stutter.
+  glide(drawn, target, racing ? eased * lead : 0, turn, racing ? car.v * lead : 0, dt);
+  return { ...car, x: drawn.x, y: drawn.y, a: drawn.a };
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   const screen = document.body.dataset.screen;
@@ -280,16 +320,24 @@ function frame(now) {
 
   if (state.phase === 'question') $('quizTimer').style.width = `${Math.max(0, (questionEnd - now) / (state.question.seconds * 1000)) * 100}%`;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // sharp enough, and far fewer pixels to fill than 2 or 3
+  // Sharp enough, and far fewer pixels to fill than 2 or 3. A phone that cannot keep up gets
+  // a softer picture with less than half the pixels.
+  const dpr = Math.min(window.devicePixelRatio || 1, lite ? 1 : 1.5);
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
   }
-  const cars = snapshots.sample();
-  const mine = cars.get(me.id);
-  if (!mine || !width) return;
+  const racing = state.phase === 'race';
+  const dt = Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
+  const cars = snapshots.sample(racing);
+  const told = cars.get(me.id);
+  if (!told || !width) return;
+  const self = state.players.find((player) => player.id === me.id);
+  const mine = aheadOf(told, self?.type ?? 0, dt, racing);
+  cars.set(me.id, mine); // so the dust and skid marks are drawn under the car, not behind it
 
   // The camera turns with the car, so "left" on the phone is always the car's left.
   const zoom = (height >= width ? Math.max(width / 640, height / 1100) : height / 620) * dpr;
@@ -315,14 +363,12 @@ function frame(now) {
   };
   tiles.draw(ctx, 0, region);
 
-  const racing = state.phase === 'race';
   const pixel = dpr / zoom; // world units per screen pixel
-  const dt = Math.min(0.1, (now - lastFrame) / 1000);
-  lastFrame = now;
-  slowFrames = slowFrames * 0.97 + (dt > 0.034 ? 0.03 : 0);
+  slowFrames = slowFrames * 0.97 + (dt > 0.03 ? 0.03 : 0); // a steady 30 frames a second counts as slow too
   if (slowFrames > 0.6) lite = true;
   life.ground(ctx, 0, now / 1000, region, pixel, lite);
   effects.update(cars, { dt, now, green: 0, racing, length: CAR_LENGTH, spray: scene.theme.spray });
+  if (state.goalIndex != null && racing) drawGoal(ctx, track, state.goalIndex, now, pixel);
   props.draw(ctx, region);
   effects.draw(ctx, now);
   const labels = [];
@@ -332,7 +378,6 @@ function frame(now) {
     drawCar(ctx, sheet, player.color, player.type, car.x, car.y, car.a, undefined, car.boost && racing);
     labels.push([player.name, camera.transformPoint(new DOMPoint(car.x, car.y))]);
   }
-  const self = state.players.find((player) => player.id === me.id);
   if (self) drawCar(ctx, sheet, self.color, self.type, mine.x, mine.y, mine.a, undefined, mine.boost && racing);
   life.sky(ctx, 0, now / 1000, region, pixel, lite);
 
@@ -354,13 +399,16 @@ function frame(now) {
 
   const place = `${ordinal(mine.place)}<small>of ${state.players.length}</small>`;
   if ($('place').innerHTML !== place) $('place').innerHTML = place;
-  $('lap').textContent = `Lap ${mine.lap}/${state.laps}`;
+  // Team mode has no laps: the cars drive until the questions are done, then race to the goal.
+  $('lap').textContent = state.mode !== 'team' ? `Lap ${mine.lap}/${state.laps}`
+    : state.goalIndex != null ? 'Race to the goal!' : `Question ${Math.min(state.asked, state.goal)}/${state.goal}`;
 
   let text = '';
   if (state.phase === 'countdown') text = String(Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000))));
   else if (state.phase === 'question-countdown') text = `<small>Get ready</small>${Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))}`;
-  else if (now < goUntil) text = 'GO!';
   else if (mine.done && racing) text = `Finished!<small>${ordinal(mine.place)} place</small>`;
+  else if (now < goalUntil) text = 'GOAL!<small>The goal is open. Race to it!</small>';
+  else if (now < goUntil) text = 'GO!';
   else if (mine.boost && racing) text = '<small>Speed boost!</small>';
   if (banner.innerHTML !== text) banner.innerHTML = text;
 }
@@ -403,6 +451,7 @@ const send = connect({
     } else if (message.t === 'state') {
       const now = performance.now();
       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
+      if (message.goalIndex != null && state?.goalIndex == null && message.phase === 'race') goalUntil = now + 2600;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
       if (!RACING.includes(message.phase)) { // between races: the next race counts its questions from 1 again
         choiceFor = 0;

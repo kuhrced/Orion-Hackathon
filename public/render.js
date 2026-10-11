@@ -384,7 +384,7 @@ export function createEffects() {
           }
           if (!car.off && Math.abs(spin) > 1.5 && car.v > 230) {
             for (const side of [-1, 1]) {
-              if (marks.length > 520) marks.shift();
+              if (marks.length > 200) marks.shift();
               marks.push({ x: rearX - Math.sin(car.a) * side * length * 0.17, y: rearY + Math.cos(car.a) * side * length * 0.17, a: car.a, born: now, w: length * 0.2, h: length * 0.07 });
             }
           }
@@ -475,6 +475,44 @@ export function createEffects() {
 // Keeps the last few server updates and blends between them, so cars move smoothly even
 // though updates arrive only 30 times a second.
 //
+// The goal of a team race: a yellow chequered line across the road and a sign that says GOAL.
+// `pixel` is how many world units one screen pixel covers, so the sign can be read on any screen.
+export function drawGoal(ctx, track, index, now, pixel = 1) {
+  const { points } = track;
+  const width = track.width ?? 190;
+  const [x, y] = points[index % points.length];
+  const [nextX, nextY] = points[(index + 1) % points.length];
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(nextY - y, nextX - x));
+  const squares = 8;
+  const size = width / squares;
+  for (let row = 0; row < 2; row++) {
+    for (let k = 0; k < squares; k++) {
+      ctx.fillStyle = (row + k) % 2 ? '#ffd23f' : '#1c1c20';
+      ctx.fillRect(row * size - size, -width / 2 + k * size, size, size);
+    }
+  }
+  ctx.restore();
+  const tall = Math.max(64, 26 * pixel) * (1 + 0.08 * Math.sin(now / 160));
+  ctx.save();
+  ctx.translate(x, y - width / 2 - tall * 1.2);
+  ctx.font = `900 ${tall}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const wide = ctx.measureText('GOAL').width + tall * 0.6;
+  ctx.fillStyle = '#ffd23f';
+  ctx.beginPath();
+  ctx.roundRect(-wide / 2, -tall * 0.65, wide, tall * 1.3, tall * 0.25);
+  ctx.moveTo(-tall * 0.3, tall * 0.6);
+  ctx.lineTo(tall * 0.3, tall * 0.6);
+  ctx.lineTo(0, tall * 1.1);
+  ctx.fill();
+  ctx.fillStyle = '#1c1c20';
+  ctx.fillText('GOAL', 0, tall * 0.05);
+  ctx.restore();
+}
+
 // The blending follows the server's race clock (`time` in each update), not the moment an
 // update arrived. Over Wi-Fi, updates often arrive in bunches: nothing for a tenth of a second,
 // then three at once. Going by arrival time would make every car stop and jump; going by the
@@ -502,9 +540,13 @@ export function createSnapshots(delay = 80) {
       while (buffer.length > 20) buffer.shift();
     },
     latest: () => buffer.at(-1) ?? null,
-    sample() {
+    delay,
+    // `racing` is true while the cars are really moving. Then, if the next update is late, the
+    // cars roll on along their heading for a moment instead of stopping dead and jumping.
+    sample(racing = false) {
       if (!buffer.length) return new Map();
-      const when = performance.now() - offset - delay; // on the race clock
+      const now = performance.now();
+      const when = now - offset - delay; // on the race clock
       let older = buffer.at(-1);
       let newer = buffer.at(-1);
       // Walk back from the newest update to the two that the wanted moment lies between.
@@ -515,12 +557,21 @@ export function createSnapshots(delay = 80) {
       }
       const span = newer.time - older.time;
       const t = span > 0 ? Math.max(0, Math.min(1, (when - older.time) / span)) : 1;
+      // Only while updates were still arriving a moment ago: after a question the newest update
+      // is many seconds old, and rolling on from it would be wrong.
+      const last = buffer.at(-1);
+      const late = racing && now - last.at < 350 ? Math.min(250, Math.max(0, when - last.time)) / 1000 : 0;
       const out = new Map();
       for (const [id, to] of newer.cars) {
         const from = older.cars.get(id) ?? to;
         let turn = to.a - from.a;
         turn = ((((turn + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
-        out.set(id, { ...to, x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t, a: from.a + turn * t });
+        const a = from.a + turn * t;
+        out.set(id, {
+          ...to, a,
+          x: from.x + (to.x - from.x) * t + Math.cos(a) * to.v * late,
+          y: from.y + (to.y - from.y) * t + Math.sin(a) * to.v * late,
+        });
       }
       return out;
     },
@@ -537,6 +588,7 @@ export function connect({ onOpen, onMessage, onClose }) {
   let socket;
   let heard = 0;
   let wasOpen = false;
+  const trips = []; // the last few measured round trips to the server, in ms
   const banner = Object.assign(document.createElement('div'), { id: 'offline', hidden: true, textContent: 'Connection lost. Reconnecting…' });
   document.body.append(banner);
   const open = () => {
@@ -554,7 +606,13 @@ export function connect({ onOpen, onMessage, onClose }) {
       if (socket !== mine) return;
       heard = performance.now();
       const message = JSON.parse(event.data);
-      if (message.t !== 'hb') onMessage(message);
+      if (message.t === 'pong') {
+        const took = performance.now() - message.at;
+        if (took >= 0 && took < 2000) trips.push(took);
+        while (trips.length > 5) trips.shift();
+      } else if (message.t !== 'hb') {
+        onMessage(message);
+      }
     };
     mine.onclose = () => {
       if (socket !== mine) return; // an old connection that was already replaced
@@ -571,11 +629,19 @@ export function connect({ onOpen, onMessage, onClose }) {
     dead.onclose(); // do not wait for the browser to notice: that can take minutes
     dead.close();
   }, 1000);
-  return (message) => {
+  // Every two seconds a small message goes to the server and comes straight back.
+  setInterval(() => {
+    if (socket?.readyState === 1) socket.send(JSON.stringify({ t: 'ping', at: performance.now() }));
+  }, 2000);
+  const send = (message) => {
     if (socket?.readyState !== 1) return false;
     socket.send(JSON.stringify(message));
     return true;
   };
+  // How long a message takes to the server and back, in ms: the quickest of the last few
+  // trips. null until the first one has come back.
+  send.latency = () => (trips.length ? Math.min(...trips) : null);
+  return send;
 }
 
 export const ordinal = (place) => `${place}${['th', 'st', 'nd', 'rd'][place % 10 > 3 || Math.floor(place / 10) === 1 ? 0 : place % 10]}`;

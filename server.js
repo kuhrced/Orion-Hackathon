@@ -10,7 +10,7 @@ import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { geminiModel, geminiReady, writeFeedback, writeQuestions } from './gemini.js';
 import { loadMemory, recall, remember } from './memory.js';
-import { carTuning, CAR_TYPES } from './shared/cars.js';
+import { carTuning, CAR_TYPES, STEER_EASE, TURN } from './shared/cars.js';
 import { buildProps, PROP_KINDS } from './shared/props.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
 import { clip, speak, voiceReady } from './voice.js';
@@ -26,7 +26,6 @@ const MAX_SPEED = 430;
 const OFFROAD_SPEED = 170;
 const ACCEL = 320;
 const BRAKE = 700;
-const TURN = 2.7; // radians per second at full steer
 const CAR_RADIUS = 24; // large enough for the visible car bodies to make contact
 const CAR_BUMPER = 21; // a car's size when it hits things standing on the road
 const SMASH_SPEED = 260; // hits harder than this can break things
@@ -41,6 +40,10 @@ const MAX_RACE_MS = 10 * 60 * 1000;
 const QUESTION_EVERY_MS = 20000; // of driving time; the clock stops during a question
 const QUESTION_FASTEST_MS = 10000; // short races ask more often, down to this
 const MIN_QUESTIONS = 5; // every race should have at least this many
+// Team mode has no laps: the cars drive round until a set number of questions has been asked.
+// Then the goal opens, a short way ahead of the leader, and the first car to reach it wins.
+const TEAM_QUESTION_EVERY_MS = 9000; // of driving time between two questions
+const GOAL_AHEAD = 0.45; // of a lap, in front of the leading car
 const ANSWER_MS = 12000;
 const ANSWER_LOCK_MS = 900; // a steering tap just as the question appears must not count as an answer
 const REVEAL_MS = 4500;
@@ -162,7 +165,10 @@ function prepareBank(room) {
     room.writing = false;
     if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
     room.bankNote = '';
-    useBank(room, banks.get(key));
+    // Questions the teacher added by hand while waiting stay, on top of Gemini's.
+    const written = banks.get(key);
+    const added = !spareBank && room.bank.source === 'teacher' ? room.bank.questions : [];
+    useBank(room, added.length ? makeBank(topic, 'teacher', [...added, ...written.questions], written.made) : written);
   }).catch((error) => {
     console.log(`Gemini could not write questions: ${error.message}`);
     if (room.pending !== key) return;
@@ -209,12 +215,26 @@ async function receivePdf(request, response) {
   const data = Buffer.concat(chunks);
   if (data.subarray(0, 5).toString('latin1') !== '%PDF-') return reply(400, 'That is not a PDF file.');
   const name = header('x-name').replace(/\.pdf$/i, '').replace(/[^\p{L}\p{N} ._()-]/gu, '').trim().slice(0, 40) || 'document';
-  room.pdf = { topic: `PDF: ${name}`, key: `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`, data };
+  const key = `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`;
+  // Another file under the same name gets its own questions (prepareBank keeps a set with the same topic).
+  if (room.pdf && room.pdf.key !== key) useBank(room, noBank(`PDF: ${name}`));
+  room.pdf = { topic: `PDF: ${name}`, key, data };
   room.topic = room.pdf.topic;
   room.letDown = null; // a new upload means: ask Gemini again, and wait for it
   prepareBank(room);
   sendState(room);
   reply(200);
+}
+
+// PUBLIC_URL as typed in .env, tidied: "example.com/host" becomes "https://example.com".
+function publicUrl() {
+  const typed = (process.env.PUBLIC_URL || '').trim();
+  if (!typed) return null;
+  try {
+    return new URL(/^https?:\/\//i.test(typed) ? typed : `https://${typed}`).origin;
+  } catch {
+    return null;
+  }
 }
 
 function lanUrls() {
@@ -244,11 +264,15 @@ const server = http.createServer(async (request, response) => {
     response.end(sound ?? 'Not found');
     return;
   }
+  if (url.pathname === '/favicon.ico') { // there is none; say so quietly instead of with a 404
+    response.writeHead(204).end();
+    return;
+  }
   if (url.pathname === '/info') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     // PUBLIC_URL is for when the game is reachable at another address (online, or a tunnel):
     // the QR code then points there.
-    response.end(JSON.stringify({ lan: lanUrls(), public: process.env.PUBLIC_URL || null }));
+    response.end(JSON.stringify({ lan: lanUrls(), public: publicUrl() }));
     return;
   }
   if (url.pathname === '/qr.svg') {
@@ -288,7 +312,7 @@ function createRoom() {
   const room = {
     code, hostKey: token(), host: null, players: [], nextId: 1,
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
-    track: null, laps: 1, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
+    track: null, laps: 1, goal: 5, goalAt: Infinity, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
     topic: DEFAULT_TOPIC, bank: noBank(DEFAULT_TOPIC), bankNote: '', writing: false, pending: null, letDown: null,
     // 'solo': each player gets their own question at their own level.
@@ -333,6 +357,10 @@ function stateMessage(room) {
     phase: room.phase,
     laps: room.laps,
     mode: room.mode,
+    // Team mode: how many questions before the goal opens, how many were asked, and where the goal is.
+    goal: room.goal,
+    asked: room.questionCount,
+    goalIndex: room.track && Number.isFinite(room.goalAt) ? mod(Math.round(room.goalAt), room.track.n) : null,
     topic: room.topic,
     bank: { topic: room.bank.topic, source: room.bank.source, count: room.bank.count, writing: room.writing, note: room.bankNote, gemini: geminiReady() },
     countdown: room.phase === 'countdown' ? Math.max(0, room.startAt - now) : 0,
@@ -440,7 +468,7 @@ function placeOnGrid(room) {
     };
   });
   Object.assign(room, {
-    raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null,
+    raceTime: 0, question: null, reveal: null, questionCount: 0, firstFinish: null, goalAt: Infinity,
     classLevel: 2, classWeak: new Set(),
   });
   // Everything on the road is stood back up for the new race.
@@ -611,6 +639,12 @@ function resumeRace(room) {
     player.answer = null;
     player.q = null;
   }
+  // Team mode: that was the last question, so the goal opens. It stands a short way in front
+  // of the leader, so the cars that answered well (and were boosted) are the closest to it.
+  if (room.mode === 'team' && !Number.isFinite(room.goalAt) && room.questionCount >= room.goal) {
+    const lead = Math.max(...room.players.map((player) => player.car.progress));
+    room.goalAt = Math.round(lead + room.track.n * GOAL_AHEAD);
+  }
   sendState(room);
 }
 
@@ -679,7 +713,7 @@ function stepCar(room, player, dt) {
 
   // A car whose phone has gone drives itself until the phone is back, so it does not hold the race up.
   const input = player.bot || car.done || !player.connected ? autoSteer(track, player) : player.steer;
-  car.steer += (input - car.steer) * Math.min(1, 12 * dt);
+  car.steer += (input - car.steer) * Math.min(1, STEER_EASE * dt);
   const onRoad = off < track.width / 2 + 4;
   car.offRoad = !onRoad; // sent to the screens so they can kick up dust
   const boosted = !car.done && room.raceTime < player.boostUntil;
@@ -692,8 +726,9 @@ function stepCar(room, player, dt) {
   car.x = clamp(car.x + Math.cos(car.a) * car.v * dt, 20, WORLD.width - 20);
   car.y = clamp(car.y + Math.sin(car.a) * car.v * dt, 20, WORLD.height - 20);
 
-  car.lap = clamp(Math.floor(car.progress / track.n) + 1, 1, room.laps);
-  if (!car.done && car.progress >= room.laps * track.n) {
+  const team = room.mode === 'team';
+  car.lap = clamp(Math.floor(car.progress / track.n) + 1, 1, team ? 99 : room.laps);
+  if (!car.done && car.progress >= (team ? room.goalAt : room.laps * track.n)) {
     car.done = true;
     car.finishTime = room.raceTime;
     room.firstFinish ??= room.raceTime;
@@ -950,7 +985,7 @@ function stepRoom(room, now) {
     || (room.firstFinish !== null && room.raceTime - room.firstFinish > FINISH_GRACE_MS)
     || room.raceTime > MAX_RACE_MS;
   if (over) finishRace(room);
-  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt) askQuestion(room, now);
+  else if (room.firstFinish === null && room.raceTime >= room.nextQuestionAt && !Number.isFinite(room.goalAt)) askQuestion(room, now);
 }
 
 let last = performance.now();
@@ -1048,6 +1083,13 @@ const hostActions = {
     room.laps = clamp(Number.isFinite(laps) ? Math.round(laps) : 2, 1, 5);
     sendState(room);
   },
+  // Team mode: how many questions are asked before the goal opens.
+  goal(room, message) {
+    if (RACING.has(room.phase)) return;
+    const goal = Number(message.goal);
+    room.goal = clamp(Number.isFinite(goal) ? Math.round(goal) : 5, 1, 15);
+    sendState(room);
+  },
   mode(room, message) {
     if (room.phase !== 'draw' && room.phase !== 'lobby') return;
     room.mode = message.mode === 'team' ? 'team' : 'solo';
@@ -1072,10 +1114,11 @@ const hostActions = {
     // A question every 20 seconds of driving, or more often in a short race, so that every race
     // has enough questions for the map to become fully clean.
     const raceMs = ((room.laps * room.track.length) / (MAX_SPEED * 0.88)) * 1000;
-    const questionEvery = clamp(raceMs / (MIN_QUESTIONS + 0.5), QUESTION_FASTEST_MS, QUESTION_EVERY_MS);
+    const team = room.mode === 'team';
+    const questionEvery = team ? TEAM_QUESTION_EVERY_MS : clamp(raceMs / (MIN_QUESTIONS + 0.5), QUESTION_FASTEST_MS, QUESTION_EVERY_MS);
     Object.assign(room, {
       phase: 'countdown', startAt: performance.now() + COUNTDOWN_MS, results: null, summary: null, tick: 0,
-      questionEvery, nextQuestionAt: questionEvery, expectedQuestions: Math.max(3, Math.floor(raceMs / questionEvery)),
+      questionEvery, nextQuestionAt: questionEvery, expectedQuestions: team ? room.goal : Math.max(3, Math.floor(raceMs / questionEvery)),
     });
     sendState(room);
   },
@@ -1191,7 +1234,11 @@ server.on('connection', (socket) => {
   console.log(`${new Date().toLocaleTimeString()}  a device at ${address} connected`);
 });
 server.on('clientError', (error, socket) => {
-  console.log(`${new Date().toLocaleTimeString()}  the device at ${addressOf(socket)} sent something that is not plain http (${error.code}). Its browser is probably trying https: type http:// in front of the address.`);
+  // Only a request that cannot be read at all points at https. A connection that simply
+  // dropped (a phone leaving the Wi-Fi) is normal and says nothing.
+  if (String(error.code).startsWith('HPE_')) {
+    console.log(`${new Date().toLocaleTimeString()}  the device at ${addressOf(socket)} sent something that is not plain http (${error.code}). Its browser is probably trying https: type http:// in front of the address.`);
+  }
   if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
   else socket.destroy();
 });
@@ -1212,6 +1259,8 @@ wss.on('connection', (socket, request) => {
       return;
     }
     if (!message || typeof message.t !== 'string') return;
+    // Sent straight back, so a screen can measure how long the trip to the server takes.
+    if (message.t === 'ping') return send(socket, { t: 'pong', at: Number(message.at) || 0 });
     if (message.t === 'host') return onHost(socket, message);
     if (message.t === 'watch') return onWatch(socket, message);
     if (message.t === 'join') return onJoin(socket, message);
