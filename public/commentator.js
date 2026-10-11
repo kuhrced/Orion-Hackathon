@@ -54,10 +54,18 @@ export function createCommentator(caption) {
     const guard = setTimeout(done, muted ? 1200 + line.text.length * 55 : 2500 + line.text.length * 95);
     if (muted) return;
     if (!line.audio) return browserVoice(line.text, done);
+    // If the clip cannot be played, the browser's own voice reads the line: once, although a
+    // clip that fails can report it in two ways.
+    let fellBack = false;
+    const fallBack = () => {
+      if (fellBack) return;
+      fellBack = true;
+      browserVoice(line.text, done);
+    };
     playing = new Audio(line.audio);
     playing.onended = done;
-    playing.onerror = () => browserVoice(line.text, done);
-    playing.play().catch(() => browserVoice(line.text, done));
+    playing.onerror = fallBack;
+    playing.play().catch(fallBack);
   }
 
   return {

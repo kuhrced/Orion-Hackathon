@@ -28,7 +28,7 @@ export async function speak(text) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'xi-api-key': process.env.ELEVENLABS_API_KEY },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(6000), // a late line is worse than no line
+    signal: AbortSignal.timeout(3000), // a late line is worse than no line: after this the screen gets the words alone
   });
   try {
     // Lively, and a little faster than normal speech: this is a race.
