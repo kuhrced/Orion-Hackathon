@@ -23,7 +23,10 @@ export function createCommentator(caption) {
     line.lang = line.voice?.lang ?? 'en-US';
     line.rate = 1.15;
     line.pitch = 1.05;
-    line.onend = line.onerror = done;
+    line.onend = done;
+    // A voice that is refused (a reloaded page nobody has clicked yet) or cut off must not end
+    // the line at once: the words stay up for the reading time used when the voice is off.
+    line.onerror = () => setTimeout(done, 1200 + text.length * 55);
     speech.cancel(); // never let lines pile up behind the race
     speech.speak(line);
   }

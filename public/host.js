@@ -24,7 +24,7 @@ const RACING = ['countdown', 'race', 'question-countdown', 'question', 'reveal']
 const REVEAL_HOLD = 2200; // how long the answer stays up before the map is shown changing
 const MAP_FADE = 1500;
 
-let state = { phase: 'draw', players: [], laps: 2, green: 0, results: null };
+let state = { phase: 'draw', players: [], laps: 1, green: 0, results: null };
 let track = null;
 let scene = null;
 let life = null; // the moving layer: smoke, birds, river
@@ -173,7 +173,7 @@ function paintPlayers() {
       .map((player) => {
         const car = cars.get(player.id);
         const lap = car?.done ? 'Finished' : `Lap ${car?.lap ?? 1}/${state.laps}`;
-        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${LEVELS[player.level]} · ${lap}` });
+        return playerRow(player, { place: car?.place, info: `✓ ${player.correct} · ${lap}` });
       });
   } else {
     rows = state.players.map((player) => playerRow(player));
@@ -191,7 +191,7 @@ function paintResults() {
   const winner = results.find((result) => result.id === summary?.realWinner);
   $('realWinner').textContent = winner
     ? `Real winner: ${winner.name}, with ${winner.correct} right ${winner.correct === 1 ? 'answer' : 'answers'}`
-    : summary?.questions ? 'No real winner this time: nobody got a question right.' : '';
+    : summary?.questions ? 'No real winner this time: no player got a question right.' : '';
   $('greenResult').textContent = summary ? `Together you made the map ${Math.round(summary.green * 100)}% clean. Topic: ${summary.topic}.` : '';
   $('resultList').replaceChildren(...results.map((result) => {
     const row = element('li');
@@ -270,8 +270,9 @@ function updateUI() {
   hint.textContent = (phase === 'draw' && trackError) || HINTS[phase] || '';
   hint.classList.toggle('error', phase === 'draw' && !!trackError);
 
-  const [mainLabel, secondLabel] = LABELS[phase] ?? [];
-  mainButton.hidden = secondButton.hidden = racing;
+  const [mainLabel, secondLabel] = LABELS[phase] ?? (racing ? [null, 'End race'] : []);
+  mainButton.hidden = racing;
+  secondButton.hidden = phase === 'countdown'; // not during 3-2-1, so a double click on Start cannot end the race
   const { bank } = state;
   // The race waits for Gemini: the questions the host asked for are the ones that get played.
   const writing = uploading || !!bank?.writing;
@@ -325,9 +326,11 @@ function frame(now) {
   if (phase === 'countdown') {
     count.hidden = false;
     count.textContent = Math.max(1, Math.min(3, Math.ceil((countdownEnd - now) / 1000)));
+    $('clock').textContent = formatTime(0); // not the time of the last race
   } else if (phase === 'question-countdown') {
     count.hidden = false;
-    count.textContent = `GET READY ${Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))}`;
+    // Small words above the big digit, so it fits any screen.
+    count.replaceChildren(element('small', '', 'GET READY'), String(Math.max(1, Math.min(3, Math.ceil((questionEnd - now) / 1000)))));
   } else if (now < goUntil) {
     count.hidden = false;
     count.textContent = 'GO!';
@@ -473,13 +476,17 @@ mainButton.addEventListener('click', () => {
   else if (state.phase === 'lobby') send({ t: 'start' });
   else if (state.phase === 'results') send({ t: 'again' });
 });
+let endedAt = -Infinity; // when "End race" was pressed; a moment later the same button says "New track"
 secondButton.addEventListener('click', () => {
   if (state.phase === 'draw') {
     stroke = [];
     trackError = '';
     paintDrawing();
     updateUI();
-  } else {
+  } else if (RACING.includes(state.phase)) {
+    endedAt = performance.now();
+    send({ t: 'end' });
+  } else if (performance.now() - endedAt > 1500) { // a double click on "End race" must not throw the track away
     send({ t: 'redraw' });
   }
 });

@@ -163,6 +163,11 @@ function showQuiz(mine) {
   if (reveal) note = `${picked === null ? 'Too slow!' : correct ? 'Right! Speed boost.' : 'Wrong.'} Next: ${LEVELS[mine.level].toLowerCase()}`;
   $('quizNote').textContent = note;
   $('quizNote').className = reveal ? (correct ? 'good' : 'bad') : '';
+  // The buttons are rebuilt only when something has changed for this player. News of other
+  // players' answers arrives all the time, and a rebuild under the finger would lose the tap.
+  const look = JSON.stringify([question.number, mine.q.text, picked, locked, !!reveal, mine.right]);
+  if ($('quizChoices').dataset.look === look) return;
+  $('quizChoices').dataset.look = look;
   $('quizChoices').replaceChildren(...mine.q.choices.map((choice, index) => {
     const button = element('button', `choice c${index}`);
     button.type = 'button';
@@ -171,12 +176,20 @@ function showQuiz(mine) {
     if (picked === index) button.classList.add('picked');
     if (reveal) button.classList.add(index === mine.right ? 'right' : 'dim');
     button.append(element('span', 'letter', 'ABCD'[index]), element('span', 'text', choice));
-    // pointerdown, not click: the buttons are rebuilt whenever someone else answers.
+    // A tap picks the answer. A swipe to scroll does not: when the browser starts to scroll it
+    // cancels the press.
+    let pressed = false;
     button.addEventListener('pointerdown', () => {
-      if (myChoice !== null || state.phase !== 'question' || performance.now() < answersOpenAt) return;
+      pressed = true;
+    });
+    button.addEventListener('pointercancel', () => {
+      pressed = false;
+    });
+    button.addEventListener('pointerup', () => {
+      if (!pressed || myChoice !== null || state.phase !== 'question' || performance.now() < answersOpenAt) return;
       myChoice = index;
       send({ t: 'answer', choice: index });
-      showQuiz(mine);
+      showScreen();
     });
     return button;
   }));
@@ -379,6 +392,10 @@ const send = connect({
       const now = performance.now();
       if (message.phase === 'race' && (state?.phase === 'countdown' || state?.phase === 'reveal')) goUntil = now + 900;
       if (message.phase === 'countdown') countdownEnd = now + message.countdown;
+      if (!RACING.includes(message.phase)) { // between races: the next race counts its questions from 1 again
+        choiceFor = 0;
+        myChoice = null;
+      }
       if (message.phase === 'question-countdown') questionEnd = now + message.question.readyIn;
       if (message.phase === 'question') {
         questionEnd = now + message.question.endsIn;

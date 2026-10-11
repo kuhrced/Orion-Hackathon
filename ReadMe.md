@@ -39,7 +39,9 @@ the big screen (`/host`).
    speed boost, and every right answer makes the shared map greener.
 7. After the race, press **Race again** or **New track**.
 
-A lap takes 45 to 60 seconds. Two laps is the default; the host can change it before the start.
+A lap takes 30 to 50 seconds of driving. One lap is the default, so a race with its questions is
+about a minute and a half; the host can change it before the start. The host can press
+**End race** at any time to go straight to the results.
 A short race asks questions more often, so the map can always become fully clean.
 
 If a phone cannot open the page, check that it is on the same Wi-Fi, and allow Node.js in the
@@ -96,7 +98,7 @@ npm run export-questions
 
 A commentator talks about the race on the big screen: the start, a new leader, questions, right
 answers, crashes, the last lap, the finish and the real winner. The words also show at the
-bottom of the map. The **Commentator: on/off** button on the big screen turns the sound off.
+bottom of the map. The **Voice: on/off** button on the big screen turns the sound off.
 
 Without a key the browser's own voice is used. To get an ElevenLabs voice, add
 `ELEVENLABS_API_KEY=` and your key to `.env` and restart. A race is about 600 letters of speech.
@@ -156,4 +158,4 @@ the driving is in `shared/cars.js`; the stats themselves are in `shared/cars.jso
 
 ## Not built yet
 
-Music, the ElevenLabs commentator, sound effects, and putting the server online.
+Music, sound effects, and putting the server online.

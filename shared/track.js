@@ -75,7 +75,8 @@ function selfIntersects(points, size) {
       if (separation <= 1 || nearClosure) continue;
       const c = points[j];
       const d = points[(j + 1) % points.length];
-      if (segmentsTouch(a, b, c, d, 1e-8) || segmentsTooClose(a, b, c, d, gap)) return true;
+      // Segments 2 or 3 steps apart are only close because of a sharp corner; smoothing rounds it.
+      if (segmentsTouch(a, b, c, d, 1e-8) || (separation > 3 && segmentsTooClose(a, b, c, d, gap))) return true;
     }
   }
   return false;

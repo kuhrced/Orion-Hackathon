@@ -119,12 +119,15 @@ function prepareBank(room) {
     useBank(room, cached ?? backupBank);
     room.bankNote = cached ? '' : 'No Gemini key, so the built-in environment questions are used.';
     room.writing = false;
+    room.pending = null; // an answer that is still on its way is for another topic
     return;
   }
-  if (room.writing || room.pending === key) return; // already asked; the answer is on its way
+  if (room.pending === key) return; // already asked; the answer is on its way
+  // Gemini has already failed on this topic: ask again, but do not make the host wait again.
+  const letDown = room.letDown === key;
   useBank(room, backupBank);
-  room.bankNote = '';
-  room.writing = true;
+  room.bankNote = letDown ? 'Gemini is slow right now. You can start with the built-in questions, or wait for Gemini.' : '';
+  room.writing = !letDown;
   room.pending = key;
   room.writingSince = Date.now();
   const pdf = key === room.pdf?.key ? room.pdf.data : null;
@@ -146,6 +149,7 @@ function prepareBank(room) {
     console.log(`Gemini could not write questions: ${error.message}`);
     if (room.pending !== key) return;
     room.writing = false;
+    room.letDown = key;
     room.bankNote = 'Gemini could not write the questions, so the built-in environment questions are used.';
   }).finally(() => {
     clearTimeout(giveUp);
@@ -189,7 +193,7 @@ async function receivePdf(request, response) {
   const name = header('x-name').replace(/\.pdf$/i, '').replace(/[^\p{L}\p{N} ._()-]/gu, '').trim().slice(0, 40) || 'document';
   room.pdf = { topic: `PDF: ${name}`, key: `pdf:${crypto.createHash('sha1').update(data).digest('hex')}`, data };
   room.topic = room.pdf.topic;
-  room.writing = false;
+  room.letDown = null; // a new upload means: ask Gemini again, and wait for it
   prepareBank(room);
   sendState(room);
   reply(200);
@@ -253,10 +257,10 @@ function createRoom() {
   const room = {
     code, hostKey: token(), host: null, players: [], nextId: 1,
     phase: 'draw', // draw > lobby > countdown > race (> question > reveal > race ...) > results
-    track: null, laps: 2, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
+    track: null, laps: 1, startAt: 0, raceTime: 0, firstFinish: null, results: null, summary: null,
     green: 0, // 0 = polluted, 1 = fully green; shared by everyone in the room
     question: null, reveal: null, questionEvery: QUESTION_EVERY_MS, nextQuestionAt: 0, questionCount: 0, expectedQuestions: 6,
-    topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false, pending: null,
+    topic: DEFAULT_TOPIC, bank: backupBank, bankNote: '', writing: false, pending: null, letDown: null,
     // 'personal': each player gets their own question at their own level.
     // 'class': everyone gets the same question, and the level follows the class as a whole.
     mode: 'personal', classLevel: 2, classWeak: new Set(), classSeen: new Set(),
@@ -559,8 +563,9 @@ function stepQuestion(room, now) {
   room.phase = 'reveal';
   sendState(room);
   say(room, 'reveal', {
-    right: voters.filter((player) => player.answer === player.q.correct).map((player) => player.name),
-    total: voters.length, green: room.green > greenBefore ? Math.round(room.green * 100) : null,
+    // Everybody on the screen counts here, bots too, so the words match the ticks and crosses.
+    right: room.players.filter((player) => player.answer === player.q.correct).map((player) => player.name),
+    total: room.players.length, green: room.green > greenBefore ? Math.round(room.green * 100) : null,
   }, true);
 }
 
@@ -639,7 +644,8 @@ function stepCar(room, player, dt) {
   car.wrong = Math.abs(facing) > 2.1 && car.v > 60 ? car.wrong + dt : 0;
   if (car.lost > 2.2 || car.wrong > 1.5) respawn(track, car);
 
-  const input = player.bot || car.done ? autoSteer(track, player) : player.steer;
+  // A car whose phone has gone drives itself until the phone is back, so it does not hold the race up.
+  const input = player.bot || car.done || !player.connected ? autoSteer(track, player) : player.steer;
   car.steer += (input - car.steer) * Math.min(1, 12 * dt);
   const onRoad = off < track.width / 2 + 4;
   car.offRoad = !onRoad; // sent to the screens so they can kick up dust
@@ -692,7 +698,10 @@ function pushApart(players) {
       b.y += dy * pushB;
       if (massA < massB) a.v *= 0.72;
       else if (massB < massA) b.v *= 0.72;
-      else { a.v *= 0.88; b.v *= 0.88; }
+      // Equal weights: only the car behind loses speed. Slowing both kept them touching, so
+      // they slowed each other again and again and crawled round stuck together.
+      else if (a.progress < b.progress) a.v *= 0.88;
+      else b.v *= 0.88;
     }
   }
 }
@@ -988,10 +997,11 @@ const hostActions = {
   },
   // What the questions are about. Gemini writes a new set for any topic the host types.
   topic(room, message) {
-    if (room.phase !== 'lobby' && room.phase !== 'draw') return;
-    room.topic = String(message.topic ?? '').replace(/[^\p{L}\p{N} ,.'&()-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULT_TOPIC;
+    if (RACING.has(room.phase)) return;
+    // No colon (a topic that starts with "PDF: " means an uploaded file) and no quotes or angle brackets.
+    room.topic = String(message.topic ?? '').replace(/[^\p{L}\p{N} ,.'&()+#\/%=^?!-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || DEFAULT_TOPIC;
     room.pdf = null;
-    room.writing = false;
+    room.letDown = null; // Set means: ask Gemini again, and wait for it
     prepareBank(room);
     sendState(room);
   },
@@ -1043,6 +1053,12 @@ const hostActions = {
       questionEvery, nextQuestionAt: questionEvery, expectedQuestions: Math.max(3, Math.floor(raceMs / questionEvery)),
     });
     sendState(room);
+  },
+  // The host ends a race early, for example when the players have walked away.
+  end(room) {
+    if (!RACING.has(room.phase)) return;
+    if (room.phase === 'question-countdown' || room.phase === 'question') room.questionCount--; // this one was never marked
+    finishRace(room);
   },
   again(room) {
     if (room.phase !== 'results') return;
