@@ -110,7 +110,11 @@ export function createCommentator() {
     // the end of the question); the new line then starts after a short silence.
     say(line) {
       const busy = !!finish || !!speech?.speaking;
-      if (line.cut && busy) stopAll();
+      // A clip with only its last words left is allowed to finish: cutting the end of the
+      // question sounds worse than waiting a moment for the answer.
+      const nearlyDone = [...clips].some((clip) => !clip.paused && Number.isFinite(clip.duration) && clip.duration - clip.currentTime <= 1.5);
+      if (line.cut && busy && !nearlyDone) stopAll();
+      else if (line.cut) queue.length = 0; // nothing else comes between the two
       queue.push({ ...line, wait: line.cut && busy ? GAP : 0 });
       while (queue.length > 2) queue.shift();
       next();
