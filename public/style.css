@@ -89,7 +89,7 @@ input {
 #results li:first-child { font-size: 26px; }
 #results .place { width: 2.2em; }
 #results .score { margin-left: auto; padding-left: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
-#results .time { width: 6.5em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 18px; }
+#results .time { min-width: 6.5em; white-space: nowrap; flex: none; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 18px; }
 #results li.real .score { color: var(--accent); }
 #realWinner { font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 14px; }
 #greenResult { color: var(--muted); margin-top: 14px; }
@@ -124,7 +124,7 @@ input {
 #actions { display: grid; gap: 6px; margin-top: auto; }
 #actions .row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
 #actions > button { padding: 10px 16px; }
-#botRow button { padding: 8px 6px; font-size: 14px; }
+#botRow button { padding: 8px 4px; font-size: 13px; white-space: nowrap; }
 .option { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .option div { display: flex; align-items: center; gap: 10px; font-weight: 700; }
 .option button { padding: 6px 14px; }
