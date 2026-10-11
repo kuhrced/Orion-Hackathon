@@ -74,6 +74,16 @@ const makeBank = (topic, source, questions) => ({
 });
 const backupBank = makeBank(DEFAULT_TOPIC, 'backup', BACKUP);
 const banks = new Map(); // topic -> a bank Gemini has already written, so it is asked only once
+const writing = new Map(); // topic -> the request that is writing it right now, shared by every room that wants it
+function writeBank(topic) {
+  const key = topic.toLowerCase();
+  if (!writing.has(key)) {
+    writing.set(key, writeQuestions(topic)
+      .then((questions) => banks.set(key, makeBank(topic, 'gemini', questions)))
+      .finally(() => writing.delete(key)));
+  }
+  return writing.get(key);
+}
 
 function useBank(room, bank) {
   if (room.bank === bank) return;
@@ -96,8 +106,7 @@ function prepareBank(room) {
   useBank(room, backupBank);
   room.bankNote = '';
   room.writing = true;
-  writeQuestions(topic).then((questions) => {
-    banks.set(topic.toLowerCase(), makeBank(topic, 'gemini', questions));
+  writeBank(topic).then(() => {
     if (room.topic !== topic) return; // the host has moved on to another topic
     room.writing = false;
     if (RACING.has(room.phase)) return; // never swap questions in the middle of a race
@@ -903,6 +912,13 @@ setInterval(() => {
     socket.ping();
   }
 }, 15000);
+
+// Have the default questions ready before anyone joins, so the first race does not wait.
+if (geminiReady()) {
+  writeBank(DEFAULT_TOPIC)
+    .then(() => console.log(`Gemini wrote ${banks.get(DEFAULT_TOPIC.toLowerCase()).count} questions about "${DEFAULT_TOPIC}".`))
+    .catch((error) => console.log(`Gemini could not write the first questions: ${error.message}`));
+}
 
 server.listen(PORT, () => {
   console.log(`Race game running. Open the big screen at http://localhost:${PORT}/host`);

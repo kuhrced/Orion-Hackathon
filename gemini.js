@@ -3,7 +3,9 @@
 //
 // The key comes from GEMINI_API_KEY in the .env file. It is never logged or sent to a browser.
 
-const MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+// The "lite" model on purpose: it wrote 30 questions in 5 seconds in testing, and the free plan
+// lets it be called far more often than the bigger models, which ran out of quota at once.
+const MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const LEVELS = { easy: 1, medium: 2, hard: 3 };
 
 export const geminiReady = () => !!process.env.GEMINI_API_KEY;
@@ -12,19 +14,29 @@ async function ask(prompt, schema) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL()}:generateContent`;
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0.8 },
+    // Low thinking: writing quiz questions does not need deep reasoning, and it is about three
+    // times faster (measured: 8 questions in 5 seconds instead of 15).
+    generationConfig: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0.8, thinkingConfig: { thinkingLevel: 'low' } },
   };
   const post = () => fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(60000),
   });
   let response = await post();
-  if (response.status === 400) {
-    // Some versions of the API do not know the schema field. Ask again without it; the
-    // answer is checked piece by piece below either way.
-    delete body.generationConfig.responseJsonSchema;
+  // 429 means too many requests this minute (the free plan allows only a few), and 503 means
+  // Gemini is busy. Both pass, so wait and try again before giving up.
+  for (const wait of [8000, 20000]) {
+    if (response.status !== 429 && response.status !== 503) break;
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    response = await post();
+  }
+  // Some models do not know the thinking setting or the schema field. Drop them one at a
+  // time and ask again; the answer is checked piece by piece either way.
+  for (const setting of ['thinkingConfig', 'responseJsonSchema']) {
+    if (response.status !== 400) break;
+    delete body.generationConfig[setting];
     response = await post();
   }
   if (!response.ok) throw new Error(`Gemini answered ${response.status}: ${(await response.text()).slice(0, 200)}`);
@@ -47,7 +59,10 @@ function shuffled(list) {
 // Asks Gemini for quiz questions on a topic at three levels. Returns them in the same shape
 // as the backup questions: { id, question, choices, correct, level, subtopic }. Anything that
 // does not look right is thrown away, and too few good ones is treated as a failure.
-export async function writeQuestions(topic, perLevel = 12) {
+//
+// This is one request on purpose. The free plan allows only a few requests a minute, so a
+// request per level would run out as soon as two rooms started at once.
+export async function writeQuestions(topic, perLevel = 10) {
   const prompt = `Write multiple-choice quiz questions for school students aged 11 to 16.
 Topic: ${topic}
 
@@ -62,8 +77,12 @@ Rules:
 - Exactly 4 answer choices, each at most 70 characters. Exactly one is correct.
 - Wrong choices must be believable but clearly wrong to someone who knows the topic.
 - Do not use "all of the above" or "none of the above".
-- Give each question a subtopic: a label of 1 to 3 words. Use only 5 or 6 different subtopics in total.
-- Do not repeat a question.`;
+- Give each question a subtopic: a label of 1 to 3 words. Use only 5 or 6 different subtopics in
+  total, and spread the questions of every level over them.
+- Do not repeat a question.
+
+Return JSON in exactly this shape:
+{"questions": [{"level": "easy", "subtopic": "...", "question": "...", "choices": ["...", "...", "...", "..."], "correct_index": 0}]}`;
   const schema = {
     type: 'object',
     properties: {
@@ -100,7 +119,8 @@ Rules:
     questions.push({ id: `g${questions.length}`, question, choices: mixed, correct: mixed.indexOf(right), level, subtopic: text(item.subtopic, 30) || 'General' });
   }
   for (const level of [1, 2, 3]) {
-    if (questions.filter((q) => q.level === level).length < 5) throw new Error('Gemini did not write enough usable questions');
+    const usable = questions.filter((q) => q.level === level).length;
+    if (usable < Math.min(5, perLevel)) throw new Error(`Gemini only wrote ${usable} usable questions at level ${level}`);
   }
   return questions;
 }
@@ -114,7 +134,9 @@ Levels: 1 easy, 2 medium, 3 hard.
 ${JSON.stringify(players)}
 
 For each player write ONE short, friendly sentence of at most 110 characters. Say what they know well and
-what to review next, using only the results above. Speak to the player as "you". Simple words. No emojis.`;
+what to review next, using only the results above. Speak to the player as "you". Simple words. No emojis.
+
+Return JSON in exactly this shape: {"notes": [{"id": 1, "note": "..."}]}`;
   const schema = {
     type: 'object',
     properties: {

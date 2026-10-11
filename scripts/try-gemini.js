@@ -17,7 +17,7 @@ const topic = process.argv.slice(2).join(' ') || 'The environment';
 console.log(`Asking Gemini for questions about "${topic}"...`);
 try {
   const started = Date.now();
-  const questions = await writeQuestions(topic, 4);
+  const questions = await writeQuestions(topic, 6);
   console.log(`It works. ${questions.length} questions in ${((Date.now() - started) / 1000).toFixed(1)} seconds. One from each level:`);
   for (const level of [1, 2, 3]) {
     const q = questions.find((item) => item.level === level);
