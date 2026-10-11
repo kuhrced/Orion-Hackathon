@@ -10,7 +10,7 @@ import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { geminiModel, geminiReady, writeFeedback, writeQuestions } from './gemini.js';
 import { loadMemory, recall, remember } from './memory.js';
-import { carTuning, CAR_TYPES } from './shared/cars.js';
+import { carTuning, CAR_TYPES, STEER_EASE, TURN } from './shared/cars.js';
 import { buildProps, PROP_KINDS } from './shared/props.js';
 import { buildTrack, gridSlot, prepareTrack, MAX_PLAYERS, WORLD, WORLD_IDS } from './shared/track.js';
 import { clip, speak, voiceReady } from './voice.js';
@@ -26,7 +26,6 @@ const MAX_SPEED = 430;
 const OFFROAD_SPEED = 170;
 const ACCEL = 320;
 const BRAKE = 700;
-const TURN = 2.7; // radians per second at full steer
 const CAR_RADIUS = 24; // large enough for the visible car bodies to make contact
 const CAR_BUMPER = 21; // a car's size when it hits things standing on the road
 const SMASH_SPEED = 260; // hits harder than this can break things
@@ -700,7 +699,7 @@ function stepCar(room, player, dt) {
 
   // A car whose phone has gone drives itself until the phone is back, so it does not hold the race up.
   const input = player.bot || car.done || !player.connected ? autoSteer(track, player) : player.steer;
-  car.steer += (input - car.steer) * Math.min(1, 12 * dt);
+  car.steer += (input - car.steer) * Math.min(1, STEER_EASE * dt);
   const onRoad = off < track.width / 2 + 4;
   car.offRoad = !onRoad; // sent to the screens so they can kick up dust
   const boosted = !car.done && room.raceTime < player.boostUntil;
@@ -1237,6 +1236,8 @@ wss.on('connection', (socket, request) => {
       return;
     }
     if (!message || typeof message.t !== 'string') return;
+    // Sent straight back, so a screen can measure how long the trip to the server takes.
+    if (message.t === 'ping') return send(socket, { t: 'pong', at: Number(message.at) || 0 });
     if (message.t === 'host') return onHost(socket, message);
     if (message.t === 'watch') return onWatch(socket, message);
     if (message.t === 'join') return onJoin(socket, message);

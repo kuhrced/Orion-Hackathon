@@ -1,6 +1,6 @@
 // Phone: join with a code, steer with two buttons while watching a close-up of your car, and
 // answer the questions that stop the race.
-import { CAR_TYPES, STAT_LABELS } from '/shared/cars.js';
+import { carTuning, glide, rollAhead, CAR_TYPES, STAT_LABELS, STEER_EASE, TURN } from '/shared/cars.js';
 import { prepareTrack } from '/shared/track.js';
 import { carIcon, connect, createEffects, createLife, createProps, createScene, createSnapshots, createTiles, drawCar, loadCars, ordinal, CAR_LENGTH } from '/render.js';
 import { mixColor } from '/worlds.js';
@@ -273,6 +273,42 @@ addEventListener('blur', releaseAll);
 
 // ---------- The close-up view ----------
 
+// ---------- My own car, without the wait ----------
+//
+// What the server sends is already old when it is drawn: it travelled here, and the picture is
+// blended a little in the past to stay smooth. For the other cars that does not matter. For my
+// own car it does: I press a button and the car turns a moment later, and on a far-away server
+// that moment is a quarter of a second. So my own car is drawn where it will be once the
+// server has heard my newest steering, worked out with the same numbers the server uses
+// (shared/cars.js). The server still decides where the car really is; this only draws ahead.
+const AHEAD_MAX = 400; // never look further ahead than this many ms
+const myInputs = []; // [race clock in ms, eased steering] for the last half second
+let raceClock = 0; // counts only while the race is on, like the server's own clock
+let eased = 0; // my steering, eased the way the server eases it
+let lead = 0; // 0 = where the server said, 1 = fully ahead; fades out when the car has finished
+const drawn = { x: NaN, y: NaN, a: 0 }; // where my car is on this screen
+
+function aheadOf(car, type, dt, racing) {
+  if (racing) {
+    raceClock += dt * 1000;
+    eased += (steer - eased) * Math.min(1, STEER_EASE * dt);
+    myInputs.push([raceClock, eased]);
+    while (myInputs.length > 2 && myInputs[1][0] < raceClock - AHEAD_MAX) myInputs.shift();
+  }
+  lead += ((car.done ? 0 : 1) - lead) * Math.min(1, 6 * dt);
+  // The picture is `delay` behind the newest news, and my steering needs one trip to the
+  // server and back before it shows in that news.
+  const wait = Math.min(AHEAD_MAX, snapshots.delay + (send.latency() ?? 60)) * lead;
+  const stats = carInfo?.types?.[CAR_TYPES[type]]?.stats;
+  const turn = TURN * (stats ? carTuning(stats).turn : 1) * Math.min(1, car.v / 160);
+  const target = rollAhead(car, myInputs, raceClock - wait, turn);
+  if (![target.x, target.y, target.a].every(Number.isFinite)) return car;
+  // While the race is on, the car on this screen drives by itself and is only steered towards
+  // that target, so news that comes late does not make it stutter.
+  glide(drawn, target, racing ? eased * lead : 0, turn, racing ? car.v * lead : 0, dt);
+  return { ...car, x: drawn.x, y: drawn.y, a: drawn.a };
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   const screen = document.body.dataset.screen;
@@ -287,9 +323,15 @@ function frame(now) {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
   }
-  const cars = snapshots.sample();
-  const mine = cars.get(me.id);
-  if (!mine || !width) return;
+  const racing = state.phase === 'race';
+  const dt = Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
+  const cars = snapshots.sample(racing);
+  const told = cars.get(me.id);
+  if (!told || !width) return;
+  const self = state.players.find((player) => player.id === me.id);
+  const mine = aheadOf(told, self?.type ?? 0, dt, racing);
+  cars.set(me.id, mine); // so the dust and skid marks are drawn under the car, not behind it
 
   // The camera turns with the car, so "left" on the phone is always the car's left.
   const zoom = (height >= width ? Math.max(width / 640, height / 1100) : height / 620) * dpr;
@@ -315,10 +357,7 @@ function frame(now) {
   };
   tiles.draw(ctx, 0, region);
 
-  const racing = state.phase === 'race';
   const pixel = dpr / zoom; // world units per screen pixel
-  const dt = Math.min(0.1, (now - lastFrame) / 1000);
-  lastFrame = now;
   slowFrames = slowFrames * 0.97 + (dt > 0.034 ? 0.03 : 0);
   if (slowFrames > 0.6) lite = true;
   life.ground(ctx, 0, now / 1000, region, pixel, lite);
@@ -332,7 +371,6 @@ function frame(now) {
     drawCar(ctx, sheet, player.color, player.type, car.x, car.y, car.a, undefined, car.boost && racing);
     labels.push([player.name, camera.transformPoint(new DOMPoint(car.x, car.y))]);
   }
-  const self = state.players.find((player) => player.id === me.id);
   if (self) drawCar(ctx, sheet, self.color, self.type, mine.x, mine.y, mine.a, undefined, mine.boost && racing);
   life.sky(ctx, 0, now / 1000, region, pixel, lite);
 

@@ -377,7 +377,7 @@ function frame(now) {
   ctx.drawImage(map, 0, 0, gameCanvas.width, gameCanvas.height);
   ctx.globalAlpha = 1;
 
-  const cars = snapshots.sample();
+  const cars = snapshots.sample(state.phase === 'race');
   const shown = state.players.filter((player) => cars.has(player.id)).sort((a, b) => cars.get(b.id).place - cars.get(a.id).place);
   const zoom = view.scale * view.dpr;
   const pixel = 1 / view.scale; // world units per screen pixel
